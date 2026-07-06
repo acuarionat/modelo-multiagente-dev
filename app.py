@@ -8,7 +8,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database.db_manager import init_db, log_execution
 from core.graph import build_graph
-from core.utils import generate_word_template, extract_text_from_docx
+from core.utils import (
+    generate_word_template, 
+    extract_text_from_docx,
+    generate_evaluation_report_pdf,
+    generate_formal_docx
+)
 
 st.set_page_config(page_title="Recepción de Requerimientos", page_icon="📝", layout="wide")
 
@@ -143,6 +148,10 @@ if req_text_to_analyze:
     col_eval = st.expander("Veredicto del Evaluador", expanded=True)
     col_final = st.expander("Reporte Final (Agente Central)", expanded=True)
     
+    parsed_q = {}
+    parsed_s = {}
+    parsed_e = {}
+    
     try:
         for output in graph.stream(initial_state):
             for key, value in output.items():
@@ -172,7 +181,50 @@ if req_text_to_analyze:
                     col_final.success("Análisis Completado. Síntesis:")
                     col_final.markdown(value.get("final_report"))
                     status_text.success("¡Flujo completado exitosamente!")
-                    
+        
+
+        # --- Generación de Salidas (PDF y Word) ---
+
+        print("\n========== DATOS DEL PDF ==========")
+        print("QUALITY")
+        print(json.dumps(parsed_q, indent=2, ensure_ascii=False))
+
+        print("\nSECURITY")
+        print(json.dumps(parsed_s, indent=2, ensure_ascii=False))
+
+        print("\nEVALUATION")
+        print(json.dumps(parsed_e, indent=2, ensure_ascii=False))
+        print("===================================\n")
+
+        st.divider()
+        st.subheader("📄 Documentos Generados")
+        st.write("El Agente Central ha preparado los siguientes documentos según el resultado del análisis:")
+        
+        # Siempre generar el PDF
+        pdf_file = generate_evaluation_report_pdf(project_name, parsed_q, parsed_s, parsed_e)
+        st.download_button(
+            label="📥 Descargar Reporte de Evaluación (PDF)",
+            data=pdf_file,
+            file_name=f"Reporte_Evaluacion_{project_name}.pdf",
+            mime="application/pdf"
+        )
+        
+        # Lógica para generar Word Formal
+        calidad_cumple = parsed_q.get("Indice_Calidad", 0.0) >= 0.95
+        seguridad_cumple = parsed_s.get("Meta_Cumplida", False)
+        
+        if calidad_cumple and seguridad_cumple:
+            st.success("✅ **Los requerimientos cumplen con los umbrales de Calidad y Seguridad.** El Documento Formal ha sido generado.")
+            word_file = generate_formal_docx(project_name, execution_id, parsed_s)
+            st.download_button(
+                label="📥 Descargar Documento Formal de Requerimientos (Word)",
+                data=word_file,
+                file_name=f"Documento_Formal_{project_name}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        else:
+            st.warning("⚠️ **Los requerimientos NO cumplen los umbrales.** (Se requiere Calidad ≥ 0.95 y cumplir meta de Seguridad). No se ha generado el Documento Formal.")
+            
     except Exception as e:
         st.error(f"Error durante la ejecución del grafo: {str(e)}")
         st.exception(e)

@@ -16,8 +16,8 @@ Formato JSON esperado:
 {{
   "ASC-REQ-01_Cumplido": true o false,
   "ASC-REQ-02_Cumplido": true o false,
-  "LoT_Asignado": 1, 2 o 3,
+  "LoT_Asignado": 1,
   "Indice_Seguridad": 0.0,
-  "Observaciones": "Tus observaciones sobre la seguridad de los requerimientos.",
+  "Observaciones": "Justificación de los controles faltantes y recomendación del LoT.",
   "Meta_Cumplida": true o false
 }}
