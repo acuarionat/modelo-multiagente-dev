@@ -2,229 +2,111 @@ import streamlit as st
 import os
 import sys
 import json
-from datetime import datetime
+import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from database.db_manager import init_db, log_execution
-from core.graph import build_graph
-from core.utils import (
-    generate_word_template, 
-    extract_text_from_docx,
-    generate_evaluation_report_pdf,
-    generate_formal_docx
-)
+from integrations.gitlab_adapter import GitLabAdapter
+from integrations.issue_service import process_issue_workflow
 
-st.set_page_config(page_title="Recepción de Requerimientos", page_icon="📝", layout="wide")
+st.set_page_config(page_title="Recepción de Requerimientos (GitLab)", page_icon="🦊", layout="wide")
 
-st.title("📝 Etapa 1: Recepción de Requerimientos")
-st.markdown("Evalúa la viabilidad de los requerimientos de un proyecto (Calidad ISO 25023 y Seguridad ISO 27034).")
+st.title("🦊 Etapa 1: Recepción de Requerimientos (Vía GitLab)")
+st.markdown("El sistema actuará como herramienta de apoyo leyendo las Historias de Usuario desde GitLab, ejecutando el flujo multiagente y actualizando el Issue directamente.")
 
-if "db_initialized" not in st.session_state:
-    init_db()
-    st.session_state.db_initialized = True
+# Instanciar el adaptador (verificar que existen variables de entorno)
+try:
+    adapter = GitLabAdapter()
+except ValueError as e:
+    st.error(f"Error de configuración: {str(e)}")
+    st.stop()
+except Exception as e:
+    st.error(f"No se pudo conectar a GitLab: {str(e)}")
+    st.stop()
 
-project_name = st.text_input("Nombre del Proyecto:", placeholder="Ej: Sistema de Gestión de Inventarios")
+st.subheader("Selecciona una Historia de Usuario (Issue Abierto)")
 
-tab1, tab2 = st.tabs(["✍️ Llenar en Interfaz (Recomendado)", "📄 Subir Plantilla Word"])
+if st.button("Actualizar Lista de Issues"):
+    st.session_state.issues = adapter.list_open_issues()
 
-req_text_to_analyze = None
+if "issues" not in st.session_state:
+    with st.spinner("Cargando issues desde GitLab..."):
+        st.session_state.issues = adapter.list_open_issues()
 
-with tab1:
-    st.subheader("Formulario de Requerimientos")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        fecha = st.date_input("Fecha:", datetime.now())
-    with col2:
-        solicitante = st.text_input("Solicitante:")
+if not st.session_state.issues:
+    st.info("No hay issues abiertos en el proyecto configurado.")
+    st.stop()
+
+# Crear opciones para el selectbox
+issue_options = {f"#{issue.iid}: {issue.title}": issue.iid for issue in st.session_state.issues}
+selected_issue_str = st.selectbox("Issue a analizar:", list(issue_options.keys()))
+
+project_name = st.text_input("Nombre del Proyecto para Reportes:", placeholder="Ej: Sistema de Gestión de Inventarios", value=adapter.project.name)
+
+if st.button("Ejecutar Análisis Multiagente sobre el Issue"):
+    if not project_name:
+        st.warning("Debes ingresar el Nombre del Proyecto.")
+    else:
+        issue_iid = issue_options[selected_issue_str]
         
-    desc = st.text_area("1. Descripción General")
-    obj = st.text_area("2. Objetivos Principales (Uno por línea)")
-    func = st.text_area("3. Funcionalidades Requeridas (Especifique Prioridad)")
-    
-    st.markdown("**4. Datos Sensibles**")
-    maneja_datos = st.selectbox("¿Maneja datos sensibles?", ["No", "Sí"])
-    tipos_datos = st.text_input("Tipos de datos:", placeholder="ej. datos personales, financieros, etc.")
-    nivel_sensibilidad = st.selectbox("Nivel de sensibilidad:", ["Bajo", "Medio", "Alto"])
-    
-    st.markdown("**5. Requisitos de Seguridad Específicos**")
-    auth = st.text_input("Autenticación:", placeholder="Sí/No + tipo: usuario/contraseña, 2FA, etc.")
-    autorizacion = st.text_input("Autorización (roles y permisos):")
-    auditoria = st.text_input("Auditoría:", placeholder="¿Se necesita registro de acciones?")
-    proteccion = st.text_input("Protección de datos:", placeholder="Cifrado, anonimato, etc.")
-    otros_seg = st.text_area("Otros requisitos de seguridad:")
-    
-    st.markdown("**6. Usuarios y Accesos**")
-    roles = st.text_area("Roles de usuarios y sus permisos:")
-    
-    obs = st.text_area("7. Observaciones Adicionales o Restricciones")
-    
-    if st.button("Enviar para Análisis (Formulario)"):
-        if not project_name:
-            st.warning("Debes ingresar el Nombre del Proyecto.")
-        elif not desc or not obj or not func:
-            st.warning("Por favor, llena al menos la descripción, objetivos y funcionalidades.")
-        else:
-            req_text_to_analyze = f"""Nombre del Proyecto: {project_name}
-Fecha: {fecha}
-Solicitante: {solicitante}
+        st.divider()
+        st.info(f"Iniciando flujo multiagente para el Issue #{issue_iid}...")
+        
+        start_time_total = time.time()
+        
+        with st.spinner("El sistema multiagente está analizando el Issue, por favor espera..."):
+            try:
+                results = process_issue_workflow(issue_iid, project_name)
+                end_time_total = time.time()
+                
+                # Guardar en session_state para renderizado
+                st.session_state.parsed_q = results["quality_json"]
+                st.session_state.parsed_s = results["security_json"]
+                st.session_state.parsed_e = results["eval_json"]
+                st.session_state.parsed_cf = results["final_json"]
+                st.session_state.issue_data = results["issue_data"]
+                st.session_state.total_time = end_time_total - start_time_total
+                
+                st.success("¡Flujo completado exitosamente! Los documentos fueron adjuntados en GitLab y se añadió un comentario.")
+            except Exception as e:
+                st.error(f"Error durante la ejecución del grafo: {str(e)}")
 
-1. Descripción General
-{desc}
-
-2. Objetivos Principales
-{obj}
-
-3. Funcionalidades Requeridas
-{func}
-
-4. Datos Sensibles
-¿Maneja datos sensibles?: {maneja_datos}
-Tipos de datos: {tipos_datos}
-Nivel de sensibilidad: {nivel_sensibilidad}
-
-5. Requisitos de Seguridad Específicos
-Autenticación: {auth}
-Autorización: {autorizacion}
-Auditoría: {auditoria}
-Protección de datos: {proteccion}
-Otros requisitos: {otros_seg}
-
-6. Usuarios y Accesos
-{roles}
-
-7. Observaciones Adicionales
-{obs}
-"""
-
-with tab2:
-    st.subheader("Análisis mediante Plantilla DOCX")
-    st.download_button(
-        label="📥 Descargar Plantilla Word",
-        data=generate_word_template(),
-        file_name="plantilla_requerimientos.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
-    
-    uploaded_file = st.file_uploader("Sube el Word llenado", type=["docx"])
-    
-    if st.button("Analizar Documento (Word)"):
-        if not project_name:
-            st.warning("Debes ingresar el Nombre del Proyecto.")
-        elif uploaded_file is not None:
-            req_text_to_analyze = extract_text_from_docx(uploaded_file)
-        else:
-            st.warning("Por favor, sube un archivo Word válido.")
-
-# --- Ejecución del Grafo ---
-if req_text_to_analyze:
+# --- Renderizado de Resultados ---
+if 'parsed_q' in st.session_state:
     st.divider()
-    st.info("Iniciando flujo multiagente...")
     
-    execution_id = log_execution(project_name)
-    st.write(f"**ID de Ejecución BD:** `{execution_id}`")
+    st.markdown("### Resumen del Análisis")
     
-    graph = build_graph()
+    col_issue = st.expander("Datos del Issue (JSON Base)", expanded=False)
+    col_issue.json(st.session_state.issue_data)
     
-    initial_state = {
-        "project_name": project_name,
-        "requirements_text": req_text_to_analyze,
-        "execution_id": execution_id,
-        "central_init": None,
-        "quality_report": None,
-        "security_report": None,
-        "evaluation": None,
-        "final_report": None
-    }
-    
-    status_text = st.empty()
     cols = st.columns(2)
     with cols[0]:
         col_q = st.expander("Reporte de Calidad (ISO 25023)", expanded=True)
+        col_q.json(st.session_state.parsed_q)
     with cols[1]:
         col_s = st.expander("Reporte de Seguridad (ISO 27034)", expanded=True)
+        col_s.json(st.session_state.parsed_s)
         
     col_eval = st.expander("Veredicto del Evaluador", expanded=True)
+    col_eval.json(st.session_state.parsed_e)
+    
     col_final = st.expander("Reporte Final (Agente Central)", expanded=True)
+    col_final.success("Análisis Completado. Síntesis:")
+    col_final.markdown(st.session_state.parsed_cf.get("resumen_interfaz", "No se generó resumen de interfaz."))
     
-    parsed_q = {}
-    parsed_s = {}
-    parsed_e = {}
+    if "total_time" in st.session_state:
+        st.info(f"⏱️ **Tiempo total de ejecución del modelo:** {st.session_state.total_time:.2f} segundos. (Los detalles por agente se guardaron en log estructurado JSON).")
     
-    try:
-        for output in graph.stream(initial_state):
-            for key, value in output.items():
-                status_text.text(f"Nodo completado: {key}")
-                
-                if key == "Central_Init":
-                    st.success(f"**Agente Central (Recepción):**\n{value.get('central_init')}")
-                elif key == "Quality":
-                    try:
-                        parsed_q = json.loads(value.get("quality_report", "{}"))
-                        col_q.json(parsed_q)
-                    except json.JSONDecodeError:
-                        col_q.text(value.get("quality_report"))
-                elif key == "Security":
-                    try:
-                        parsed_s = json.loads(value.get("security_report", "{}"))
-                        col_s.json(parsed_s)
-                    except json.JSONDecodeError:
-                        col_s.text(value.get("security_report"))
-                elif key == "Evaluator":
-                    try:
-                        parsed_e = json.loads(value.get("evaluation", "{}"))
-                        col_eval.json(parsed_e)
-                    except json.JSONDecodeError:
-                        col_eval.text(value.get("evaluation"))
-                elif key == "Central_Final":
-                    col_final.success("Análisis Completado. Síntesis:")
-                    col_final.markdown(value.get("final_report"))
-                    status_text.success("¡Flujo completado exitosamente!")
-        
-
-        # --- Generación de Salidas (PDF y Word) ---
-
-        print("\n========== DATOS DEL PDF ==========")
-        print("QUALITY")
-        print(json.dumps(parsed_q, indent=2, ensure_ascii=False))
-
-        print("\nSECURITY")
-        print(json.dumps(parsed_s, indent=2, ensure_ascii=False))
-
-        print("\nEVALUATION")
-        print(json.dumps(parsed_e, indent=2, ensure_ascii=False))
-        print("===================================\n")
-
-        st.divider()
-        st.subheader("📄 Documentos Generados")
-        st.write("El Agente Central ha preparado los siguientes documentos según el resultado del análisis:")
-        
-        # Siempre generar el PDF
-        pdf_file = generate_evaluation_report_pdf(project_name, parsed_q, parsed_s, parsed_e)
-        st.download_button(
-            label="📥 Descargar Reporte de Evaluación (PDF)",
-            data=pdf_file,
-            file_name=f"Reporte_Evaluacion_{project_name}.pdf",
-            mime="application/pdf"
-        )
-        
-        # Lógica para generar Word Formal
-        calidad_cumple = parsed_q.get("Indice_Calidad", 0.0) >= 0.95
-        seguridad_cumple = parsed_s.get("Meta_Cumplida", False)
-        
-        if calidad_cumple and seguridad_cumple:
-            st.success("✅ **Los requerimientos cumplen con los umbrales de Calidad y Seguridad.** El Documento Formal ha sido generado.")
-            word_file = generate_formal_docx(project_name, execution_id, parsed_s)
-            st.download_button(
-                label="📥 Descargar Documento Formal de Requerimientos (Word)",
-                data=word_file,
-                file_name=f"Documento_Formal_{project_name}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-        else:
-            st.warning("⚠️ **Los requerimientos NO cumplen los umbrales.** (Se requiere Calidad ≥ 0.95 y cumplir meta de Seguridad). No se ha generado el Documento Formal.")
-            
-    except Exception as e:
-        st.error(f"Error durante la ejecución del grafo: {str(e)}")
-        st.exception(e)
+    st.divider()
+    st.subheader("📊 Matriz de Trazabilidad y Documento Formal")
+    st.write("Estos documentos ya fueron generados y subidos como archivos adjuntos al Issue de GitLab correspondiente.")
+    
+    tab_doc, tab_matriz = st.tabs(["Previsualización Documento Formal", "Previsualización Matriz de Trazabilidad"])
+    with tab_doc:
+        st.markdown(st.session_state.parsed_cf.get("documento_formal_md", "No se generó el documento formal."))
+    with tab_matriz:
+        st.markdown(st.session_state.parsed_cf.get("matriz_trazabilidad_md", "No se generó la matriz de trazabilidad."))        

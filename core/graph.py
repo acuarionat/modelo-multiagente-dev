@@ -1,65 +1,109 @@
+import time
+import logging
+import os
 from langgraph.graph import StateGraph, END
 from core.state import AgentState
 from agents.central_agent import process_ticket, synthesize_final_report
 from agents.quality_agent import analyze_quality
 from agents.security_agent import analyze_security
 from agents.evaluator_agent import evaluate_reports
-from database.db_manager import log_agent_result, update_execution_final
+import json
+from core.config import LOGS_DIR
+from core.performance_audit import log_graph_event
+
+# Configuración del logger
+log_file = os.path.join(LOGS_DIR, "execution.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - [%(levelname)s] - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # 1. Definición de Nodos
 
 def node_central_init(state: AgentState):
     """Nodo inicial: El orquestador arranca el flujo."""
-    project_name = state["project_name"]
-    req_text = state["requirements_text"]
-    response = process_ticket(project_name, req_text)
+    logger.info("▶ Iniciando Agente Central (Init)...")
+    log_graph_event("node_start", "Central_Init")
+    start_time = time.time()
     
-    if state["execution_id"]:
-        log_agent_result(state["execution_id"], "Agente Central (Init)", response)
+    project_name = state["project_name"]
+    issue_data = state["issue_data"]
+    
+    issue_json_str = json.dumps(issue_data, ensure_ascii=False)
+    response = process_ticket(project_name, issue_json_str)
+    
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Central (Init) completado en {elapsed:.2f} segundos.")
+    log_graph_event("node_end", "Central_Init", elapsed_seconds=round(elapsed, 4))
         
     return {"central_init": response}
 
 def node_quality(state: AgentState):
     """Nodo paralelo: Calidad."""
-    req_text = state["requirements_text"]
+    logger.info("▶ Iniciando Agente de Calidad (Ejecución en Paralelo)...")
+    log_graph_event("node_start", "Quality")
+    start_time = time.time()
+    
+    req_text = state["central_init"]
     report = analyze_quality(req_text)
     
-    if state["execution_id"]:
-        log_agent_result(state["execution_id"], "Agente de Calidad", report)
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Calidad completado en {elapsed:.2f} segundos.")
+    log_graph_event("node_end", "Quality", elapsed_seconds=round(elapsed, 4))
         
     return {"quality_report": report}
 
 def node_security(state: AgentState):
     """Nodo paralelo: Seguridad."""
-    req_text = state["requirements_text"]
+    logger.info("▶ Iniciando Agente de Seguridad (Ejecución en Paralelo)...")
+    log_graph_event("node_start", "Security")
+    start_time = time.time()
+    
+    req_text = state["central_init"]
     report = analyze_security(req_text)
     
-    if state["execution_id"]:
-        log_agent_result(state["execution_id"], "Agente de Seguridad", report)
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Seguridad completado en {elapsed:.2f} segundos.")
+    log_graph_event("node_end", "Security", elapsed_seconds=round(elapsed, 4))
         
     return {"security_report": report}
 
 def node_evaluator(state: AgentState):
     """Nodo evaluador: Revisa calidad y seguridad."""
+    logger.info("▶ Iniciando Agente Evaluador...")
+    log_graph_event("node_start", "Evaluator")
+    start_time = time.time()
+    
     eval_result = evaluate_reports(state["quality_report"], state["security_report"])
     
-    if state["execution_id"]:
-        log_agent_result(state["execution_id"], "Agente Evaluador", eval_result)
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Evaluador completado en {elapsed:.2f} segundos.")
+    log_graph_event("node_end", "Evaluator", elapsed_seconds=round(elapsed, 4))
         
     return {"evaluation": eval_result}
 
 def node_central_final(state: AgentState):
     """Nodo final: Consolida todo."""
-    final_report = synthesize_final_report(state["evaluation"], state["project_name"])
+    logger.info("▶ Iniciando Agente Central (Final)...")
+    log_graph_event("node_start", "Central_Final")
+    start_time = time.time()
     
-    if state["execution_id"]:
-        log_agent_result(state["execution_id"], "Agente Central (Final)", final_report)
-        update_execution_final(
-            state["execution_id"], 
-            status="COMPLETED", 
-            final_decision="Ver reporte", 
-            final_report=final_report
-        )
+    final_report = synthesize_final_report(
+        project_name=state["project_name"],
+        central_init=state["central_init"],
+        quality_report=state["quality_report"],
+        security_report=state["security_report"],
+        evaluation=state["evaluation"]
+    )
+    
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Central (Final) completado en {elapsed:.2f} segundos.")
+    log_graph_event("node_end", "Central_Final", elapsed_seconds=round(elapsed, 4))
         
     return {"final_report": final_report}
 
@@ -76,6 +120,7 @@ def build_graph():
     
     workflow.set_entry_point("Central_Init")
     
+    # Ejecución paralela
     workflow.add_edge("Central_Init", "Quality")
     workflow.add_edge("Central_Init", "Security")
     

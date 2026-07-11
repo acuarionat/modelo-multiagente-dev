@@ -1,5 +1,6 @@
 from langchain_core.prompts import PromptTemplate
 from agents import get_llm, load_prompt
+from core.performance_audit import audit_agent_call
 
 def analyze_security(requirements_text: str) -> str:
     """
@@ -11,7 +12,16 @@ def analyze_security(requirements_text: str) -> str:
     
     prompt = PromptTemplate.from_template(prompt_template)
     chain = prompt | llm
+    prompt_text = prompt.format(requirements_text=requirements_text)
     
-    response = chain.invoke({"requirements_text": requirements_text})
+    with audit_agent_call(
+        "Security",
+        prompt_text=prompt_text,
+        context_text=requirements_text,
+        input_json_text=requirements_text,
+        json_mode=True,
+    ) as audit:
+        response = chain.invoke({"requirements_text": requirements_text})
+        audit["response"] = response.content
     
     return response.content

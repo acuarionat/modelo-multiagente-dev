@@ -82,54 +82,65 @@ def generate_evaluation_report_pdf(project_name: str, quality_json: dict, securi
     pdf.multi_cell(0, line_h, txt=f"Reporte de Evaluacion: {clean_text_for_pdf(project_name)}", align='C', **mc_kwargs)
     pdf.set_font("Helvetica", size=12)
     pdf.multi_cell(0, line_h, txt=f"Fecha: {datetime.now().strftime('%Y-%m-%d')}", align='C', **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"Veredicto: {clean_text_for_pdf(eval_json.get('Veredicto', 'N/A'))}", align='C', **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=f"Veredicto: {clean_text_for_pdf(eval_json.get('veredicto', 'N/A'))}", align='C', **mc_kwargs)
     pdf.ln(10)
     
     # Decisión Final y Conclusión
     pdf.set_font("Helvetica", style="B", size=12)
     pdf.multi_cell(0, line_h, txt="Decision Final y Conclusion", **mc_kwargs)
     pdf.set_font("Helvetica", size=12)
-    pdf.multi_cell(0, line_h, txt=clean_text_for_pdf(eval_json.get('Conclusion', 'N/A')), **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=clean_text_for_pdf(eval_json.get('conclusion', 'N/A')), **mc_kwargs)
     pdf.ln(5)
     
     # Métricas de Calidad
     pdf.set_font("Helvetica", style="B", size=12)
     pdf.multi_cell(0, line_h, txt="Metricas de Calidad (ISO 25023)", **mc_kwargs)
     pdf.set_font("Helvetica", size=12)
-    fcp = quality_json.get("FCp-1-G", 0.0)
-    fap = quality_json.get("FAp-1-G", 0.0)
-    ind_cal = quality_json.get("Indice_Calidad", 0.0)
+    ind_cal = quality_json.get("indice", 0.0)
     pdf.multi_cell(0, line_h, txt=f"- Indice de Calidad: {ind_cal}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"- FCp-1-G (Cobertura Funcional) [X = 1 - (A/B)]: {fcp}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"  Justificacion: {clean_text_for_pdf(quality_json.get('Justificacion_FCp', 'N/A'))}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"- FAp-1-G (Adecuacion Funcional): {fap}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"  Justificacion: {clean_text_for_pdf(quality_json.get('Justificacion_FAp', 'N/A'))}", **mc_kwargs)
+    
+    just_cal = quality_json.get("justificaciones", {})
+    pdf.multi_cell(0, line_h, txt=f"- FCp-1-G (Cobertura Funcional): {clean_text_for_pdf(just_cal.get('FCp-1-G', 'N/A'))}", **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=f"- FAp-1-G (Adecuacion Funcional): {clean_text_for_pdf(just_cal.get('FAp-1-G', 'N/A'))}", **mc_kwargs)
+    
+    recom_cal = quality_json.get("recomendaciones", [])
+    if recom_cal:
+        pdf.multi_cell(0, line_h, txt="  Recomendaciones:", **mc_kwargs)
+        for rc in recom_cal:
+            pdf.multi_cell(0, line_h, txt=f"   * {clean_text_for_pdf(rc)}", **mc_kwargs)
     pdf.ln(5)
     
     # Métricas de Seguridad
     pdf.set_font("Helvetica", style="B", size=12)
     pdf.multi_cell(0, line_h, txt="Metricas de Seguridad (ISO 27034)", **mc_kwargs)
     pdf.set_font("Helvetica", size=12)
-    lot = security_json.get("LoT_Asignado", "N/A")
-    ind_seg = security_json.get("Indice_Seguridad", 0.0)
+    lot = security_json.get("lot_recomendado", "N/A")
+    ind_seg = security_json.get("indice", 0.0)
     pdf.multi_cell(0, line_h, txt=f"- Indice de Seguridad: {ind_seg}", **mc_kwargs)
     pdf.multi_cell(0, line_h, txt=f"- Nivel de Confianza (LoT) Recomendado: {lot}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"- ASC-REQ-01 Cumplido: {security_json.get('ASC-REQ-01_Cumplido', False)}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"- ASC-REQ-02 Cumplido: {security_json.get('ASC-REQ-02_Cumplido', False)}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=f"  Justificacion y Observaciones: {clean_text_for_pdf(security_json.get('Observaciones', 'N/A'))}", **mc_kwargs)
+    
+    just_seg = security_json.get("justificaciones", {})
+    pdf.multi_cell(0, line_h, txt=f"- Controles de Seguridad (ASC-REQ-01): {clean_text_for_pdf(just_seg.get('controles_seguridad', 'N/A'))}", **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=f"- Asignacion de LoT (ASC-REQ-02): {clean_text_for_pdf(just_seg.get('lot_asignado', 'N/A'))}", **mc_kwargs)
+    
+    recom_seg = security_json.get("recomendaciones", [])
+    if recom_seg:
+        pdf.multi_cell(0, line_h, txt="  Recomendaciones:", **mc_kwargs)
+        for rs in recom_seg:
+            pdf.multi_cell(0, line_h, txt=f"   * {clean_text_for_pdf(rs)}", **mc_kwargs)
     pdf.ln(5)
     
-    # Recomendaciones y Riesgos
+    # Riesgos y Correcciones (Evaluador)
     pdf.set_font("Helvetica", style="B", size=12)
-    pdf.multi_cell(0, line_h, txt="Recomendaciones y Riesgos", **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt="Riesgos y Correcciones Inmediatas", **mc_kwargs)
     pdf.set_font("Helvetica", size=12)
-    riesgos = eval_json.get("Riesgos_Criticos", [])
+    riesgos = eval_json.get("riesgos_criticos", [])
     if riesgos:
         pdf.multi_cell(0, line_h, txt="Riesgos Criticos:", **mc_kwargs)
         for r in riesgos:
             pdf.multi_cell(0, line_h, txt=f"  * {clean_text_for_pdf(r)}", **mc_kwargs)
             
-    correcciones = eval_json.get("Correcciones_Inmediatas", [])
+    correcciones = eval_json.get("correcciones_inmediatas", [])
     if correcciones:
         pdf.multi_cell(0, line_h, txt="Correcciones Inmediatas:", **mc_kwargs)
         for c in correcciones:
@@ -139,10 +150,23 @@ def generate_evaluation_report_pdf(project_name: str, quality_json: dict, securi
     return io.BytesIO(pdf_bytes)
 
 
-def generate_formal_docx(project_name: str, execution_id: int, security_json: dict) -> io.BytesIO:
+def extract_section(text: str, start_marker: str, end_markers: list) -> str:
+    """Extrae una sección de texto entre un marcador inicial y uno o varios marcadores finales."""
+    start_idx = text.find(start_marker)
+    if start_idx == -1: return "No especificado."
+    start_idx += len(start_marker)
+    
+    end_idx = len(text)
+    for marker in end_markers:
+        idx = text.find(marker, start_idx)
+        if idx != -1 and idx < end_idx:
+            end_idx = idx
+            
+    return text[start_idx:end_idx].strip()
+
+def generate_formal_docx(project_name: str, execution_id: int, security_json: dict, parsed_cf: dict) -> io.BytesIO:
     """
-    Genera el Documento Formal de Requerimientos en Word.
-    Solo se llama si se aprueban las métricas.
+    Genera el Documento Formal de Requerimientos en Word usando el markdown generado por el Agente Central.
     """
     doc = Document()
     req_id = f"REQ-{datetime.now().year}-{execution_id:03d}-v1"
@@ -156,38 +180,32 @@ def generate_formal_docx(project_name: str, execution_id: int, security_json: di
     doc.add_paragraph('Aprobado por: Agente Central (Sistema Multiagente)')
     doc.add_page_break()
     
-    doc.add_heading('1. Introducción', level=1)
-    doc.add_paragraph('Este documento consolida los requerimientos aprobados formalmente tras superar los umbrales de Calidad (ISO 25023) y Seguridad (ISO 27034).')
+    # Contenido lógico generado por el Agente Central Final
+    doc_md = parsed_cf.get("documento_formal_md", "Contenido no generado.")
+    matriz_md = parsed_cf.get("matriz_trazabilidad_md", "Matriz no generada.")
     
-    doc.add_heading('2. Objetivos', level=1)
-    doc.add_paragraph('[Detallar los objetivos del sistema]')
+    doc.add_heading('Contenido del Documento Formal', level=1)
     
-    doc.add_heading('3. Funcionalidades Detalladas', level=1)
-    doc.add_paragraph('[Listado de funcionalidades estructuradas con prioridad, derivadas del texto original]')
-    
-    doc.add_heading('4. Datos Sensibles y LoT asignado', level=1)
-    lot = security_json.get("LoT_Asignado", "N/A")
-    doc.add_paragraph(f'Nivel de Confianza Asignado (LoT): Nivel {lot}')
-    doc.add_paragraph('[Detallar tipos de datos sensibles procesados]')
-    
-    doc.add_heading('5. Requisitos de Seguridad', level=1)
-    doc.add_paragraph('[Detalle de requisitos de seguridad, autenticación, autorización y auditoría]')
-    
-    doc.add_heading('6. Matriz de Trazabilidad Inicial', level=1)
-    # Ejemplo de tabla simple
-    table = doc.add_table(rows=1, cols=3)
-    hdr_cells = table.rows[0].cells
-    hdr_cells[0].text = 'ID Req'
-    hdr_cells[1].text = 'Descripción'
-    hdr_cells[2].text = 'Estado'
-    
-    row_cells = doc.add_table(rows=1, cols=3).rows[0].cells
-    row_cells[0].text = f'{req_id}-F01'
-    row_cells[1].text = 'Funcionalidad base'
-    row_cells[2].text = 'Aprobado'
-    
+    # Como python-docx no soporta Markdown nativo, agregamos el texto crudo estructurado.
+    # El usuario puede aplicar estilos luego o podemos separarlo por líneas simples.
+    for line in doc_md.split('\n'):
+        if line.startswith('###'):
+            doc.add_heading(line.replace('#', '').strip(), level=3)
+        elif line.startswith('##'):
+            doc.add_heading(line.replace('#', '').strip(), level=2)
+        elif line.startswith('#'):
+            doc.add_heading(line.replace('#', '').strip(), level=1)
+        elif line.strip():
+            doc.add_paragraph(line.strip())
+            
     doc.add_page_break()
-    doc.add_heading('7. Aprobación', level=1)
+    doc.add_heading('Matriz de Trazabilidad', level=1)
+    for line in matriz_md.split('\n'):
+        if line.strip():
+            doc.add_paragraph(line.strip())
+            
+    doc.add_page_break()
+    doc.add_heading('Aprobación', level=1)
     doc.add_paragraph('____________________________________________________')
     doc.add_paragraph('Firma / Aprobación del Responsable')
     
