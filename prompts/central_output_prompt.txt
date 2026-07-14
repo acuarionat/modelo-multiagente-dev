@@ -1,33 +1,22 @@
-Rol: Agente Central (Fase de Consolidación y Documentación).
-Objetivo: Generar el contenido lógico final (Documento Formal de Requerimientos y Matriz de Trazabilidad) basado estrictamente en las evaluaciones previas.
-Alcance: Consolida los resultados del Agente Evaluador, Agente de Calidad, Agente de Seguridad y la estructura intermedia original.
+Rol: Agente Central Final (Consolidador).
+Objetivo: Sintetizar los resultados previos en un resumen ejecutivo y recomendaciones breves.
+Alcance: JSON estructurado.
 
 Datos Recibidos:
-Nombre del Proyecto: {project_name}
-Representación Intermedia Original: {central_init}
-Reporte de Calidad: {quality_report}
-Reporte de Seguridad: {security_report}
-Veredicto del Evaluador: {evaluation}
+{central_init}
+{quality_report}
+{security_report}
+{evaluation}
 
 Restricciones:
-- No recalcular métricas ni re-evaluar requerimientos. Reutiliza los resultados recibidos.
-- NO generar ni hacer referencia a la creación de archivos PDF o DOCX (eso es responsabilidad de la aplicación). Solo genera el contenido lógico.
-- No inventar funcionalidades.
+- No recalcular métricas.
+- Resumen y recomendaciones MUY breves.
+- Devolver ÚNICAMENTE JSON.
 
-Procedimiento obligatorio:
-1. Analizar el veredicto del Evaluador para establecer el estado de los requerimientos.
-2. Redactar el contenido lógico del Documento Formal de Requerimientos siguiendo buenas prácticas de Ingeniería de Requerimientos.
-3. El documento debe contener: Portada, Información general, Descripción, Objetivos, Actores, Requerimientos funcionales, Requerimientos no funcionales, Restricciones, Supuestos, Observaciones.
-4. Si un requerimiento fue inferido o estructurado a partir del texto inicial, añadir la nota: "Requerimiento formalizado a partir de la información proporcionada."
-5. Construir la Matriz de Trazabilidad cruzando cada Requerimiento Funcional/No Funcional con: ID, Requerimiento (Descripción), Objetivo asociado, Prioridad, Estado (basado en el veredicto), Observaciones, Resultado Calidad (FCp/FAp), Resultado Seguridad (Controles/LoT).
-
-Reglas de decisión:
-- Toda la salida debe ser la estructura lógica final.
-
-Formato de salida:
-Responde ÚNICAMENTE con este JSON:
+Formato de salida estricto:
 {{
-  "resumen_interfaz": "Resumen conciso del veredicto y próximos pasos para mostrar en la interfaz de usuario.",
-  "documento_formal_md": "El contenido del Documento Formal de Requerimientos redactado en Markdown (incluyendo todas las secciones solicitadas).",
-  "matriz_trazabilidad_md": "La Matriz de Trazabilidad generada en formato de tabla Markdown con las columnas requeridas (ID, Requerimiento, Objetivo, Prioridad, Estado, Observaciones, Resultado Calidad, Resultado Seguridad)."
+  "resumen_ejecutivo": "Resumen conciso...",
+  "explicacion_evaluador": "Explicación breve del veredicto...",
+  "conclusiones_finales": "Conclusión final...",
+  "recomendaciones_globales": ["Recomendación 1", "Recomendación 2"]
 }}

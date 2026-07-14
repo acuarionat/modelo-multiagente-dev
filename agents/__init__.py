@@ -2,14 +2,17 @@ from langchain_ollama import ChatOllama
 from core.config import OLLAMA_MODEL, OLLAMA_BASE_URL
 import os
 
-def get_llm(json_mode: bool = False):
+def get_llm(json_mode: bool = False, num_predict: int = 500, num_ctx: int = 4096, temperature: float = 0.1, keep_alive: str = "30m"):
     """Retorna una instancia del LLM (Ollama) configurado.
        Si json_mode es True, se fuerza la salida en formato JSON.
     """
     kwargs = {
         "model": OLLAMA_MODEL,
         "base_url": OLLAMA_BASE_URL,
-        "temperature": 0.2
+        "temperature": temperature,
+        "num_predict": num_predict,
+        "num_ctx": num_ctx,
+        "keep_alive": keep_alive
     }
     if json_mode:
         kwargs["format"] = "json"

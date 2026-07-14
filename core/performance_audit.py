@@ -41,11 +41,14 @@ def _json_size(value: Any) -> Dict[str, Optional[int]]:
     }
 
 
-def ollama_params(json_mode: bool = True) -> Dict[str, Any]:
+def ollama_params(json_mode: bool = True, num_predict: int = 500, num_ctx: int = 4096, temperature: float = 0.1, keep_alive: str = "30m") -> Dict[str, Any]:
     params = {
         "model": OLLAMA_MODEL,
         "base_url": OLLAMA_BASE_URL,
-        "temperature": 0.2,
+        "temperature": temperature,
+        "num_predict": num_predict,
+        "num_ctx": num_ctx,
+        "keep_alive": keep_alive
     }
     if json_mode:
         params["format"] = "json"
@@ -68,11 +71,11 @@ def audit_agent_call(
     prompt_text: str,
     context_text: str,
     input_json_text: Optional[str] = None,
-    json_mode: bool = True,
+    model_params: Optional[Dict[str, Any]] = None,
 ):
     start = time.perf_counter()
     started_at = datetime.now().isoformat(timespec="milliseconds")
-    params = ollama_params(json_mode=json_mode)
+    params = model_params or ollama_params()
     effective_json_text = input_json_text if input_json_text is not None else context_text
 
     log_graph_event(

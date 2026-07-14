@@ -1,68 +1,63 @@
-import json
-from agents import get_llm, load_prompt
-from langchain_core.prompts import PromptTemplate
+import re
 
 def map_issue_to_json(issue) -> dict:
     """
-    Convierte una Historia de Usuario de GitLab en una representación estructurada.
-    Utiliza un LLM para extraer la información estructurada desde el texto de la descripción.
+    Convierte una Historia de Usuario de GitLab en una representación estructurada
+    extrayendo directamente los campos mediante expresiones regulares sobre la nueva plantilla Markdown.
     """
-    llm = get_llm(json_mode=True)
+    description_text = issue.description or ""
     
-    # Prompt ligero para el mapeo inicial de la historia de usuario
-    prompt_template = """
-Eres un analizador de Requerimientos y Historias de Usuario.
-Tu objetivo es leer el título y la descripción de una Historia de Usuario proveniente de GitLab y extraer la información en el siguiente formato JSON estricto.
+    def extract_section(header: str) -> str:
+        # Busca el header, captura todo hasta el siguiente ## o el final del string.
+        pattern = rf"##\s*{header}\s*(.*?)(?=\n##\s*|$)"
+        match = re.search(pattern, description_text, re.IGNORECASE | re.DOTALL)
+        if match:
+            return match.group(1).strip()
+        return ""
+        
+    def extract_list(text: str) -> list:
+        # Extrae items de lista (- o 1.)
+        items = []
+        for line in text.split('\n'):
+            line = line.strip()
+            if line.startswith('- ') or re.match(r'^\d+\.', line):
+                clean_item = re.sub(r'^(- |\d+\.)\s*', '', line).strip()
+                if clean_item:
+                    items.append(clean_item)
+        return items
 
-Formato JSON esperado:
-{{
-    "id": "Identificador de la historia (e.g. HU-001 o el IID)",
-    "titulo": "Título de la historia",
-    "actor": "Quién realiza la acción",
-    "accion": "Qué acción se desea realizar",
-    "objetivo": "Para qué se desea realizar la acción",
-    "criterios": ["lista", "de", "criterios", "de", "aceptación"],
-    "restricciones": ["lista", "de", "restricciones", "o", "reglas", "de", "negocio"],
-    "prioridad": "Alta/Media/Baja",
-    "labels": ["etiquetas", "extraidas"]
-}}
-
-Datos de entrada:
-ID de GitLab: {issue_iid}
-Título: {title}
-Etiquetas: {labels}
-Descripción:
-{description}
-
-Devuelve ÚNICAMENTE el objeto JSON.
-"""
-    prompt = PromptTemplate.from_template(prompt_template)
-    chain = prompt | llm
+    nombre = extract_section("Nombre")
+    titulo = nombre if nombre else issue.title
     
-    response = chain.invoke({
-        "issue_iid": str(issue.iid),
-        "title": issue.title,
-        "labels": json.dumps(issue.labels),
-        "description": issue.description or ""
-    })
+    desc_raw = extract_section("Descripción")
     
-    try:
-        parsed_json = json.loads(response.content)
-        # Ensure labels are always included as they came from GitLab if missing
-        if "labels" not in parsed_json:
-            parsed_json["labels"] = issue.labels
-        return parsed_json
-    except json.JSONDecodeError:
-        # Fallback en caso de que el LLM falle
-        return {
-            "id": str(issue.iid),
-            "titulo": issue.title,
-            "actor": "Desconocido",
-            "accion": "Desconocida",
-            "objetivo": "Desconocido",
-            "criterios": [],
-            "restricciones": [],
-            "prioridad": "Desconocida",
-            "labels": issue.labels,
-            "raw_description": issue.description
-        }
+    actor_match = re.search(r'\*\*Como\*\*\s*(.*?)(?=\n\*\*Quiero\*\*|$)', desc_raw, re.IGNORECASE | re.DOTALL)
+    actor = actor_match.group(1).strip() if actor_match else "Desconocido"
+    
+    quiero_match = re.search(r'\*\*Quiero\*\*\s*(.*?)(?=\n\*\*Para\*\*|$)', desc_raw, re.IGNORECASE | re.DOTALL)
+    funcionalidad = quiero_match.group(1).strip() if quiero_match else ""
+    
+    para_match = re.search(r'\*\*Para\*\*\s*(.*?)$', desc_raw, re.IGNORECASE | re.DOTALL)
+    objetivo = para_match.group(1).strip() if para_match else "Desconocido"
+    
+    criterios_raw = extract_section("Criterios de aceptación")
+    restricciones_raw = extract_section("Restricciones")
+    
+    prioridad_raw = extract_section("Prioridad")
+    prioridad_match = re.search(r'(Alta|Media|Baja)', prioridad_raw, re.IGNORECASE)
+    prioridad = prioridad_match.group(1).capitalize() if prioridad_match else "Desconocida"
+
+    parsed_json = {
+        "id": str(issue.iid),
+        "titulo": titulo,
+        "actor": actor,
+        "funcionalidad": funcionalidad,
+        "objetivo": objetivo,
+        "criterios_aceptacion": extract_list(criterios_raw) if extract_list(criterios_raw) else [criterios_raw] if criterios_raw else [],
+        "restricciones": extract_list(restricciones_raw) if extract_list(restricciones_raw) else [restricciones_raw] if restricciones_raw else [],
+        "prioridad": prioridad,
+        "observaciones": extract_section("Observaciones"),
+        "labels": issue.labels
+    }
+    
+    return parsed_json

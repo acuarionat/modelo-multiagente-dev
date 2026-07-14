@@ -28,9 +28,19 @@ class GitLabAdapter:
         """Obtiene el proyecto configurado."""
         return self.gl.projects.get(self.project_id)
         
-    def list_open_issues(self) -> List[Any]:
-        """Lista los issues abiertos del proyecto."""
-        return self.project.issues.list(state='opened', all=True)
+    def get_milestones(self) -> List[Any]:
+        """Obtiene la lista de Sprints (Milestones) del proyecto."""
+        return self.project.milestones.list(all=True)
+
+    def list_open_issues(self, milestone_title: Optional[str] = None, labels: Optional[List[str]] = None) -> List[Any]:
+        """Lista los issues abiertos del proyecto. Permite filtrar por Milestone o Etiquetas."""
+        params = {'state': 'opened', 'all': True}
+        if milestone_title:
+            params['milestone'] = milestone_title
+        if labels:
+            params['labels'] = ','.join(labels)
+            
+        return self.project.issues.list(**params)
         
     def get_issue(self, issue_iid: int):
         """Obtiene un issue específico por su IID."""
@@ -65,7 +75,7 @@ class GitLabAdapter:
         
     def update_labels(self, issue_iid: int, labels: List[str]):
         """Actualiza las etiquetas de un issue."""
-        return self.update_issue(issue_iid, {"add_labels": labels})
+        return self.update_issue(issue_iid, {"labels": labels})
         
     def assign_milestone(self, issue_iid: int, milestone_id: int):
         """Asigna un milestone al issue."""
