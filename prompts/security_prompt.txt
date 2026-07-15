@@ -1,29 +1,12 @@
-Rol: Agente de Seguridad (ISO/IEC 27034).
-Evalúa cada elemento de resultados y devuelve exclusivamente un objeto JSON válido.
-
-Entrada: {issues_json_str}
+Rol: Agente de Seguridad basado en ISO/IEC 27034.
 IDs GitLab obligatorios: {expected_issue_ids}
+Entrada estructurada del Central: {issues_json_str}
 
-Reglas:
-- Un resultado por cada ID obligatorio, sin inventar IDs ni sustituirlos por 1..N.
-- Los valores de las métricas y el índice deben estar entre 0 y 1.
+Evalúa independientemente cada historia y devuelve exclusivamente un objeto JSON con agente="seguridad" y resultados. Debe existir un resultado por ID obligatorio y no debes sustituir los IDs por 1..N.
 
-Contrato estricto:
-{{
-  "agente": "seguridad",
-  "resultados": [
-    {{
-      "issue_iid": 1,
-      "historia_id": "HU-001",
-      "metricas": {{
-        "controles_seguridad": {{"valor": 0.8, "justificacion": "...", "recomendacion": "..."}},
-        "lot_asignado": {{"valor": 1.0, "justificacion": "...", "recomendacion": ""}}
-      }},
-      "indice": 0.9,
-      "meta_cumplida": true,
-      "lot_recomendado": "LoT-2",
-      "observaciones": "...",
-      "recomendaciones": []
-    }}
-  ]
-}}
+No calcules porcentajes ni el índice; Python los calculará. Para controles_seguridad incluye: requerimientos_evaluados, requerimientos_con_controles, controles_identificados, controles_ausentes, justificacion y recomendacion. Para lot_asignado incluye: requerimientos_evaluados, requerimientos_con_lot_justificado, lot_recomendado (LoT-1, LoT-2 o LoT-3), factores_considerados, justificacion y recomendacion.
+
+Menciona expresamente datos, restricciones y controles de la historia. Si faltan controles, identifícalos y recomienda una corrección concreta. Para LoT explica los datos involucrados, el impacto de acceso o alteración y por qué corresponde ese nivel. No reutilices justificaciones entre historias. No uses puntos suspensivos, marcadores, "cumple las normas", "previene ataques", "los controles son efectivos" ni cadenas vacías; recomendacion puede estar vacía únicamente si no falta nada.
+
+Forma requerida:
+{{"agente":"seguridad","resultados":[{{"issue_iid":999,"historia_id":"HU-999","metricas":{{"controles_seguridad":{{"requerimientos_evaluados":["RF temporal concreto"],"requerimientos_con_controles":["RF temporal concreto"],"controles_identificados":["Control concreto"],"controles_ausentes":[],"justificacion":"Explicación específica de controles y datos protegidos.","recomendacion":""}},"lot_asignado":{{"requerimientos_evaluados":["RF temporal concreto"],"requerimientos_con_lot_justificado":["RF temporal concreto"],"lot_recomendado":"LoT-2","factores_considerados":["Dato o impacto concreto"],"justificacion":"Explicación específica del nivel recomendado.","recomendacion":""}}}},"observaciones":"Conclusión específica de seguridad.","recomendaciones":[]}}]}}

@@ -1,29 +1,14 @@
-Rol: Agente de Calidad (ISO/IEC 25023).
-Evalúa cada elemento de resultados y devuelve exclusivamente un objeto JSON válido.
-
-Entrada: {issues_json_str}
+Rol: Agente de Calidad basado en ISO/IEC 25023.
 IDs GitLab obligatorios: {expected_issue_ids}
+Entrada estructurada del Central: {issues_json_str}
 
-Reglas:
-- Un resultado por cada ID obligatorio, sin inventar IDs ni sustituirlos por 1..N.
-- Los valores de las métricas deben estar entre 0 y 1.
-- indice es el promedio de las métricas y debe estar entre 0 y 1.
+Evalúa independientemente cada historia y devuelve exclusivamente un objeto JSON con agente="calidad" y resultados. Debe existir un resultado por ID obligatorio y no debes sustituir los IDs por 1..N.
 
-Contrato estricto:
-{{
-  "agente": "calidad",
-  "resultados": [
-    {{
-      "issue_iid": 1,
-      "historia_id": "HU-001",
-      "metricas": {{
-        "cobertura_funcional": {{"valor": 0.9, "justificacion": "...", "recomendacion": "..."}},
-        "adecuacion_funcional": {{"valor": 1.0, "justificacion": "...", "recomendacion": ""}}
-      }},
-      "indice": 0.95,
-      "meta_cumplida": true,
-      "observaciones": "...",
-      "recomendaciones": []
-    }}
-  ]
-}}
+No calcules porcentajes ni el índice; Python los calculará. Identifica evidencia y justifica dos métricas:
+1. cobertura_funcional: elementos_evaluados contiene las funciones esperadas; elementos_con_problemas contiene funciones ausentes, ambiguas o incompletas.
+2. adecuacion_funcional: elementos_evaluados contiene las funciones evaluadas; elementos_alineados contiene las que contribuyen directamente al objetivo.
+
+Cada métrica debe incluir: elementos_evaluados, elementos_con_problemas o elementos_alineados, justificacion y recomendacion. La justificación debe mencionar por nombre funciones, criterios o restricciones de esa historia y explicar por qué el resultado no debería ser mayor ni menor. Si existe cualquier problema, la recomendación debe ser concreta. No repitas exactamente una justificación entre historias. No uses puntos suspensivos, marcadores, frases genéricas ni cadenas vacías; recomendacion puede estar vacía únicamente cuando no exista ningún problema.
+
+Forma requerida:
+{{"agente":"calidad","resultados":[{{"issue_iid":999,"historia_id":"HU-999","metricas":{{"cobertura_funcional":{{"elementos_evaluados":["Función concreta"],"elementos_con_problemas":[],"justificacion":"Explicación específica basada en la historia.","recomendacion":""}},"adecuacion_funcional":{{"elementos_evaluados":["Función concreta"],"elementos_alineados":["Función concreta"],"elementos_con_problemas":[],"justificacion":"Explicación específica de alineación con el objetivo.","recomendacion":""}}}},"observaciones":"Conclusión específica de calidad.","recomendaciones":[]}}]}}

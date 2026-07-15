@@ -2,8 +2,9 @@ import json
 import unittest
 
 from core.batch_contract import (
+    calculate_agent_metrics, calculate_num_predict, collect_recommendations,
     consolidate_batch, parse_batch_response, reconcile_issue_ids,
-    validate_batch_response,
+    validate_agent_content, validate_batch_response,
 )
 
 
@@ -72,6 +73,68 @@ class BatchContractTests(unittest.TestCase):
         self.assertEqual([x["historia_id"] for x in response["resultados"]], ["HU-006", "HU-007", "HU-009", "HU-010"])
         self.assertEqual(validate_batch_response(response, {6, 7, 9, 10}, "Central"), [])
         self.assertEqual(len(notes), 4)
+
+    def test_quality_math_preserves_specific_evidence(self):
+        response = batch("calidad", [{
+            "issue_iid": 6,
+            "metricas": {
+                "cobertura_funcional": {
+                    "elementos_evaluados": ["Registrar", "Validar", "Evitar duplicado"],
+                    "elementos_con_problemas": ["Corregir rechazo"],
+                    "justificacion": "Se evaluaron Registrar, Validar y Evitar duplicado; falta definir Corregir rechazo.",
+                    "recomendacion": "Definir cómo corregir un registro rechazado.",
+                },
+                "adecuacion_funcional": {
+                    "elementos_evaluados": ["Registrar", "Validar"],
+                    "elementos_alineados": ["Registrar", "Validar"],
+                    "elementos_con_problemas": [],
+                    "justificacion": "Registrar y Validar contribuyen directamente al objetivo.",
+                    "recomendacion": "",
+                },
+            },
+        }])
+        calculate_agent_metrics(response, "Calidad")
+        item = response["resultados"][0]
+        self.assertAlmostEqual(item["metricas"]["cobertura_funcional"]["valor"], 2 / 3)
+        self.assertEqual(item["metricas"]["adecuacion_funcional"]["valor"], 1)
+        self.assertIn("Corregir rechazo", item["metricas"]["cobertura_funcional"]["justificacion"])
+        self.assertEqual(validate_agent_content(response, "Calidad"), {})
+
+    def test_rejects_placeholder_content(self):
+        response = batch("central", [{
+            "issue_iid": 6,
+            "requerimientos": [{
+                "temp_id": "RF-TEMP-01", "nombre": "...", "descripcion_formal": "",
+                "tipo": "RF", "origen": "N/A", "justificacion": "...", "prioridad": "Alta",
+            }],
+        }])
+        errors = validate_agent_content(response, "Central")
+        self.assertIn(6, errors)
+        self.assertTrue(any("campos inválidos" in message for message in errors[6]))
+
+    def test_collects_metric_and_evaluator_recommendations(self):
+        result = {
+            "quality": {"metricas": {"cobertura": {"recomendacion": "Definir corrección."}}},
+            "security": {"metricas": {"controles": {"recomendacion": "Agregar auditoría."}}},
+            "evaluation": {"correcciones_obligatorias": ["Definir permisos."]},
+            "central": {"observaciones": []},
+        }
+        self.assertEqual(collect_recommendations(result), ["Definir corrección.", "Agregar auditoría.", "Definir permisos."])
+
+    def test_dynamic_output_budget(self):
+        self.assertEqual(calculate_num_predict("Central_Init", 5), 1900)
+        self.assertEqual(calculate_num_predict("Quality", 5), 1750)
+        self.assertEqual(calculate_num_predict("Security", 5), 2000)
+        self.assertEqual(calculate_num_predict("Evaluator", 5), 750)
+
+    def test_parser_recovers_json_wrapped_in_markdown(self):
+        raw = '```json\n{"agente":"seguridad","resultados":[]}\n```'
+        parsed = parse_batch_response(raw, "Seguridad")
+        self.assertEqual(parsed["resultados"], [])
+
+    def test_parser_reports_truncated_json(self):
+        with self.assertRaisesRegex(ValueError, "truncada"):
+            parse_batch_response('{"agente":"seguridad","resultados":[', "Seguridad")
 
 
 if __name__ == "__main__":

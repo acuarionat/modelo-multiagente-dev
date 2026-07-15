@@ -1,44 +1,24 @@
-Rol: Agente Central (Analizador de Requerimientos).
-Analiza todas las Historias recibidas y devuelve exclusivamente un objeto JSON válido.
-
+Rol: Agente Central de formalización de requerimientos.
 Proyecto: {project_name}
 Milestone y contexto: {sprint_context}
-Historias: {issues_json_str}
 IDs GitLab obligatorios: {expected_issue_ids}
+Historias: {issues_json_str}
 
-Reglas:
-- Debe existir exactamente un resultado por historia.
-- Copia únicamente los IDs de "IDs GitLab obligatorios" en issue_iid, una vez cada uno; no uses 1..N salvo que aparezcan en esa lista.
-- No evalúes calidad ni seguridad.
-- Los IDs de requerimiento son temporales; Python asignará la numeración final.
-- requerimientos siempre debe ser una lista, incluso si está vacía.
+Devuelve exclusivamente un objeto JSON con las claves agente, milestone y resultados.
+Debe existir exactamente un resultado por ID GitLab obligatorio. No sustituyas los IDs por 1..N.
 
-Contrato estricto:
-{{
-  "agente": "central",
-  "milestone": "nombre recibido en el contexto",
-  "resultados": [
-    {{
-      "issue_iid": 1,
-      "historia_id": "HU-001",
-      "titulo": "...",
-      "actor": "...",
-      "objetivo": "...",
-      "prioridad": "Alta|Media|Baja",
-      "requerimientos": [
-        {{
-          "id": "TEMP-1",
-          "nombre": "...",
-          "descripcion": "El sistema deberá...",
-          "tipo": "RF|RNF|RS|RC",
-          "origen": "texto de origen",
-          "justificacion": "...",
-          "prioridad": "Alta|Media|Baja"
-        }}
-      ],
-      "restricciones": [],
-      "ambiguedades": [],
-      "informacion_faltante": []
-    }}
-  ]
-}}
+Cada resultado debe incluir: issue_iid, historia_id, titulo, actor, objetivo, prioridad, requerimientos, restricciones, ambiguedades, informacion_faltante y observaciones.
+Cada elemento de requerimientos debe incluir obligatoriamente:
+- temp_id: identificador temporal como RF-TEMP-01; Python asignará el ID definitivo.
+- nombre: nombre concreto y breve.
+- descripcion_formal: redacción verificable y específica que comience exactamente con "El sistema deberá".
+- tipo: únicamente RF, RNF, RS o RC.
+- origen: necesidad, criterio de aceptación o restricción textual que lo origina.
+- justificacion: explicación concreta de por qué se deriva ese requerimiento.
+- prioridad: copia la prioridad de la historia salvo razón explícita para cambiarla.
+
+Genera requerimientos completos, no sólo identificadores o tipos. No uses puntos suspensivos, marcadores, N/A, "No especificado", "Sin información" ni cadenas vacías. No evalúes Calidad ni Seguridad.
+
+Forma JSON requerida:
+{{"agente":"central","milestone":"valor del contexto","resultados":[{{"issue_iid":999,"historia_id":"HU-999","titulo":"Título real","actor":"Actor real","objetivo":"Objetivo real","prioridad":"Alta","requerimientos":[{{"temp_id":"RF-TEMP-01","nombre":"Nombre concreto","descripcion_formal":"El sistema deberá realizar una acción verificable derivada de la historia.","tipo":"RF","origen":"Texto real de origen","justificacion":"Explicación específica vinculada al origen.","prioridad":"Alta"}}],"restricciones":[],"ambiguedades":[],"informacion_faltante":[],"observaciones":[]}}]}}
+El 999 es sólo una descripción del tipo de dato: reemplázalo por cada ID GitLab obligatorio real.

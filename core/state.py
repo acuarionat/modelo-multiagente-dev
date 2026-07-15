@@ -16,3 +16,4 @@ class AgentState(TypedDict):
     evaluation: Optional[str]       # Veredicto JSON Array del Evaluador
     final_report: Optional[str]     # Reporte final JSON Array (consolidado en Python)
     validation_errors: List[str]
+    content_validation_errors: Dict[int, List[str]]

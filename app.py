@@ -49,6 +49,8 @@ for m in st.session_state.milestones:
 selected_milestone = st.selectbox("Seleccionar Sprint (Milestone):", list(milestone_options.keys()))
 
 if st.button("Ejecutar Análisis por Lote", type="primary"):
+    for stale_key in ("last_batch_result", "batch_pdf", "batch_docx"):
+        st.session_state.pop(stale_key, None)
     if not project_name:
         st.warning("Debes ingresar el Nombre del Proyecto.")
         st.stop()
@@ -114,7 +116,8 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
             
             try:
                 from integrations.issue_service import process_batch_workflow
-                batch_results = process_batch_workflow(batch, project_name, sprint_context)
+                batch_result = process_batch_workflow(batch, project_name, sprint_context)
+                batch_results = batch_result["issues"]
                 run_results.extend(batch_results)
                 
                 for res in batch_results:
@@ -153,7 +156,13 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
             global_ph.markdown(f"**Análisis incompleto ({'; '.join(details)}).** ❌")
         else:
             global_ph.markdown("**¡Análisis completo! Todos los lotes procesados.** ✔")
-        st.session_state.last_batch_results = run_results
+        if run_results:
+            from core.utils import build_batch_result
+            st.session_state.last_batch_result = build_batch_result(
+                project_name, milestone_val or "Personalizado", run_results
+            )
+        else:
+            st.info("No se generó un resumen ni documentos porque el lote no produjo resultados consolidados.")
         st.session_state.last_project_name = project_name
         st.session_state.last_milestone = milestone_val or "Personalizado"
             
@@ -163,14 +172,14 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
         st.success("¡Análisis del Sprint finalizado!")
 
 # Resultados y documentos consolidados del último lote
-if st.session_state.get("last_batch_results"):
+if st.session_state.get("last_batch_result", {}).get("issues"):
     st.divider()
     from core.utils import (
-        build_traceability_rows, calculate_batch_summary,
         generate_batch_formal_docx, generate_batch_report_pdf,
     )
-    results = st.session_state.last_batch_results
-    summary = calculate_batch_summary(results)
+    batch_result = st.session_state.last_batch_result
+    results = batch_result["issues"]
+    summary = batch_result["summary"]
     st.subheader("Resumen global")
     st.write(f"**Milestone:** {st.session_state.last_milestone}")
     a, b, c, d = st.columns(4)
@@ -199,13 +208,10 @@ if st.session_state.get("last_batch_results"):
 
     st.subheader("Matriz de trazabilidad completa")
     try:
-        rows = build_traceability_rows(results)
+        rows = batch_result["traceability_rows"]
+        if not rows:
+            raise ValueError("No fue posible construir la matriz porque el Agente Central no devolvió requerimientos formalizados.")
         st.dataframe(rows, use_container_width=True, hide_index=True)
-        for row in rows:
-            with st.expander(f"{row['id']} — {row['tipo']}"):
-                st.write("**Historia:**", row["historia"])
-                st.write("**Requerimiento:**", row["requerimiento_formal"])
-                st.write("**Justificación:**", row["justificacion"])
         import csv
         import io
         csv_buffer = io.StringIO()
@@ -220,11 +226,11 @@ if st.session_state.get("last_batch_results"):
     col_pdf, col_docx = st.columns(2)
     with col_pdf:
         if st.button("Generar Reporte Ejecutivo del Lote"):
-            st.session_state.batch_pdf = generate_batch_report_pdf(st.session_state.last_project_name, st.session_state.last_milestone, results).getvalue()
+            st.session_state.batch_pdf = generate_batch_report_pdf(batch_result).getvalue()
         if st.session_state.get("batch_pdf"):
             st.download_button("Descargar PDF consolidado", st.session_state.batch_pdf, "Reporte_Ejecutivo_Lote.pdf", "application/pdf")
     with col_docx:
         if st.button("Generar Documento Formal Consolidado"):
-            st.session_state.batch_docx = generate_batch_formal_docx(st.session_state.last_project_name, st.session_state.last_milestone, results).getvalue()
+            st.session_state.batch_docx = generate_batch_formal_docx(batch_result).getvalue()
         if st.session_state.get("batch_docx"):
             st.download_button("Descargar DOCX consolidado", st.session_state.batch_docx, "Requerimientos_Consolidados.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")

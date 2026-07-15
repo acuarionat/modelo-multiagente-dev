@@ -5,6 +5,9 @@ from fpdf.enums import XPos, YPos
 from datetime import datetime
 import json
 import unicodedata
+import re
+from difflib import SequenceMatcher
+from core.batch_contract import collect_recommendations
 
 def clean_text_for_pdf(text: str) -> str:
     """Limpia el texto para evitar problemas con la fuente base de FPDF."""
@@ -59,7 +62,49 @@ def calculate_batch_summary(batch_results: list) -> dict:
     }
 
 
-def generate_batch_report_pdf(project_name: str, milestone: str, batch_results: list) -> io.BytesIO:
+def _deduplicate_recommendations(values: list) -> list:
+    unique = []
+    normalized = []
+    for value in values:
+        clean = " ".join(str(value).split()).strip()
+        key = re.sub(r"[^a-z0-9áéíóúñ ]", "", clean.casefold())
+        if not clean or any(SequenceMatcher(None, key, previous).ratio() >= 0.88 for previous in normalized):
+            continue
+        unique.append(clean)
+        normalized.append(key)
+    return unique
+
+
+def build_batch_result(project_name: str, milestone: str, issues: list) -> dict:
+    valid = [item for item in issues if item.get("status") == "ok"]
+    requirements = [
+        requirement for item in valid
+        for requirement in item["central"].get("requerimientos", [])
+    ]
+    recommendations = _deduplicate_recommendations([
+        recommendation for item in valid for recommendation in collect_recommendations(item)
+    ])
+    for item in valid:
+        item["recommendations"] = collect_recommendations(item)
+    try:
+        traceability_rows = build_traceability_rows(issues)
+    except ValueError:
+        traceability_rows = []
+    return {
+        "project": {"name": project_name},
+        "milestone": {"name": milestone},
+        "summary": calculate_batch_summary(issues),
+        "issues": issues,
+        "requirements": requirements,
+        "recommendations": recommendations,
+        "traceability_rows": traceability_rows,
+    }
+
+
+def generate_batch_report_pdf(batch_result: dict) -> io.BytesIO:
+    project_name = batch_result["project"]["name"]
+    milestone = batch_result["milestone"]["name"]
+    batch_results = batch_result["issues"]
     valid = [x for x in batch_results if x.get("status") == "ok"]
     if not valid:
         raise ValueError("No existen historias completas para generar el PDF.")
@@ -94,23 +139,31 @@ def generate_batch_report_pdf(project_name: str, milestone: str, batch_results: 
         heading("Métricas de calidad", 11)
         for name, metric in q.get("metricas", {}).items():
             line(f"{name}: {extract_percentage(metric.get('valor'))}. {metric.get('justificacion', '')}")
+            if metric.get("recomendacion"):
+                line(f"Recomendación: {metric['recomendacion']}")
         heading("Métricas de seguridad", 11)
         for name, metric in s.get("metricas", {}).items():
             line(f"{name}: {extract_percentage(metric.get('valor'))}. {metric.get('justificacion', '')}")
+            if metric.get("recomendacion"):
+                line(f"Recomendación: {metric['recomendacion']}")
         heading("Riesgos y recomendaciones", 11)
         for text_value in e.get("riesgos_criticos", []) + e.get("correcciones_obligatorias", []):
             line(f"- {text_value}")
         heading("Requerimientos sugeridos", 11)
         for requirement in c["requerimientos"]:
-            line(f"{requirement['id']} — {requirement.get('nombre', '')}: {requirement.get('descripcion', '')}")
+            line(f"{requirement['id']} — {requirement.get('nombre', '')}")
+            line(requirement.get("descripcion_formal", ""))
     return io.BytesIO(pdf.output(dest="S"))
 
 
-def generate_batch_formal_docx(project_name: str, milestone: str, batch_results: list) -> io.BytesIO:
+def generate_batch_formal_docx(batch_result: dict) -> io.BytesIO:
+    project_name = batch_result["project"]["name"]
+    milestone = batch_result["milestone"]["name"]
+    batch_results = batch_result["issues"]
     valid = [x for x in batch_results if x.get("status") == "ok"]
     if not valid:
         raise ValueError("No existen historias completas para generar el DOCX.")
-    rows = build_traceability_rows(valid)
+    rows = batch_result["traceability_rows"]
     doc = Document()
     doc.add_heading("Documento Formal Consolidado de Requerimientos", 0)
     doc.add_paragraph(f"Proyecto: {project_name}")
@@ -135,8 +188,9 @@ def generate_batch_formal_docx(project_name: str, milestone: str, batch_results:
         origin = f"{result['central']['historia_id']} — {result['central']['titulo']}"
         for requirement in result["central"]["requerimientos"]:
             doc.add_heading(f"{requirement['id']} — {requirement.get('nombre', '')}", 3)
-            doc.add_paragraph(requirement.get("descripcion", ""))
-            doc.add_paragraph(f"Tipo: {requirement['tipo']}")
+            doc.add_paragraph(requirement.get("descripcion_formal", ""))
+            type_names = {"RF": "Requerimiento funcional", "RNF": "Requerimiento no funcional", "RS": "Requerimiento de seguridad", "RC": "Restricción"}
+            doc.add_paragraph(f"Tipo: {type_names.get(requirement['tipo'], requirement['tipo'])}")
             doc.add_paragraph(f"Prioridad: {requirement.get('prioridad', '')}")
             doc.add_paragraph(f"Origen: {origin}")
             doc.add_paragraph(f"Justificación: {requirement.get('justificacion', '')}")
@@ -144,8 +198,11 @@ def generate_batch_formal_docx(project_name: str, milestone: str, batch_results:
     restrictions = dict.fromkeys(r for x in valid for r in x["central"].get("restricciones", []))
     for restriction in restrictions: doc.add_paragraph(restriction, style="List Bullet")
     doc.add_heading("7. Recomendaciones generales", 1)
-    recommendations = dict.fromkeys(r for x in valid for r in (x["quality"].get("recomendaciones", []) + x["security"].get("recomendaciones", []) + x["evaluation"].get("correcciones_obligatorias", [])))
-    for recommendation in recommendations: doc.add_paragraph(recommendation, style="List Bullet")
+    if batch_result["recommendations"]:
+        for recommendation in batch_result["recommendations"]:
+            doc.add_paragraph(recommendation, style="List Bullet")
+    else:
+        doc.add_paragraph("No se identificaron correcciones adicionales para el lote analizado.")
     doc.add_heading("8. Matriz de trazabilidad", 1)
     table = doc.add_table(rows=1, cols=7)
     table.style = "Table Grid"

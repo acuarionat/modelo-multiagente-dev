@@ -1,24 +1,26 @@
 from langchain_core.prompts import PromptTemplate
 from agents import get_llm, load_prompt
 from core.performance_audit import audit_agent_call
+from core.batch_contract import calculate_num_predict
 import json
 
-def analyze_quality(issues_json_str: str) -> str:
+def analyze_quality(issues_json_str: str, num_predict_override: int | None = None) -> str:
     """
     Agente de Calidad: Evalúa el lote de requerimientos estructurados.
     Devuelve un JSON Array.
     """
-    llm = get_llm(json_mode=True, num_predict=3000, num_ctx=8192, temperature=0.1)
-    prompt_template = load_prompt("quality_prompt.txt")
     parsed_input = json.loads(issues_json_str)
     expected_issue_ids = [item["issue_iid"] for item in parsed_input["resultados"]]
+    num_predict = num_predict_override or calculate_num_predict("Quality", len(expected_issue_ids))
+    llm = get_llm(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1)
+    prompt_template = load_prompt("quality_prompt.txt")
     
     prompt = PromptTemplate.from_template(prompt_template)
     chain = prompt | llm
     prompt_text = prompt.format(issues_json_str=issues_json_str, expected_issue_ids=json.dumps(expected_issue_ids))
     
     from core.performance_audit import ollama_params
-    params = ollama_params(json_mode=True, num_predict=3000, num_ctx=8192, temperature=0.1)
+    params = ollama_params(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1)
     
     with audit_agent_call(
         "Quality_Batch",

@@ -3,7 +3,7 @@ import logging
 import time
 
 from core.graph import build_graph
-from core.utils import extract_percentage
+from core.utils import build_batch_result, extract_percentage
 from database.repository import compute_issue_hash, save_cache, save_history, upsert_issue
 from integrations.gitlab_adapter import GitLabAdapter
 from integrations.issue_mapper import map_issue_to_json
@@ -33,11 +33,7 @@ def build_issue_comment(result: dict) -> str:
         f"- **{r['id']} — {r.get('nombre', '')}:** {r.get('descripcion', '')}"
         for r in central["requerimientos"]
     )
-    recommendations = list(dict.fromkeys(
-        quality.get("recomendaciones", [])
-        + security.get("recomendaciones", [])
-        + evaluation.get("correcciones_obligatorias", [])
-    ))
+    recommendations = result.get("recommendations", [])
     recommendation_text = "\n".join(f"- {x}" for x in recommendations) or "- Sin correcciones obligatorias."
     next_action = (
         "Actualizar la Historia con las correcciones obligatorias y marcarla como **En revisión**."
@@ -68,7 +64,7 @@ def build_issue_comment(result: dict) -> str:
 """
 
 
-def process_batch_workflow(issues: list, project_name: str, sprint_context: str = "") -> list:
+def process_batch_workflow(issues: list, project_name: str, sprint_context: str = "") -> dict:
     adapter = GitLabAdapter()
     issues_data = [map_issue_to_json(issue) for issue in issues]
     issues_by_iid = {int(issue.iid): issue for issue in issues}
@@ -82,6 +78,7 @@ def process_batch_workflow(issues: list, project_name: str, sprint_context: str 
         "evaluation": None,
         "final_report": None,
         "validation_errors": [],
+        "content_validation_errors": {},
     }
     logger.info("Iniciando ejecución del grafo multiagente para %s historias.", len(issues))
     started = time.time()
@@ -93,7 +90,9 @@ def process_batch_workflow(issues: list, project_name: str, sprint_context: str 
     final = json.loads(final_state["final_report"])
     issue_data_by_iid = {int(item["id"]): item for item in issues_data}
 
-    for result in final["resultados"]:
+    milestone = next((line.split(":", 1)[1].strip() for line in sprint_context.splitlines() if line.startswith("Sprint:")), "Sin milestone")
+    batch_result = build_batch_result(project_name, milestone, final["resultados"])
+    for result in batch_result["issues"]:
         iid = result["issue_iid"]
         result["issue_data"] = issue_data_by_iid[iid]
         result["comment_published"] = False
@@ -126,4 +125,4 @@ def process_batch_workflow(issues: list, project_name: str, sprint_context: str 
         save_cache(content_hash, SCHEMA_VERSION, central, quality, security, evaluation)
 
     logger.info("Flujo de lote terminado en %.2fs.", execution_time)
-    return final["resultados"]
+    return batch_result
