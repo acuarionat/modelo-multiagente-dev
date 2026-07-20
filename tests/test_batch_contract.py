@@ -2,9 +2,9 @@ import json
 import unittest
 
 from core.batch_contract import (
-    calculate_agent_metrics, calculate_num_predict, collect_recommendations,
-    consolidate_batch, parse_batch_response, reconcile_issue_ids,
-    validate_agent_content, validate_batch_response,
+    calcular_metricas_agente, calcular_num_predict, recopilar_recomendaciones,
+    consolidar_lote, analizar_respuesta_lote, conciliar_ids_issues,
+    validar_contenido_agente, validar_respuesta_lote,
 )
 
 
@@ -33,10 +33,10 @@ class BatchContractTests(unittest.TestCase):
 
     def test_contract_rejects_array_root(self):
         with self.assertRaisesRegex(ValueError, "resultados"):
-            parse_batch_response(json.dumps([]), "Central")
+            analizar_respuesta_lote(json.dumps([]), "Central")
 
     def test_consolidates_by_iid_not_position_and_renumbers_globally(self):
-        final = consolidate_batch({11, 22}, self.central, self.quality, self.security, self.evaluation)
+        final = consolidar_lote({11, 22}, self.central, self.quality, self.security, self.evaluation)
         first, second = final["resultados"]
         self.assertEqual(first["central"]["titulo"], "A")
         self.assertEqual(first["quality"]["indice"], .9)
@@ -47,8 +47,8 @@ class BatchContractTests(unittest.TestCase):
 
     def test_only_missing_story_is_marked_error(self):
         self.security["resultados"] = [self.security["resultados"][1]]
-        errors = validate_batch_response(self.security, {11, 22}, "Seguridad")
-        final = consolidate_batch({11, 22}, self.central, self.quality, self.security, self.evaluation, errors)
+        errors = validar_respuesta_lote(self.security, {11, 22}, "Seguridad")
+        final = consolidar_lote({11, 22}, self.central, self.quality, self.security, self.evaluation, errors)
         self.assertEqual(final["resultados"][0]["status"], "ok")
         self.assertEqual(final["resultados"][1]["status"], "error")
         self.assertEqual(final["resumen_global"]["historias_procesadas"], 1)
@@ -56,9 +56,9 @@ class BatchContractTests(unittest.TestCase):
 
     def test_invalid_index_is_explicit(self):
         self.quality["resultados"][0]["indice"] = 100
-        errors = validate_batch_response(self.quality, {11, 22}, "Calidad")
+        errors = validar_respuesta_lote(self.quality, {11, 22}, "Calidad")
         self.assertTrue(any("índice inválido" in error for error in errors))
-        final = consolidate_batch({11, 22}, self.central, self.quality, self.security, self.evaluation, errors)
+        final = consolidar_lote({11, 22}, self.central, self.quality, self.security, self.evaluation, errors)
         self.assertEqual(final["resultados"][0]["status"], "error")
 
     def test_reconciles_llm_example_ids_to_real_gitlab_iids(self):
@@ -68,10 +68,10 @@ class BatchContractTests(unittest.TestCase):
             {"issue_iid": 3, "historia_id": "HU-003", "titulo": "C", "requerimientos": []},
             {"issue_iid": 4, "historia_id": "HU-004", "titulo": "D", "requerimientos": []},
         ])
-        notes = reconcile_issue_ids(response, [6, 7, 9, 10], "Central")
+        notes = conciliar_ids_issues(response, [6, 7, 9, 10], "Central")
         self.assertEqual([x["issue_iid"] for x in response["resultados"]], [6, 7, 9, 10])
         self.assertEqual([x["historia_id"] for x in response["resultados"]], ["HU-006", "HU-007", "HU-009", "HU-010"])
-        self.assertEqual(validate_batch_response(response, {6, 7, 9, 10}, "Central"), [])
+        self.assertEqual(validar_respuesta_lote(response, {6, 7, 9, 10}, "Central"), [])
         self.assertEqual(len(notes), 4)
 
     def test_quality_math_preserves_specific_evidence(self):
@@ -93,12 +93,12 @@ class BatchContractTests(unittest.TestCase):
                 },
             },
         }])
-        calculate_agent_metrics(response, "Calidad")
+        calcular_metricas_agente(response, "Calidad")
         item = response["resultados"][0]
         self.assertAlmostEqual(item["metricas"]["cobertura_funcional"]["valor"], 2 / 3)
         self.assertEqual(item["metricas"]["adecuacion_funcional"]["valor"], 1)
         self.assertIn("Corregir rechazo", item["metricas"]["cobertura_funcional"]["justificacion"])
-        self.assertEqual(validate_agent_content(response, "Calidad"), {})
+        self.assertEqual(validar_contenido_agente(response, "Calidad"), {})
 
     def test_rejects_placeholder_content(self):
         response = batch("central", [{
@@ -108,7 +108,7 @@ class BatchContractTests(unittest.TestCase):
                 "tipo": "RF", "origen": "N/A", "justificacion": "...", "prioridad": "Alta",
             }],
         }])
-        errors = validate_agent_content(response, "Central")
+        errors = validar_contenido_agente(response, "Central")
         self.assertIn(6, errors)
         self.assertTrue(any("campos inválidos" in message for message in errors[6]))
 
@@ -119,22 +119,22 @@ class BatchContractTests(unittest.TestCase):
             "evaluation": {"correcciones_obligatorias": ["Definir permisos."]},
             "central": {"observaciones": []},
         }
-        self.assertEqual(collect_recommendations(result), ["Definir corrección.", "Agregar auditoría.", "Definir permisos."])
+        self.assertEqual(recopilar_recomendaciones(result), ["Definir corrección.", "Agregar auditoría.", "Definir permisos."])
 
     def test_dynamic_output_budget(self):
-        self.assertEqual(calculate_num_predict("Central_Init", 5), 1900)
-        self.assertEqual(calculate_num_predict("Quality", 5), 1750)
-        self.assertEqual(calculate_num_predict("Security", 5), 2000)
-        self.assertEqual(calculate_num_predict("Evaluator", 5), 750)
+        self.assertEqual(calcular_num_predict("Central_Init", 5), 1900)
+        self.assertEqual(calcular_num_predict("Quality", 5), 1750)
+        self.assertEqual(calcular_num_predict("Security", 5), 2000)
+        self.assertEqual(calcular_num_predict("Evaluator", 5), 750)
 
     def test_parser_recovers_json_wrapped_in_markdown(self):
         raw = '```json\n{"agente":"seguridad","resultados":[]}\n```'
-        parsed = parse_batch_response(raw, "Seguridad")
+        parsed = analizar_respuesta_lote(raw, "Seguridad")
         self.assertEqual(parsed["resultados"], [])
 
     def test_parser_reports_truncated_json(self):
         with self.assertRaisesRegex(ValueError, "truncada"):
-            parse_batch_response('{"agente":"seguridad","resultados":[', "Seguridad")
+            analizar_respuesta_lote('{"agente":"seguridad","resultados":[', "Seguridad")
 
 
 if __name__ == "__main__":

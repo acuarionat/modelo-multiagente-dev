@@ -10,7 +10,7 @@ from core.config import OLLAMA_BASE_URL, OLLAMA_MODEL
 logger = logging.getLogger("performance_audit")
 
 
-def _text_size(value: Any) -> Dict[str, int]:
+def _tamano_texto(value: Any) -> Dict[str, int]:
     if value is None:
         text = ""
     elif isinstance(value, str):
@@ -25,7 +25,7 @@ def _text_size(value: Any) -> Dict[str, int]:
     }
 
 
-def _json_size(value: Any) -> Dict[str, Optional[int]]:
+def _tamano_json(value: Any) -> Dict[str, Optional[int]]:
     if not isinstance(value, str):
         return {"json_chars": None, "json_bytes_utf8": None}
 
@@ -41,7 +41,7 @@ def _json_size(value: Any) -> Dict[str, Optional[int]]:
     }
 
 
-def ollama_params(json_mode: bool = True, num_predict: int = 500, num_ctx: int = 4096, temperature: float = 0.1, keep_alive: str = "30m") -> Dict[str, Any]:
+def parametros_ollama(json_mode: bool = True, num_predict: int = 500, num_ctx: int = 4096, temperature: float = 0.1, keep_alive: str = "30m") -> Dict[str, Any]:
     params = {
         "model": OLLAMA_MODEL,
         "base_url": OLLAMA_BASE_URL,
@@ -55,7 +55,7 @@ def ollama_params(json_mode: bool = True, num_predict: int = 500, num_ctx: int =
     return params
 
 
-def log_graph_event(event: str, agent: str, **extra: Any) -> None:
+def registrar_evento_grafo(event: str, agent: str, **extra: Any) -> None:
     payload = {
         "event": event,
         "agent": agent,
@@ -66,7 +66,7 @@ def log_graph_event(event: str, agent: str, **extra: Any) -> None:
 
 
 @contextmanager
-def audit_agent_call(
+def auditar_llamada_agente(
     agent: str,
     prompt_text: str,
     context_text: str,
@@ -75,18 +75,18 @@ def audit_agent_call(
 ):
     start = time.perf_counter()
     started_at = datetime.now().isoformat(timespec="milliseconds")
-    params = model_params or ollama_params()
+    params = model_params or parametros_ollama()
     effective_json_text = input_json_text if input_json_text is not None else context_text
 
-    log_graph_event(
+    registrar_evento_grafo(
         "agent_start",
         agent,
         started_at=started_at,
         model=params.get("model"),
         model_params=params,
-        prompt_size=_text_size(prompt_text),
-        context_size=_text_size(context_text),
-        input_json_size=_json_size(effective_json_text),
+        prompt_size=_tamano_texto(prompt_text),
+        context_size=_tamano_texto(context_text),
+        input_json_size=_tamano_json(effective_json_text),
     )
 
     response_holder: Dict[str, Any] = {"response": ""}
@@ -96,7 +96,7 @@ def audit_agent_call(
         elapsed = time.perf_counter() - start
         finished_at = datetime.now().isoformat(timespec="milliseconds")
         response_text = response_holder.get("response", "")
-        log_graph_event(
+        registrar_evento_grafo(
             "agent_end",
             agent,
             started_at=started_at,
@@ -104,9 +104,9 @@ def audit_agent_call(
             elapsed_seconds=round(elapsed, 4),
             model=params.get("model"),
             model_params=params,
-            prompt_size=_text_size(prompt_text),
-            context_size=_text_size(context_text),
-            input_json_size=_json_size(effective_json_text),
-            response_size=_text_size(response_text),
-            response_json_size=_json_size(response_text),
+            prompt_size=_tamano_texto(prompt_text),
+            context_size=_tamano_texto(context_text),
+            input_json_size=_tamano_json(effective_json_text),
+            response_size=_tamano_texto(response_text),
+            response_json_size=_tamano_json(response_text),
         )

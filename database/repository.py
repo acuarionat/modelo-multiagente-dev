@@ -7,7 +7,7 @@ from datetime import datetime
 DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database")
 DB_PATH = os.path.join(DB_DIR, "database.db")
 
-def init_db():
+def inicializar_bd():
     if not os.path.exists(DB_DIR):
         os.makedirs(DB_DIR)
         
@@ -53,7 +53,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def clear_tracking_data():
+def limpiar_datos_seguimiento():
     """Limpia las tablas para reiniciar el proyecto sin borrar la BD."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -63,7 +63,7 @@ def clear_tracking_data():
     conn.commit()
     conn.close()
 
-def compute_issue_hash(issue_data: dict) -> str:
+def calcular_hash_issue(issue_data: dict) -> str:
     """Calcula el hash del issue tomando en cuenta los campos más relevantes."""
     # Extraer campos clave de issue_data ya procesado por issue_mapper
     fields_to_hash = [
@@ -79,7 +79,7 @@ def compute_issue_hash(issue_data: dict) -> str:
     content_to_hash = "||".join(fields_to_hash)
     return hashlib.sha256(content_to_hash.encode('utf-8')).hexdigest()
 
-def get_issue_status(gitlab_iid: int):
+def obtener_estado_issue(gitlab_iid: int):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT status, content_hash FROM issues WHERE gitlab_iid = ?', (gitlab_iid,))
@@ -89,7 +89,7 @@ def get_issue_status(gitlab_iid: int):
         return {"status": row[0], "content_hash": row[1]}
     return None
 
-def upsert_issue(gitlab_iid: int, content_hash: str, status: str):
+def insertar_o_actualizar_issue(gitlab_iid: int, content_hash: str, status: str):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM issues WHERE gitlab_iid = ?', (gitlab_iid,))
@@ -107,7 +107,7 @@ def upsert_issue(gitlab_iid: int, content_hash: str, status: str):
     conn.commit()
     conn.close()
 
-def save_history(gitlab_iid: int, quality_index: float, security_index: float, verdict: str, execution_time: float, observations: str):
+def guardar_historial(gitlab_iid: int, quality_index: float, security_index: float, verdict: str, execution_time: float, observations: str):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -117,7 +117,7 @@ def save_history(gitlab_iid: int, quality_index: float, security_index: float, v
     conn.commit()
     conn.close()
 
-def save_cache(content_hash: str, schema_version: str, central_json: dict, quality_json: dict, security_json: dict, eval_json: dict):
+def guardar_cache(content_hash: str, schema_version: str, central_json: dict, quality_json: dict, security_json: dict, eval_json: dict):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -127,7 +127,7 @@ def save_cache(content_hash: str, schema_version: str, central_json: dict, quali
     conn.commit()
     conn.close()
 
-def get_cache(content_hash: str, schema_version: str):
+def obtener_cache(content_hash: str, schema_version: str):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -147,4 +147,4 @@ def get_cache(content_hash: str, schema_version: str):
     return None
 
 # Asegurar que se crea la BD al importar este módulo
-init_db()
+inicializar_bd()

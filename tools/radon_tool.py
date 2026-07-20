@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-def run_radon(target_path: str) -> str:
+def ejecutar_radon(target_path: str) -> str:
     """
     Ejecuta Radon para obtener métricas de calidad de código (complejidad ciclomática).
     """

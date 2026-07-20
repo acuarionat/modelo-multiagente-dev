@@ -1,13 +1,13 @@
 import re
 
-def map_issue_to_json(issue) -> dict:
+def mapear_issue_a_json(issue) -> dict:
     """
     Convierte una Historia de Usuario de GitLab en una representación estructurada
     extrayendo directamente los campos mediante expresiones regulares sobre la nueva plantilla Markdown.
     """
     description_text = issue.description or ""
     
-    def extract_section(header: str) -> str:
+    def extraer_seccion(header: str) -> str:
         # Busca el header, captura todo hasta el siguiente ## o el final del string.
         pattern = rf"##\s*{header}\s*(.*?)(?=\n##\s*|$)"
         match = re.search(pattern, description_text, re.IGNORECASE | re.DOTALL)
@@ -15,7 +15,7 @@ def map_issue_to_json(issue) -> dict:
             return match.group(1).strip()
         return ""
         
-    def extract_list(text: str) -> list:
+    def extraer_lista(text: str) -> list:
         # Extrae items de lista (- o 1.)
         items = []
         for line in text.split('\n'):
@@ -26,10 +26,10 @@ def map_issue_to_json(issue) -> dict:
                     items.append(clean_item)
         return items
 
-    nombre = extract_section("Nombre")
+    nombre = extraer_seccion("Nombre")
     titulo = nombre if nombre else issue.title
     
-    desc_raw = extract_section("Descripción")
+    desc_raw = extraer_seccion("Descripción")
     
     actor_match = re.search(r'\*\*Como\*\*\s*(.*?)(?=\n\*\*Quiero\*\*|$)', desc_raw, re.IGNORECASE | re.DOTALL)
     actor = actor_match.group(1).strip() if actor_match else "Desconocido"
@@ -40,10 +40,10 @@ def map_issue_to_json(issue) -> dict:
     para_match = re.search(r'\*\*Para\*\*\s*(.*?)$', desc_raw, re.IGNORECASE | re.DOTALL)
     objetivo = para_match.group(1).strip() if para_match else "Desconocido"
     
-    criterios_raw = extract_section("Criterios de aceptación")
-    restricciones_raw = extract_section("Restricciones")
+    criterios_raw = extraer_seccion("Criterios de aceptación")
+    restricciones_raw = extraer_seccion("Restricciones")
     
-    prioridad_raw = extract_section("Prioridad")
+    prioridad_raw = extraer_seccion("Prioridad")
     prioridad_match = re.search(r'(Alta|Media|Baja)', prioridad_raw, re.IGNORECASE)
     prioridad = prioridad_match.group(1).capitalize() if prioridad_match else "Desconocida"
 
@@ -53,10 +53,10 @@ def map_issue_to_json(issue) -> dict:
         "actor": actor,
         "funcionalidad": funcionalidad,
         "objetivo": objetivo,
-        "criterios_aceptacion": extract_list(criterios_raw) if extract_list(criterios_raw) else [criterios_raw] if criterios_raw else [],
-        "restricciones": extract_list(restricciones_raw) if extract_list(restricciones_raw) else [restricciones_raw] if restricciones_raw else [],
+        "criterios_aceptacion": extraer_lista(criterios_raw) if extraer_lista(criterios_raw) else [criterios_raw] if criterios_raw else [],
+        "restricciones": extraer_lista(restricciones_raw) if extraer_lista(restricciones_raw) else [restricciones_raw] if restricciones_raw else [],
         "prioridad": prioridad,
-        "observaciones": extract_section("Observaciones"),
+        "observaciones": extraer_seccion("Observaciones"),
         "labels": issue.labels
     }
     

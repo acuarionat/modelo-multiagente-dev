@@ -4,12 +4,12 @@ import json
 from datetime import datetime
 from core.config import DB_PATH
 
-def get_connection():
+def obtener_conexion():
     return sqlite3.connect(DB_PATH)
 
-def init_db():
+def inicializar_bd():
     """Inicializa la base de datos de trazabilidad."""
-    conn = get_connection()
+    conn = obtener_conexion()
     cursor = conn.cursor()
     
     # Tabla principal de la ejecución/ticket
@@ -39,9 +39,9 @@ def init_db():
     conn.commit()
     conn.close()
 
-def log_execution(ticket_id: str):
+def registrar_ejecucion(ticket_id: str):
     """Crea una nueva ejecución y devuelve su ID."""
-    conn = get_connection()
+    conn = obtener_conexion()
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -55,9 +55,9 @@ def log_execution(ticket_id: str):
     
     return execution_id
 
-def log_agent_result(execution_id: int, agent_name: str, raw_output: str):
+def registrar_resultado_agente(execution_id: int, agent_name: str, raw_output: str):
     """Guarda el resultado crudo de un agente."""
-    conn = get_connection()
+    conn = obtener_conexion()
     cursor = conn.cursor()
     
     # Si el output no es un string, lo serializamos a JSON
@@ -72,9 +72,9 @@ def log_agent_result(execution_id: int, agent_name: str, raw_output: str):
     conn.commit()
     conn.close()
 
-def update_execution_final(execution_id: int, status: str, final_decision: str, final_report: str):
+def actualizar_ejecucion_final(execution_id: int, status: str, final_decision: str, final_report: str):
     """Actualiza la ejecución con el veredicto final."""
-    conn = get_connection()
+    conn = obtener_conexion()
     cursor = conn.cursor()
     
     cursor.execute('''

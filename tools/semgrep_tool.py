@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-def run_semgrep(target_path: str) -> str:
+def ejecutar_semgrep(target_path: str) -> str:
     """
     Ejecuta Semgrep para análisis de seguridad estático (SAST).
     Nota: Las reglas específicas se establecerán más adelante.

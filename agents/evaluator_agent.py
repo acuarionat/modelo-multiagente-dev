@@ -1,22 +1,22 @@
 from langchain_core.prompts import PromptTemplate
-from agents import get_llm, load_prompt
-from core.performance_audit import audit_agent_call
-from core.batch_contract import calculate_num_predict
+from agents import obtener_llm, cargar_prompt
+from core.performance_audit import auditar_llamada_agente
+from core.batch_contract import calcular_num_predict
 
-def evaluate_reports(quality_reports: str, security_reports: str, num_predict_override: int | None = None) -> str:
+def evaluar_reportes(quality_reports: str, security_reports: str, num_predict_override: int | None = None) -> str:
     """
     Agente Evaluador: Lee reportes de calidad y seguridad (JSON Array strings) y emite un veredicto en JSON Array.
     """
     import json
-    prompt_template = load_prompt("evaluator_prompt.txt")
+    prompt_template = cargar_prompt("evaluator_prompt.txt")
     
     quality = json.loads(quality_reports)
     security = json.loads(security_reports)
     quality_by_iid = {item["issue_iid"]: item for item in quality["resultados"]}
     security_by_iid = {item["issue_iid"]: item for item in security["resultados"]}
     common_ids = sorted(set(quality_by_iid) & set(security_by_iid))
-    num_predict = num_predict_override or calculate_num_predict("Evaluator", len(common_ids))
-    llm = get_llm(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.0)
+    num_predict = num_predict_override or calcular_num_predict("Evaluator", len(common_ids))
+    llm = obtener_llm(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.0)
     reduced_input = {
         "resultados": [
             {
@@ -34,10 +34,10 @@ def evaluate_reports(quality_reports: str, security_reports: str, num_predict_ov
     chain = prompt | llm
     prompt_text = prompt.format(evaluation_input=evaluation_input_str, expected_issue_ids=json.dumps(common_ids))
     
-    from core.performance_audit import ollama_params
-    params = ollama_params(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.0)
+    from core.performance_audit import parametros_ollama
+    params = parametros_ollama(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.0)
     
-    with audit_agent_call(
+    with auditar_llamada_agente(
         "Evaluator_Batch",
         prompt_text=prompt_text,
         context_text=evaluation_input_str,

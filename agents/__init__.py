@@ -2,7 +2,7 @@ from langchain_ollama import ChatOllama
 from core.config import OLLAMA_MODEL, OLLAMA_BASE_URL
 import os
 
-def get_llm(json_mode: bool = False, num_predict: int = 500, num_ctx: int = 4096, temperature: float = 0.1, keep_alive: str = "30m"):
+def obtener_llm(json_mode: bool = False, num_predict: int = 500, num_ctx: int = 4096, temperature: float = 0.1, keep_alive: str = "30m"):
     """Retorna una instancia del LLM (Ollama) configurado.
        Si json_mode es True, se fuerza la salida en formato JSON.
     """
@@ -19,7 +19,7 @@ def get_llm(json_mode: bool = False, num_predict: int = 500, num_ctx: int = 4096
         
     return ChatOllama(**kwargs)
 
-def load_prompt(filename: str) -> str:
+def cargar_prompt(filename: str) -> str:
     """Carga un prompt desde la carpeta de prompts."""
     filepath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'prompts', filename)
     with open(filepath, 'r', encoding='utf-8') as f:

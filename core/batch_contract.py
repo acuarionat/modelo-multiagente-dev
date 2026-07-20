@@ -10,7 +10,7 @@ GENERIC_TEXT_FRAGMENTS = {
 }
 
 
-def calculate_num_predict(agent: str, issue_count: int) -> int:
+def calcular_num_predict(agent: str, issue_count: int) -> int:
     limits = {
         "Central_Init": min(500 + issue_count * 280, 2100),
         "Quality": min(450 + issue_count * 260, 1750),
@@ -20,14 +20,14 @@ def calculate_num_predict(agent: str, issue_count: int) -> int:
     return limits[agent]
 
 
-def is_invalid_text(value: Any) -> bool:
+def es_texto_invalido(value: Any) -> bool:
     if not isinstance(value, str):
         return True
     normalized = value.strip().casefold()
     return normalized in INVALID_TEXT_VALUES or any(fragment in normalized for fragment in GENERIC_TEXT_FRAGMENTS)
 
 
-def calculate_agent_metrics(response: Dict[str, Any], agent_name: str) -> None:
+def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
     for item in response.get("resultados", []):
         if not isinstance(item, dict):
             continue
@@ -71,13 +71,13 @@ def calculate_agent_metrics(response: Dict[str, Any], agent_name: str) -> None:
             item["lot_recomendado"] = lot.get("lot_recomendado")
 
 
-def validate_agent_content(response: Dict[str, Any], agent_name: str) -> Dict[int, List[str]]:
+def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[int, List[str]]:
     errors: Dict[int, List[str]] = {}
     justifications: Dict[str, List[int]] = {}
     for item in response.get("resultados", []):
         if not isinstance(item, dict):
             continue
-        iid = normalize_iid(item.get("issue_iid"))
+        iid = normalizar_iid(item.get("issue_iid"))
         if iid is None:
             continue
         current: List[str] = []
@@ -91,7 +91,7 @@ def validate_agent_content(response: Dict[str, Any], agent_name: str) -> Dict[in
                     if not isinstance(requirement, dict):
                         current.append(f"requerimiento {index} no es un objeto")
                         continue
-                    missing = [field for field in required if is_invalid_text(requirement.get(field))]
+                    missing = [field for field in required if es_texto_invalido(requirement.get(field))]
                     if missing:
                         current.append(f"requerimiento {index} tiene campos inválidos: {', '.join(missing)}")
                     description = requirement.get("descripcion_formal", "")
@@ -121,17 +121,17 @@ def validate_agent_content(response: Dict[str, Any], agent_name: str) -> Dict[in
                     if invalid_lists:
                         current.append(f"{metric_name}: listas de evidencia inválidas: {', '.join(invalid_lists)}")
                     justification = metric.get("justificacion")
-                    if is_invalid_text(justification):
+                    if es_texto_invalido(justification):
                         current.append(f"{metric_name}: justificación inválida")
                     else:
                         justifications.setdefault(justification.strip().casefold(), []).append(iid)
                     value = metric.get("valor")
-                    if isinstance(value, (int, float)) and value < 1 and is_invalid_text(metric.get("recomendacion")):
+                    if isinstance(value, (int, float)) and value < 1 and es_texto_invalido(metric.get("recomendacion")):
                         current.append(f"{metric_name}: recomendación requerida para valor menor que 1")
         elif agent_name == "Evaluador":
             if item.get("veredicto") not in {"APROBADO", "CORREGIR", "ALERTA"}:
                 current.append("veredicto inválido")
-            if is_invalid_text(item.get("conclusion")):
+            if es_texto_invalido(item.get("conclusion")):
                 current.append("conclusión inválida")
         if current:
             errors[iid] = current
@@ -143,22 +143,22 @@ def validate_agent_content(response: Dict[str, Any], agent_name: str) -> Dict[in
     return errors
 
 
-def collect_recommendations(result: Dict[str, Any]) -> List[str]:
+def recopilar_recomendaciones(result: Dict[str, Any]) -> List[str]:
     recommendations: List[str] = []
     for section in (result.get("quality") or {}, result.get("security") or {}):
         metrics = section.get("metricas", {})
         for metric in metrics.values() if isinstance(metrics, dict) else []:
-            if isinstance(metric, dict) and not is_invalid_text(metric.get("recomendacion")):
+            if isinstance(metric, dict) and not es_texto_invalido(metric.get("recomendacion")):
                 recommendations.append(metric["recomendacion"].strip())
-        recommendations.extend(x for x in section.get("recomendaciones", []) if not is_invalid_text(x))
+        recommendations.extend(x for x in section.get("recomendaciones", []) if not es_texto_invalido(x))
     evaluation = result.get("evaluation") or {}
-    recommendations.extend(x for x in evaluation.get("correcciones_obligatorias", []) if not is_invalid_text(x))
+    recommendations.extend(x for x in evaluation.get("correcciones_obligatorias", []) if not es_texto_invalido(x))
     central = result.get("central") or {}
-    recommendations.extend(x for x in central.get("observaciones", []) if not is_invalid_text(x))
+    recommendations.extend(x for x in central.get("observaciones", []) if not es_texto_invalido(x))
     return list(dict.fromkeys(recommendations))
 
 
-def normalize_iid(value: Any) -> int | None:
+def normalizar_iid(value: Any) -> int | None:
     if isinstance(value, bool):
         return None
     try:
@@ -168,7 +168,7 @@ def normalize_iid(value: Any) -> int | None:
         return None
 
 
-def parse_batch_response(raw: Any, agent_name: str) -> Dict[str, Any]:
+def analizar_respuesta_lote(raw: Any, agent_name: str) -> Dict[str, Any]:
     if isinstance(raw, str):
         text = raw.strip()
         if text.startswith("```json"):
@@ -202,7 +202,7 @@ def parse_batch_response(raw: Any, agent_name: str) -> Dict[str, Any]:
     return data
 
 
-def reconcile_issue_ids(
+def conciliar_ids_issues(
     response: Dict[str, Any], expected_issue_ids: List[int], agent_name: str,
     expected_titles: Dict[str, int] | None = None,
 ) -> List[str]:
@@ -228,7 +228,7 @@ def reconcile_issue_ids(
     for position, item in enumerate(results):
         if not isinstance(item, dict):
             continue
-        iid = normalize_iid(item.get("issue_iid"))
+        iid = normalizar_iid(item.get("issue_iid"))
         if iid in expected_set and iid not in assigned:
             assigned.add(iid)
             item["issue_iid"] = iid
@@ -244,7 +244,7 @@ def reconcile_issue_ids(
         unresolved.append((position, item))
 
     remaining = [iid for iid in expected if iid not in assigned]
-    returned_unresolved = [normalize_iid(item.get("issue_iid")) for _, item in unresolved]
+    returned_unresolved = [normalizar_iid(item.get("issue_iid")) for _, item in unresolved]
     ordinal_map = {ordinal: iid for ordinal, iid in enumerate(expected, 1)}
     can_use_ordinals = (
         len(unresolved) == len(remaining)
@@ -254,7 +254,7 @@ def reconcile_issue_ids(
     )
     if can_use_ordinals:
         for _, item in unresolved:
-            old_iid = normalize_iid(item.get("issue_iid"))
+            old_iid = normalizar_iid(item.get("issue_iid"))
             new_iid = ordinal_map[old_iid]
             item["issue_iid"] = new_iid
             item["historia_id"] = f"HU-{new_iid:03d}"
@@ -276,7 +276,7 @@ def reconcile_issue_ids(
     return notes
 
 
-def validate_batch_response(
+def validar_respuesta_lote(
     response: Dict[str, Any], expected_issue_ids: Set[int], agent_name: str
 ) -> List[str]:
     results = response["resultados"]
@@ -286,7 +286,7 @@ def validate_batch_response(
         if not isinstance(item, dict):
             errors.append(f"{agent_name}: resultado {position} no es un objeto.")
             continue
-        iid = normalize_iid(item.get("issue_iid"))
+        iid = normalizar_iid(item.get("issue_iid"))
         if iid is None:
             errors.append(f"{agent_name}: resultado {position} no incluye issue_iid válido.")
             continue
@@ -311,17 +311,17 @@ def validate_batch_response(
     return errors
 
 
-def index_results(response: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
+def indexar_resultados(response: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
     indexed: Dict[int, Dict[str, Any]] = {}
     for item in response.get("resultados", []):
         if isinstance(item, dict):
-            iid = normalize_iid(item.get("issue_iid"))
+            iid = normalizar_iid(item.get("issue_iid"))
             if iid is not None and iid not in indexed:
                 indexed[iid] = item
     return indexed
 
 
-def renumber_requirements(items: Iterable[Dict[str, Any]]) -> None:
+def renumerar_requerimientos(items: Iterable[Dict[str, Any]]) -> None:
     counters = {"RF": 0, "RNF": 0, "RS": 0, "RC": 0}
     for item in items:
         for requirement in item.get("requerimientos", []):
@@ -336,14 +336,14 @@ def renumber_requirements(items: Iterable[Dict[str, Any]]) -> None:
             requirement["descripcion"] = requirement.get("descripcion_formal")
 
 
-def consolidate_batch(
+def consolidar_lote(
     expected_issue_ids: Set[int], central: Dict[str, Any], quality: Dict[str, Any],
     security: Dict[str, Any], evaluation: Dict[str, Any], validation_errors: List[str] | None = None,
     content_validation_errors: Dict[int, List[str]] | None = None,
 ) -> Dict[str, Any]:
-    maps = [index_results(x) for x in (central, quality, security, evaluation)]
+    maps = [indexar_resultados(x) for x in (central, quality, security, evaluation)]
     names = ["Central", "Calidad", "Seguridad", "Evaluador"]
-    renumber_requirements(maps[0][iid] for iid in sorted(maps[0]))
+    renumerar_requerimientos(maps[0][iid] for iid in sorted(maps[0]))
     consolidated = []
     for iid in sorted(expected_issue_ids):
         missing = [name for name, mapping in zip(names, maps) if iid not in mapping]

@@ -7,22 +7,22 @@ import json
 import unicodedata
 import re
 from difflib import SequenceMatcher
-from core.batch_contract import collect_recommendations
+from core.batch_contract import recopilar_recomendaciones
 
-def clean_text_for_pdf(text: str) -> str:
+def limpiar_texto_para_pdf(text: str) -> str:
     """Limpia el texto para evitar problemas con la fuente base de FPDF."""
     if not isinstance(text, str):
         text = str(text)
     text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
     return text.replace('\r', '')
 
-def extract_percentage(val) -> str:
+def extraer_porcentaje(val) -> str:
     if isinstance(val, (int, float)):
         return f"{round(val * 100)} %"
     return str(val)
 
 
-def build_traceability_rows(batch_results: list) -> list:
+def construir_filas_trazabilidad(batch_results: list) -> list:
     rows = []
     for result in batch_results:
         if result.get("status") != "ok":
@@ -44,7 +44,7 @@ def build_traceability_rows(batch_results: list) -> list:
     return rows
 
 
-def calculate_batch_summary(batch_results: list) -> dict:
+def calcular_resumen_lote(batch_results: list) -> dict:
     valid = [x for x in batch_results if x.get("status") == "ok"]
     quality = [x["quality"]["indice"] for x in valid]
     security = [x["security"]["indice"] for x in valid]
@@ -62,7 +62,7 @@ def calculate_batch_summary(batch_results: list) -> dict:
     }
 
 
-def _deduplicate_recommendations(values: list) -> list:
+def _eliminar_recomendaciones_duplicadas(values: list) -> list:
     unique = []
     normalized = []
     for value in values:
@@ -75,25 +75,25 @@ def _deduplicate_recommendations(values: list) -> list:
     return unique
 
 
-def build_batch_result(project_name: str, milestone: str, issues: list) -> dict:
+def construir_resultado_lote(project_name: str, milestone: str, issues: list) -> dict:
     valid = [item for item in issues if item.get("status") == "ok"]
     requirements = [
         requirement for item in valid
         for requirement in item["central"].get("requerimientos", [])
     ]
-    recommendations = _deduplicate_recommendations([
-        recommendation for item in valid for recommendation in collect_recommendations(item)
+    recommendations = _eliminar_recomendaciones_duplicadas([
+        recommendation for item in valid for recommendation in recopilar_recomendaciones(item)
     ])
     for item in valid:
-        item["recommendations"] = collect_recommendations(item)
+        item["recommendations"] = recopilar_recomendaciones(item)
     try:
-        traceability_rows = build_traceability_rows(issues)
+        traceability_rows = construir_filas_trazabilidad(issues)
     except ValueError:
         traceability_rows = []
     return {
         "project": {"name": project_name},
         "milestone": {"name": milestone},
-        "summary": calculate_batch_summary(issues),
+        "summary": calcular_resumen_lote(issues),
         "issues": issues,
         "requirements": requirements,
         "recommendations": recommendations,
@@ -101,62 +101,62 @@ def build_batch_result(project_name: str, milestone: str, issues: list) -> dict:
     }
 
 
-def generate_batch_report_pdf(batch_result: dict) -> io.BytesIO:
+def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     project_name = batch_result["project"]["name"]
     milestone = batch_result["milestone"]["name"]
     batch_results = batch_result["issues"]
     valid = [x for x in batch_results if x.get("status") == "ok"]
     if not valid:
         raise ValueError("No existen historias completas para generar el PDF.")
-    summary = calculate_batch_summary(batch_results)
+    summary = calcular_resumen_lote(batch_results)
     pdf = FPDF()
     pdf.set_margins(20, 20, 20)
     pdf.add_page()
     kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
-    def heading(text, size=14):
+    def encabezado(text, size=14):
         pdf.set_font("Helvetica", style="B", size=size)
-        pdf.multi_cell(0, 7, clean_text_for_pdf(text), **kwargs)
-    def line(text):
+        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
+    def linea(text):
         pdf.set_font("Helvetica", size=10)
-        pdf.multi_cell(0, 6, clean_text_for_pdf(text), **kwargs)
-    heading("Reporte Ejecutivo Consolidado", 16)
-    line(f"Proyecto: {project_name}")
-    line(f"Milestone: {milestone}")
-    line(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
+    encabezado("Reporte Ejecutivo Consolidado", 16)
+    linea(f"Proyecto: {project_name}")
+    linea(f"Milestone: {milestone}")
+    linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
     pdf.ln(4)
-    heading("Resumen global", 13)
-    line(f"Historias procesadas: {summary['procesadas']} | Con error: {summary['errores']}")
-    line(f"Calidad promedio: {extract_percentage(summary['calidad_promedio'])}")
-    line(f"Seguridad promedio: {extract_percentage(summary['seguridad_promedio'])}")
-    line(f"Requerimientos sugeridos: {summary['requerimientos']}")
+    encabezado("Resumen global", 13)
+    linea(f"Historias procesadas: {summary['procesadas']} | Con error: {summary['errores']}")
+    linea(f"Calidad promedio: {extraer_porcentaje(summary['calidad_promedio'])}")
+    linea(f"Seguridad promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
+    linea(f"Requerimientos sugeridos: {summary['requerimientos']}")
     for result in valid:
         c, q, s, e = result["central"], result["quality"], result["security"], result["evaluation"]
         pdf.add_page()
-        heading(f"{c['historia_id']} — {c['titulo']}", 13)
-        line(f"Veredicto: {e['veredicto']} | Calidad: {extract_percentage(q['indice'])} | Seguridad: {extract_percentage(s['indice'])} | LoT: {s.get('lot_recomendado', 'No informado')}")
-        line(f"Actor: {c.get('actor', '')}")
-        line(f"Objetivo: {c.get('objetivo', '')}")
-        heading("Métricas de calidad", 11)
+        encabezado(f"{c['historia_id']} — {c['titulo']}", 13)
+        linea(f"Veredicto: {e['veredicto']} | Calidad: {extraer_porcentaje(q['indice'])} | Seguridad: {extraer_porcentaje(s['indice'])} | LoT: {s.get('lot_recomendado', 'No informado')}")
+        linea(f"Actor: {c.get('actor', '')}")
+        linea(f"Objetivo: {c.get('objetivo', '')}")
+        encabezado("Métricas de calidad", 11)
         for name, metric in q.get("metricas", {}).items():
-            line(f"{name}: {extract_percentage(metric.get('valor'))}. {metric.get('justificacion', '')}")
+            linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
             if metric.get("recomendacion"):
-                line(f"Recomendación: {metric['recomendacion']}")
-        heading("Métricas de seguridad", 11)
+                linea(f"Recomendación: {metric['recomendacion']}")
+        encabezado("Métricas de seguridad", 11)
         for name, metric in s.get("metricas", {}).items():
-            line(f"{name}: {extract_percentage(metric.get('valor'))}. {metric.get('justificacion', '')}")
+            linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
             if metric.get("recomendacion"):
-                line(f"Recomendación: {metric['recomendacion']}")
-        heading("Riesgos y recomendaciones", 11)
+                linea(f"Recomendación: {metric['recomendacion']}")
+        encabezado("Riesgos y recomendaciones", 11)
         for text_value in e.get("riesgos_criticos", []) + e.get("correcciones_obligatorias", []):
-            line(f"- {text_value}")
-        heading("Requerimientos sugeridos", 11)
+            linea(f"- {text_value}")
+        encabezado("Requerimientos sugeridos", 11)
         for requirement in c["requerimientos"]:
-            line(f"{requirement['id']} — {requirement.get('nombre', '')}")
-            line(requirement.get("descripcion_formal", ""))
+            linea(f"{requirement['id']} — {requirement.get('nombre', '')}")
+            linea(requirement.get("descripcion_formal", ""))
     return io.BytesIO(pdf.output(dest="S"))
 
 
-def generate_batch_formal_docx(batch_result: dict) -> io.BytesIO:
+def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     project_name = batch_result["project"]["name"]
     milestone = batch_result["milestone"]["name"]
     batch_results = batch_result["issues"]
@@ -216,7 +216,7 @@ def generate_batch_formal_docx(batch_result: dict) -> io.BytesIO:
     output.seek(0)
     return output
 
-def generate_formal_docx(project_name: str, issue_iid: int, central_init: dict, quality_json: dict, security_json: dict, eval_json: dict, parsed_cf: dict) -> io.BytesIO:
+def generar_documento_formal_docx(project_name: str, issue_iid: int, central_init: dict, quality_json: dict, security_json: dict, eval_json: dict, parsed_cf: dict) -> io.BytesIO:
     """Genera el Documento Formal de Requerimientos en Word."""
     doc = Document()
     req_id = f"REQ-{datetime.now().year}-{issue_iid:03d}"
@@ -305,7 +305,7 @@ def generate_formal_docx(project_name: str, issue_iid: int, central_init: dict, 
     doc_io.seek(0)
     return doc_io
 
-def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_json: dict, security_json: dict, eval_json: dict, central_init: dict, parsed_cf: dict) -> io.BytesIO:
+def generar_reporte_evaluacion_pdf(project_name: str, issue_iid: int, quality_json: dict, security_json: dict, eval_json: dict, central_init: dict, parsed_cf: dict) -> io.BytesIO:
     """Genera el Reporte Ejecutivo en PDF estructurado según el plan simplificado."""
     pdf = FPDF()
     pdf.set_margins(left=25, top=25, right=25)
@@ -316,7 +316,7 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     pdf.set_font("Helvetica", style="B", size=14)
     pdf.multi_cell(0, line_h, txt=f"Reporte Ejecutivo de Requerimientos", align='C', **mc_kwargs)
     pdf.set_font("Helvetica", style="B", size=12)
-    pdf.multi_cell(0, line_h, txt=f"Proyecto: {clean_text_for_pdf(project_name)} | HU #{issue_iid}", align='C', **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=f"Proyecto: {limpiar_texto_para_pdf(project_name)} | HU #{issue_iid}", align='C', **mc_kwargs)
     pdf.set_font("Helvetica", size=10)
     pdf.multi_cell(0, line_h, txt=f"Fecha: {datetime.now().strftime('%Y-%m-%d')}", align='C', **mc_kwargs)
     pdf.ln(5)
@@ -325,8 +325,8 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     pdf.set_font("Helvetica", style="B", size=12)
     pdf.multi_cell(0, line_h, txt="1. Resumen Ejecutivo", **mc_kwargs)
     pdf.set_font("Helvetica", size=11)
-    pdf.multi_cell(0, line_h, txt=f"Veredicto: {clean_text_for_pdf(eval_json.get('veredicto', 'N/A'))}", **mc_kwargs)
-    pdf.multi_cell(0, line_h, txt=clean_text_for_pdf(parsed_cf.get('resumen_ejecutivo', '')), **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=f"Veredicto: {limpiar_texto_para_pdf(eval_json.get('veredicto', 'N/A'))}", **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=limpiar_texto_para_pdf(parsed_cf.get('resumen_ejecutivo', '')), **mc_kwargs)
     pdf.ln(5)
     
     # Historia Analizada
@@ -336,7 +336,7 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     objetivos = central_init.get("objetivos_identificados", [])
     if objetivos:
         for obj in objetivos:
-            pdf.multi_cell(0, line_h, txt=f"- {clean_text_for_pdf(obj)}", **mc_kwargs)
+            pdf.multi_cell(0, line_h, txt=f"- {limpiar_texto_para_pdf(obj)}", **mc_kwargs)
     pdf.ln(5)
     
     # Resultados Calidad
@@ -344,13 +344,13 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     pdf.multi_cell(0, line_h, txt="3. Resultados Calidad", **mc_kwargs)
     pdf.set_font("Helvetica", size=11)
     ind_cal = quality_json.get("indice", 0.0)
-    pdf.multi_cell(0, line_h, txt=f"Índice Global: {extract_percentage(ind_cal)}", **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=f"Índice Global: {extraer_porcentaje(ind_cal)}", **mc_kwargs)
     just_cal = quality_json.get("justificaciones", {})
     for k, v in just_cal.items():
         if isinstance(v, dict):
-            pdf.multi_cell(0, line_h, txt=f"- {k}: {v.get('resultado', 'N/A')} | {clean_text_for_pdf(v.get('justificacion', ''))}", **mc_kwargs)
+            pdf.multi_cell(0, line_h, txt=f"- {k}: {v.get('resultado', 'N/A')} | {limpiar_texto_para_pdf(v.get('justificacion', ''))}", **mc_kwargs)
             if 'razon_valor' in v:
-                pdf.multi_cell(0, line_h, txt=f"  Razón: {clean_text_for_pdf(v['razon_valor'])}", **mc_kwargs)
+                pdf.multi_cell(0, line_h, txt=f"  Razón: {limpiar_texto_para_pdf(v['razon_valor'])}", **mc_kwargs)
     pdf.ln(5)
     
     # Resultados Seguridad
@@ -358,13 +358,13 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     pdf.multi_cell(0, line_h, txt="4. Resultados Seguridad", **mc_kwargs)
     pdf.set_font("Helvetica", size=11)
     ind_seg = security_json.get("indice", 0.0)
-    pdf.multi_cell(0, line_h, txt=f"Índice Global: {extract_percentage(ind_seg)}", **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=f"Índice Global: {extraer_porcentaje(ind_seg)}", **mc_kwargs)
     just_seg = security_json.get("justificaciones", {})
     for k, v in just_seg.items():
         if isinstance(v, dict):
-            pdf.multi_cell(0, line_h, txt=f"- {k}: {v.get('resultado', 'N/A')} | {clean_text_for_pdf(v.get('justificacion', ''))}", **mc_kwargs)
+            pdf.multi_cell(0, line_h, txt=f"- {k}: {v.get('resultado', 'N/A')} | {limpiar_texto_para_pdf(v.get('justificacion', ''))}", **mc_kwargs)
             if 'razon_valor' in v:
-                pdf.multi_cell(0, line_h, txt=f"  Razón: {clean_text_for_pdf(v['razon_valor'])}", **mc_kwargs)
+                pdf.multi_cell(0, line_h, txt=f"  Razón: {limpiar_texto_para_pdf(v['razon_valor'])}", **mc_kwargs)
     pdf.ln(5)
     
     # Riesgos
@@ -374,7 +374,7 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     riesgos = eval_json.get("riesgos_criticos", [])
     if riesgos:
         for r in riesgos:
-            pdf.multi_cell(0, line_h, txt=f"- {clean_text_for_pdf(r)}", **mc_kwargs)
+            pdf.multi_cell(0, line_h, txt=f"- {limpiar_texto_para_pdf(r)}", **mc_kwargs)
     else:
         pdf.multi_cell(0, line_h, txt="Ninguno crítico.", **mc_kwargs)
     pdf.ln(5)
@@ -384,14 +384,14 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     pdf.multi_cell(0, line_h, txt="6. Requerimientos Sugeridos", **mc_kwargs)
     pdf.set_font("Helvetica", size=11)
     for req in central_init.get("requerimientos_funcionales", []) + central_init.get("requerimientos_no_funcionales", []):
-        pdf.multi_cell(0, line_h, txt=f"- {req.get('id', 'N/A')} : {clean_text_for_pdf(req.get('nombre', ''))}", **mc_kwargs)
+        pdf.multi_cell(0, line_h, txt=f"- {req.get('id', 'N/A')} : {limpiar_texto_para_pdf(req.get('nombre', ''))}", **mc_kwargs)
     pdf.ln(5)
     
     # Conclusión
     pdf.set_font("Helvetica", style="B", size=12)
     pdf.multi_cell(0, line_h, txt="7. Conclusión", **mc_kwargs)
     pdf.set_font("Helvetica", size=11)
-    pdf.multi_cell(0, line_h, txt=clean_text_for_pdf(parsed_cf.get("conclusiones_finales", eval_json.get('conclusion', ''))), **mc_kwargs)
+    pdf.multi_cell(0, line_h, txt=limpiar_texto_para_pdf(parsed_cf.get("conclusiones_finales", eval_json.get('conclusion', ''))), **mc_kwargs)
     pdf.ln(5)
     
     # Próximos pasos
@@ -401,14 +401,14 @@ def generate_evaluation_report_pdf(project_name: str, issue_iid: int, quality_js
     correcciones = eval_json.get("correcciones_obligatorias", [])
     if correcciones:
         for c in correcciones:
-            pdf.multi_cell(0, line_h, txt=f"- {clean_text_for_pdf(c)}", **mc_kwargs)
+            pdf.multi_cell(0, line_h, txt=f"- {limpiar_texto_para_pdf(c)}", **mc_kwargs)
     else:
         pdf.multi_cell(0, line_h, txt="- Avanzar a fase de diseño.", **mc_kwargs)
             
     pdf_bytes = pdf.output(dest='S')
     return io.BytesIO(pdf_bytes)
 
-def generate_traceability_matrix_md(central_init_json: dict) -> str:
+def generar_matriz_trazabilidad_md(central_init_json: dict) -> str:
     """Genera la Matriz de Trazabilidad en Markdown simplificada."""
     md = "### Matriz de Trazabilidad Automática\n\n"
     md += "| ID | Historia de Usuario | Requerimiento Formal | Tipo | Justificación | Prioridad | Seguimiento |\n"
@@ -441,7 +441,7 @@ def generate_traceability_matrix_md(central_init_json: dict) -> str:
         
     return md
 
-def calculate_quality_metrics(q_json: dict) -> dict:
+def calcular_metricas_calidad(q_json: dict) -> dict:
     """Calcula las métricas de calidad FCp-1-G y FAp-1-G en base a los datos extraídos por el agente."""
     funciones_esperadas = q_json.get("funciones_esperadas", 1)
     if funciones_esperadas <= 0:
@@ -476,7 +476,7 @@ def calculate_quality_metrics(q_json: dict) -> dict:
     }
     return q_json
 
-def calculate_security_metrics(s_json: dict) -> dict:
+def calcular_metricas_seguridad(s_json: dict) -> dict:
     """Calcula las métricas de seguridad en base a los datos extraídos por el agente."""
     requerimientos_evaluados = s_json.get("total_requerimientos_evaluados", 1)
     if requerimientos_evaluados <= 0:

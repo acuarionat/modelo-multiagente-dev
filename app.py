@@ -9,8 +9,8 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from integrations.gitlab_adapter import GitLabAdapter
-from integrations.issue_service import process_batch_workflow
-from database.repository import clear_tracking_data
+from integrations.issue_service import procesar_flujo_lote
+from database.repository import limpiar_datos_seguimiento
 
 st.set_page_config(page_title="Recepción de Requerimientos", page_icon="🦊", layout="wide")
 
@@ -21,7 +21,7 @@ st.markdown("Plataforma automatizada para análisis de Historias de Usuario.")
 with st.sidebar:
     st.header("Administración")
     if st.button("Limpiar Base de Seguimiento (Caché e Historial)"):
-        clear_tracking_data()
+        limpiar_datos_seguimiento()
         st.success("Base de datos limpia.")
 
 try:
@@ -35,7 +35,7 @@ except Exception as e:
 
 if "milestones" not in st.session_state:
     with st.spinner("Cargando Sprints desde GitLab..."):
-        st.session_state.milestones = adapter.get_milestones()
+        st.session_state.milestones = adapter.obtener_hitos()
         st.session_state.all_labels = set()
         # To get all labels, we'd have to fetch project labels, but we can just let user type or we use predefined.
         # Simplification: Let user type labels separated by comma.
@@ -59,7 +59,7 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
     
     with st.spinner("Obteniendo issues de GitLab..."):
         # Solo traer los que sean Historia de Usuario
-        issues = adapter.list_open_issues(milestone_title=milestone_val, labels=["Historia de Usuario"])
+        issues = adapter.listar_issues_abiertos(milestone_title=milestone_val, labels=["Historia de Usuario"])
         
     if not issues:
         st.info("No se encontraron 'Historias de Usuario' en el Sprint seleccionado.")
@@ -115,8 +115,8 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
             global_ph.markdown(f"**Procesando lote {batch_num} de {total_batches} ({len(batch)} historias)**... ⏳\n*(Agente Central -> Calidad -> Seguridad -> Evaluador -> Central Final)*")
             
             try:
-                from integrations.issue_service import process_batch_workflow
-                batch_result = process_batch_workflow(batch, project_name, sprint_context)
+                from integrations.issue_service import procesar_flujo_lote
+                batch_result = procesar_flujo_lote(batch, project_name, sprint_context)
                 batch_results = batch_result["issues"]
                 run_results.extend(batch_results)
                 
@@ -157,8 +157,8 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
         else:
             global_ph.markdown("**¡Análisis completo! Todos los lotes procesados.** ✔")
         if run_results:
-            from core.utils import build_batch_result
-            st.session_state.last_batch_result = build_batch_result(
+            from core.utils import construir_resultado_lote
+            st.session_state.last_batch_result = construir_resultado_lote(
                 project_name, milestone_val or "Personalizado", run_results
             )
         else:
@@ -175,7 +175,7 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
 if st.session_state.get("last_batch_result", {}).get("issues"):
     st.divider()
     from core.utils import (
-        generate_batch_formal_docx, generate_batch_report_pdf,
+        generar_documento_formal_lote_docx, generar_reporte_lote_pdf,
     )
     batch_result = st.session_state.last_batch_result
     results = batch_result["issues"]
@@ -226,11 +226,11 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
     col_pdf, col_docx = st.columns(2)
     with col_pdf:
         if st.button("Generar Reporte Ejecutivo del Lote"):
-            st.session_state.batch_pdf = generate_batch_report_pdf(batch_result).getvalue()
+            st.session_state.batch_pdf = generar_reporte_lote_pdf(batch_result).getvalue()
         if st.session_state.get("batch_pdf"):
             st.download_button("Descargar PDF consolidado", st.session_state.batch_pdf, "Reporte_Ejecutivo_Lote.pdf", "application/pdf")
     with col_docx:
         if st.button("Generar Documento Formal Consolidado"):
-            st.session_state.batch_docx = generate_batch_formal_docx(batch_result).getvalue()
+            st.session_state.batch_docx = generar_documento_formal_lote_docx(batch_result).getvalue()
         if st.session_state.get("batch_docx"):
             st.download_button("Descargar DOCX consolidado", st.session_state.batch_docx, "Requerimientos_Consolidados.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
