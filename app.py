@@ -12,13 +12,264 @@ from integrations.gitlab_adapter import GitLabAdapter
 from integrations.issue_service import procesar_flujo_lote
 from database.repository import limpiar_datos_seguimiento
 
-st.set_page_config(page_title="Recepción de Requerimientos", page_icon="🦊", layout="wide")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+EMI_LOGO_PATH = os.path.join(BASE_DIR, "assets", "emi_logo.png")
 
-st.title("🦊 Etapa 1: Recepción de Requerimientos (Vía GitLab)")
-st.markdown("Plataforma automatizada para análisis de Historias de Usuario.")
+st.set_page_config(page_title="EMI | Recepción de Requerimientos", page_icon="🏛️", layout="wide")
+
+st.markdown("""
+<style>
+    :root {
+        --emi-blue: #07549A;
+        --emi-blue-dark: #063A6B;
+        --emi-blue-soft: #EAF3FB;
+        --emi-yellow: #F2C300;
+        --emi-yellow-soft: #FFF8D6;
+        --emi-ink: #17324D;
+        --emi-line: #D8E4EF;
+    }
+
+    .stApp {
+        background: #FFFFFF;
+        color: var(--emi-ink);
+    }
+
+    [data-testid="stHeader"] {
+        background: rgba(255, 255, 255, 0.96);
+        border-bottom: 1px solid var(--emi-line);
+    }
+
+    [data-testid="stAppViewContainer"] > .main .block-container {
+        max-width: 1480px;
+        padding-top: 1.4rem;
+        padding-bottom: 3rem;
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, var(--emi-blue-dark) 0%, #0A4A83 100%);
+        border-right: 5px solid var(--emi-yellow);
+    }
+
+    [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+        padding-top: 1.2rem;
+    }
+
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] span:not([data-testid="stIconMaterial"]) {
+        color: #FFFFFF !important;
+    }
+
+    .emi-header {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 155px;
+        padding: 1.2rem 1.6rem;
+        background: linear-gradient(115deg, var(--emi-blue-dark), var(--emi-blue));
+        border-left: 9px solid var(--emi-yellow);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(6, 58, 107, 0.14);
+    }
+
+    .emi-eyebrow {
+        color: var(--emi-yellow);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        margin-bottom: 0.45rem;
+    }
+
+    .emi-header h1 {
+        color: #FFFFFF !important;
+        font-size: clamp(1.75rem, 3vw, 2.65rem);
+        line-height: 1.12;
+        margin: 0;
+        padding: 0;
+    }
+
+    .emi-header p {
+        color: #DDEEFF;
+        font-size: 1rem;
+        margin: 0.65rem 0 0;
+    }
+
+    h1, h2, h3 {
+        color: var(--emi-blue-dark) !important;
+        letter-spacing: -0.015em;
+    }
+
+    h2, h3 {
+        border-bottom: 3px solid var(--emi-yellow);
+        padding-bottom: 0.38rem;
+    }
+
+    div[data-testid="stForm"],
+    div[data-testid="stExpander"],
+    div[data-testid="stDataFrame"] {
+        border: 1px solid var(--emi-line);
+        border-radius: 9px;
+        box-shadow: 0 4px 14px rgba(7, 84, 154, 0.07);
+        overflow: hidden;
+    }
+
+    div[data-testid="stExpander"] details summary {
+        background: var(--emi-blue-soft);
+        color: var(--emi-blue-dark);
+        font-weight: 700;
+    }
+
+    div[data-testid="stMetric"] {
+        min-height: 112px;
+        padding: 1rem 1.1rem;
+        background: #FFFFFF;
+        border: 1px solid var(--emi-line);
+        border-top: 5px solid var(--emi-yellow);
+        border-radius: 9px;
+        box-shadow: 0 5px 16px rgba(7, 84, 154, 0.08);
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: #58708A;
+        font-weight: 700;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--emi-blue-dark);
+        font-weight: 800;
+    }
+
+    .stButton > button,
+    .stDownloadButton > button {
+        min-height: 2.85rem;
+        border-radius: 7px;
+        border: 2px solid var(--emi-blue);
+        background: #FFFFFF;
+        color: var(--emi-blue-dark);
+        font-weight: 750;
+        transition: all 0.18s ease;
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
+        border-color: var(--emi-yellow);
+        background: var(--emi-yellow-soft);
+        color: var(--emi-blue-dark);
+        transform: translateY(-1px);
+    }
+
+    .stButton > button[kind="primary"] {
+        border-color: var(--emi-blue);
+        background: var(--emi-blue);
+        color: #FFFFFF;
+        box-shadow: 0 5px 14px rgba(7, 84, 154, 0.2);
+    }
+
+    .stButton > button[kind="primary"]:hover {
+        border-color: var(--emi-yellow);
+        background: var(--emi-blue-dark);
+        color: var(--emi-yellow);
+    }
+
+    [data-testid="stSidebar"] .stButton > button {
+        border-color: var(--emi-yellow);
+        background: var(--emi-yellow);
+        color: var(--emi-blue-dark) !important;
+    }
+
+    [data-testid="stTextInput"] input,
+    [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        border-color: #B8CADB;
+        border-radius: 7px;
+        color: #111111 !important;
+    }
+
+    [data-testid="stTextInput"] input {
+        background: #FFFFFF !important;
+    }
+
+    [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        background: #F1F7FC !important;
+    }
+
+    [data-testid="stTextInput"] input,
+    [data-testid="stTextInput"] input::placeholder,
+    [data-testid="stSelectbox"] div[data-baseweb="select"] span,
+    [data-testid="stSelectbox"] div[data-baseweb="select"] input {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #111111 !important;
+    }
+
+    [data-baseweb="popover"],
+    [data-baseweb="popover"] > div,
+    [data-baseweb="popover"] ul {
+        background: #F7FBFF !important;
+    }
+
+    [data-baseweb="popover"] li,
+    [data-baseweb="popover"] div {
+        color: #111111 !important;
+    }
+
+    [data-baseweb="popover"] li:hover,
+    [data-baseweb="popover"] li[aria-selected="true"] {
+        background: #DCECF8 !important;
+        color: var(--emi-blue-dark) !important;
+    }
+
+    [data-testid="stTextInput"] input:focus {
+        border-color: var(--emi-blue);
+        box-shadow: 0 0 0 2px rgba(7, 84, 154, 0.13);
+    }
+
+    div[data-testid="stAlert"] {
+        border: 1px solid #BCD4E8;
+        border-left: 6px solid var(--emi-yellow);
+        border-radius: 7px;
+        background: #F5F9FD;
+        color: var(--emi-ink);
+    }
+
+    hr {
+        border-color: var(--emi-yellow) !important;
+        opacity: 0.7;
+    }
+
+    [data-testid="stCaptionContainer"] {
+        color: #5B7187;
+    }
+
+    @media (max-width: 800px) {
+        .emi-header { min-height: auto; padding: 1rem; }
+        [data-testid="stAppViewContainer"] > .main .block-container { padding-top: 0.8rem; }
+    }
+</style>
+""", unsafe_allow_html=True)
+
+logo_col, title_col = st.columns([1.05, 2.45])
+with logo_col:
+    st.image(EMI_LOGO_PATH, use_container_width=True)
+with title_col:
+    st.markdown("""
+    <div class="emi-header">
+        <div class="emi-eyebrow">Escuela Militar de Ingeniería</div>
+        <h1>Etapa 1 · Recepción de Requerimientos</h1>
+        <p>Control, evaluación asistida y trazabilidad de Historias de Usuario mediante GitLab.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.info("Las métricas e indicadores son valoraciones asistidas basadas en la evidencia disponible. Apoyan la decisión del responsable y no constituyen aprobación automática ni certificación.")
 
 # Sidebar options
 with st.sidebar:
+    st.image(EMI_LOGO_PATH, use_container_width=True)
+    st.markdown("### Sistema Multiagente")
+    st.caption("Recepción y seguimiento de requerimientos")
+    st.divider()
     st.header("Administración")
     if st.button("Limpiar Base de Seguimiento (Caché e Historial)"):
         limpiar_datos_seguimiento()
@@ -123,8 +374,11 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
                 for res in batch_results:
                     iid = res["issue_iid"]
                     st.session_state.processed_results[iid] = res
-                    if res["status"] == "ok":
-                        st.markdown(f"**HU-{iid}** ✔ Requerimientos formalizados y evaluados")
+                    if res.get("estado_procesamiento") == "informacion_insuficiente":
+                        st.warning(f"**HU-{iid}** — Información insuficiente: {', '.join(res['validacion_entrada']['campos_faltantes'])}. No fue enviada al modelo.")
+                        incomplete_stories.append(iid)
+                    elif res["status"] == "ok":
+                        st.markdown(f"**HU-{iid}** ✔ Procesamiento completo · Evaluación: {res['estado_evaluacion']}")
                     else:
                         st.error(f"HU-{iid} — {' '.join(res['errors'])} No se publicó comentario ni se actualizó la etiqueta.")
                         incomplete_stories.append(iid)
@@ -185,12 +439,25 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
     a, b, c, d = st.columns(4)
     a.metric("Historias procesadas", summary["procesadas"])
     b.metric("Con error", summary["errores"])
-    c.metric("Calidad promedio", f"{summary['calidad_promedio'] * 100:.0f} %" if summary["calidad_promedio"] is not None else "N/D")
-    d.metric("Seguridad promedio", f"{summary['seguridad_promedio'] * 100:.0f} %" if summary["seguridad_promedio"] is not None else "N/D")
+    c.metric("Índice parcial de calidad promedio", f"{summary['calidad_promedio'] * 100:.0f} %" if summary["calidad_promedio"] is not None else "N/D")
+    d.metric("Cobertura documental de seguridad promedio", f"{summary['seguridad_promedio'] * 100:.0f} %" if summary["seguridad_promedio"] is not None else "N/D")
     st.write(f"**Veredictos:** {summary['veredictos']} — **Requerimientos sugeridos:** {summary['requerimientos']}")
+    st.write(
+        f"**Total:** {summary['total']} · **Aprobadas:** {summary['aprobadas']} · "
+        f"**Requieren corrección:** {summary['requieren_correccion']} · **Alertas:** {summary['alertas']} · "
+        f"**Información insuficiente:** {summary['informacion_insuficiente']}"
+    )
+    st.write(
+        f"**Calidad mínima:** {summary['calidad_minima'] * 100:.0f} %" if summary["calidad_minima"] is not None else "**Calidad mínima:** N/D",
+        f" · **Seguridad mínima:** {summary['seguridad_minima'] * 100:.0f} %" if summary["seguridad_minima"] is not None else " · **Seguridad mínima:** N/D",
+        f" · **Historias bajo meta:** {summary['historias_bajo_meta']} · **Riesgos críticos:** {summary['riesgos_criticos']}"
+    )
 
     st.subheader("Resultados por historia")
     for result in results:
+        if result.get("estado_procesamiento") == "informacion_insuficiente":
+            st.warning(f"HU-{result['issue_iid']:03d} — Información insuficiente: {', '.join(result['validacion_entrada']['campos_faltantes'])}")
+            continue
         if result["status"] != "ok":
             st.error(f"HU-{result['issue_iid']:03d} — {' '.join(result['errors'])}")
             continue
@@ -198,7 +465,10 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         security, evaluation = result["security"], result["evaluation"]
         title = f"{central['historia_id']} — {central['titulo']}"
         with st.expander(title):
-            st.write(f"**Veredicto:** {evaluation['veredicto']} · **Calidad:** {quality['indice'] * 100:.0f} % · **Seguridad:** {security['indice'] * 100:.0f} % · **LoT:** {security.get('lot_recomendado', 'No informado')}")
+            quality_value = f"{quality['indice'] * 100:.0f} %" if quality.get("indice") is not None else "N/D"
+            security_value = f"{security['indice'] * 100:.0f} %" if security.get("indice") is not None else "N/D"
+            st.write(f"**Estado de evaluación asistida:** {result['estado_evaluacion']} · **Índice parcial de calidad funcional:** {quality_value} · **Índice de cobertura documental de seguridad:** {security_value} · **Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}")
+            st.caption("El LoT no representa la confianza del modelo. La aceptación final requiere revisión humana.")
             st.write(f"**Requerimientos sugeridos:** {len(central['requerimientos'])} · **Correcciones obligatorias:** {len(evaluation.get('correcciones_obligatorias', []))}")
             st.write("**Métricas de calidad:**", quality.get("metricas", {}))
             st.write("**Métricas de seguridad:**", security.get("metricas", {}))

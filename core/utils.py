@@ -1,13 +1,16 @@
-from docx import Document
 import io
-from fpdf import FPDF
-from fpdf.enums import XPos, YPos
 from datetime import datetime
 import json
 import unicodedata
 import re
 from difflib import SequenceMatcher
 from core.batch_contract import recopilar_recomendaciones
+
+DECISION_SUPPORT_NOTICE = (
+    "El modelo multiagente apoya el control, seguimiento y trazabilidad del desarrollo. "
+    "Sus métricas, evidencias y recomendaciones son orientativas, no constituyen certificación automática "
+    "ni sustituyen la revisión y decisión del responsable del proyecto."
+)
 
 def limpiar_texto_para_pdf(text: str) -> str:
     """Limpia el texto para evitar problemas con la fuente base de FPDF."""
@@ -19,7 +22,7 @@ def limpiar_texto_para_pdf(text: str) -> str:
 def extraer_porcentaje(val) -> str:
     if isinstance(val, (int, float)):
         return f"{round(val * 100)} %"
-    return str(val)
+    return "N/D" if val is None else str(val)
 
 
 def construir_filas_trazabilidad(batch_results: list) -> list:
@@ -29,6 +32,8 @@ def construir_filas_trazabilidad(batch_results: list) -> list:
             continue
         central = result["central"]
         history = f"{central['historia_id']} — {central['titulo']}"
+        issue_data = result.get("issue_data", {})
+        criterios = issue_data.get("criterios_aceptacion", [])
         for requirement in central["requerimientos"]:
             rows.append({
                 "id": requirement["id"],
@@ -38,6 +43,14 @@ def construir_filas_trazabilidad(batch_results: list) -> list:
                 "justificacion": requirement.get("justificacion", ""),
                 "prioridad": requirement.get("prioridad", ""),
                 "seguimiento": "Sugerido",
+                "origen_textual": requirement.get("origen", ""),
+                "procedencia": requirement.get("procedencia", "inferido"),
+                "criterio_aceptacion_relacionado": " | ".join(criterios),
+                "observacion": " | ".join(central.get("observaciones", [])),
+                "estado_evaluacion": result.get("estado_evaluacion", "NO_EVALUADO"),
+                "fecha_analisis": datetime.now().strftime("%Y-%m-%d"),
+                "responsable_revision_humana": result.get("responsable_revision") or "",
+                "estado_aprobacion_humana": result.get("estado_revision_humana", "pendiente").capitalize(),
             })
     if not rows:
         raise ValueError("No fue posible construir la matriz porque el Agente Central no devolvió requerimientos formalizados.")
@@ -46,19 +59,35 @@ def construir_filas_trazabilidad(batch_results: list) -> list:
 
 def calcular_resumen_lote(batch_results: list) -> dict:
     valid = [x for x in batch_results if x.get("status") == "ok"]
-    quality = [x["quality"]["indice"] for x in valid]
-    security = [x["security"]["indice"] for x in valid]
+    quality = [x["quality"]["indice"] for x in valid if isinstance(x["quality"].get("indice"), (int, float))]
+    security = [x["security"]["indice"] for x in valid if isinstance(x["security"].get("indice"), (int, float))]
     verdicts = {}
     for item in valid:
         verdict = item["evaluation"]["veredicto"]
         verdicts[verdict] = verdicts.get(verdict, 0) + 1
+    insufficient = [x for x in batch_results if x.get("estado_procesamiento") == "informacion_insuficiente"]
+    critical_risks = sum(len(x["evaluation"].get("riesgos_criticos", [])) for x in valid)
+    below_target = sum(
+        (isinstance(x["quality"].get("indice"), (int, float)) and x["quality"]["indice"] < 0.95)
+        or (isinstance(x["security"].get("indice"), (int, float)) and x["security"]["indice"] < 0.85)
+        for x in valid
+    )
     return {
+        "total": len(batch_results),
         "procesadas": len(valid),
         "errores": len(batch_results) - len(valid),
         "veredictos": verdicts,
         "calidad_promedio": sum(quality) / len(quality) if quality else None,
         "seguridad_promedio": sum(security) / len(security) if security else None,
         "requerimientos": sum(len(x["central"]["requerimientos"]) for x in valid),
+        "aprobadas": verdicts.get("APROBADO", 0),
+        "requieren_correccion": verdicts.get("CORREGIR", 0),
+        "alertas": verdicts.get("ALERTA", 0),
+        "informacion_insuficiente": len(insufficient),
+        "calidad_minima": min(quality) if quality else None,
+        "seguridad_minima": min(security) if security else None,
+        "historias_bajo_meta": below_target,
+        "riesgos_criticos": critical_risks,
     }
 
 
@@ -98,10 +127,14 @@ def construir_resultado_lote(project_name: str, milestone: str, issues: list) ->
         "requirements": requirements,
         "recommendations": recommendations,
         "traceability_rows": traceability_rows,
+        "descripcion_resultado": DECISION_SUPPORT_NOTICE,
+        "revision_humana_requerida": True,
     }
 
 
 def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
     project_name = batch_result["project"]["name"]
     milestone = batch_result["milestone"]["name"]
     batch_results = batch_result["issues"]
@@ -120,20 +153,21 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         pdf.set_font("Helvetica", size=10)
         pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
     encabezado("Reporte Ejecutivo Consolidado", 16)
+    linea(DECISION_SUPPORT_NOTICE)
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
     linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
     pdf.ln(4)
     encabezado("Resumen global", 13)
     linea(f"Historias procesadas: {summary['procesadas']} | Con error: {summary['errores']}")
-    linea(f"Calidad promedio: {extraer_porcentaje(summary['calidad_promedio'])}")
-    linea(f"Seguridad promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
+    linea(f"Índice parcial de calidad promedio: {extraer_porcentaje(summary['calidad_promedio'])}")
+    linea(f"Cobertura documental de seguridad promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
     linea(f"Requerimientos sugeridos: {summary['requerimientos']}")
     for result in valid:
         c, q, s, e = result["central"], result["quality"], result["security"], result["evaluation"]
         pdf.add_page()
         encabezado(f"{c['historia_id']} — {c['titulo']}", 13)
-        linea(f"Veredicto: {e['veredicto']} | Calidad: {extraer_porcentaje(q['indice'])} | Seguridad: {extraer_porcentaje(s['indice'])} | LoT: {s.get('lot_recomendado', 'No informado')}")
+        linea(f"Estado de evaluación: {e['veredicto']} | Índice parcial de calidad: {extraer_porcentaje(q['indice'])} | Cobertura documental de seguridad: {extraer_porcentaje(s['indice'])} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
         linea(f"Actor: {c.get('actor', '')}")
         linea(f"Objetivo: {c.get('objetivo', '')}")
         encabezado("Métricas de calidad", 11)
@@ -153,10 +187,12 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         for requirement in c["requerimientos"]:
             linea(f"{requirement['id']} — {requirement.get('nombre', '')}")
             linea(requirement.get("descripcion_formal", ""))
+            linea(f"Procedencia: {requirement.get('procedencia', 'inferido')}")
     return io.BytesIO(pdf.output(dest="S"))
 
 
 def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
+    from docx import Document
     project_name = batch_result["project"]["name"]
     milestone = batch_result["milestone"]["name"]
     batch_results = batch_result["issues"]
@@ -166,6 +202,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     rows = batch_result["traceability_rows"]
     doc = Document()
     doc.add_heading("Documento Formal Consolidado de Requerimientos", 0)
+    doc.add_paragraph(DECISION_SUPPORT_NOTICE)
     doc.add_paragraph(f"Proyecto: {project_name}")
     doc.add_paragraph(f"Milestone: {milestone}")
     doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
@@ -194,6 +231,8 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
             doc.add_paragraph(f"Prioridad: {requirement.get('prioridad', '')}")
             doc.add_paragraph(f"Origen: {origin}")
             doc.add_paragraph(f"Justificación: {requirement.get('justificacion', '')}")
+            doc.add_paragraph(f"Procedencia: {requirement.get('procedencia', 'inferido')}")
+            doc.add_paragraph("Revisión humana: Pendiente")
     doc.add_heading("6. Restricciones consolidadas", 1)
     restrictions = dict.fromkeys(r for x in valid for r in x["central"].get("restricciones", []))
     for restriction in restrictions: doc.add_paragraph(restriction, style="List Bullet")
@@ -204,12 +243,21 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     else:
         doc.add_paragraph("No se identificaron correcciones adicionales para el lote analizado.")
     doc.add_heading("8. Matriz de trazabilidad", 1)
-    table = doc.add_table(rows=1, cols=7)
+    matrix_keys = [
+        "id", "historia", "requerimiento_formal", "tipo", "justificacion", "prioridad", "seguimiento",
+        "origen_textual", "procedencia", "criterio_aceptacion_relacionado", "observacion",
+        "estado_evaluacion", "fecha_analisis", "responsable_revision_humana", "estado_aprobacion_humana",
+    ]
+    table = doc.add_table(rows=1, cols=len(matrix_keys))
     table.style = "Table Grid"
-    headers = ["ID", "Historia", "Requerimiento", "Tipo", "Justificación", "Prioridad", "Seguimiento"]
+    headers = [
+        "ID", "Historia", "Requerimiento", "Tipo", "Justificación", "Prioridad", "Seguimiento",
+        "Origen", "Procedencia", "Criterio de aceptación", "Observación", "Estado de evaluación",
+        "Fecha", "Responsable revisión", "Aprobación humana",
+    ]
     for cell, value in zip(table.rows[0].cells, headers): cell.text = value
     for row in rows:
-        for cell, key in zip(table.add_row().cells, ["id", "historia", "requerimiento_formal", "tipo", "justificacion", "prioridad", "seguimiento"]):
+        for cell, key in zip(table.add_row().cells, matrix_keys):
             cell.text = str(row[key])
     output = io.BytesIO()
     doc.save(output)
@@ -218,6 +266,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
 
 def generar_documento_formal_docx(project_name: str, issue_iid: int, central_init: dict, quality_json: dict, security_json: dict, eval_json: dict, parsed_cf: dict) -> io.BytesIO:
     """Genera el Documento Formal de Requerimientos en Word."""
+    from docx import Document
     doc = Document()
     req_id = f"REQ-{datetime.now().year}-{issue_iid:03d}"
     
@@ -306,6 +355,8 @@ def generar_documento_formal_docx(project_name: str, issue_iid: int, central_ini
     return doc_io
 
 def generar_reporte_evaluacion_pdf(project_name: str, issue_iid: int, quality_json: dict, security_json: dict, eval_json: dict, central_init: dict, parsed_cf: dict) -> io.BytesIO:
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
     """Genera el Reporte Ejecutivo en PDF estructurado según el plan simplificado."""
     pdf = FPDF()
     pdf.set_margins(left=25, top=25, right=25)

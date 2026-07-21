@@ -1,5 +1,51 @@
 import re
 
+VALORES_DESCONOCIDOS = {"", "desconocido", "desconocida", "n/a", "no especificado", "sin información"}
+
+
+def _texto_identificado(value) -> bool:
+    return isinstance(value, str) and value.strip().casefold() not in VALORES_DESCONOCIDOS
+
+
+def validar_entrada_issue(issue_data: dict) -> dict:
+    """Clasifica una historia antes de invocar al modelo, sin exigir campos opcionales."""
+    faltantes = []
+    if not _texto_identificado(issue_data.get("titulo")):
+        faltantes.append("titulo")
+    if not _texto_identificado(issue_data.get("descripcion_original")):
+        faltantes.append("descripcion")
+    for field in ("actor", "funcionalidad", "objetivo"):
+        if not _texto_identificado(issue_data.get(field)):
+            faltantes.append(field)
+    criterios = [x for x in issue_data.get("criterios_aceptacion", []) if _texto_identificado(x)]
+    if not criterios:
+        faltantes.append("criterios_aceptacion")
+
+    advertencias = []
+    if not _texto_identificado(issue_data.get("prioridad")):
+        advertencias.append("prioridad no especificada")
+    if not issue_data.get("restricciones"):
+        advertencias.append("restricciones no especificadas")
+    if not _texto_identificado(issue_data.get("observaciones")):
+        advertencias.append("observaciones no especificadas")
+
+    if faltantes:
+        estado = "informacion_insuficiente"
+    elif advertencias:
+        estado = "entrada_con_advertencias"
+    else:
+        estado = "entrada_valida"
+    return {"estado": estado, "campos_faltantes": faltantes, "advertencias": advertencias}
+
+
+def separar_entradas_para_analisis(issues_data: list, allow_incomplete: bool = False) -> tuple[list, list]:
+    insufficient = [
+        item for item in issues_data
+        if item.get("validacion_entrada", {}).get("estado") == "informacion_insuficiente"
+    ]
+    processable = issues_data if allow_incomplete else [item for item in issues_data if item not in insufficient]
+    return processable, insufficient
+
 def mapear_issue_a_json(issue) -> dict:
     """
     Convierte una Historia de Usuario de GitLab en una representación estructurada
@@ -9,8 +55,8 @@ def mapear_issue_a_json(issue) -> dict:
     
     def extraer_seccion(header: str) -> str:
         # Busca el header, captura todo hasta el siguiente ## o el final del string.
-        pattern = rf"##\s*{header}\s*(.*?)(?=\n##\s*|$)"
-        match = re.search(pattern, description_text, re.IGNORECASE | re.DOTALL)
+        pattern = rf"^\s*#{{1,6}}\s*{header}\s*:?[ \t]*(.*?)(?=^\s*#{{1,6}}\s+|\Z)"
+        match = re.search(pattern, description_text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
         if match:
             return match.group(1).strip()
         return ""
@@ -50,6 +96,7 @@ def mapear_issue_a_json(issue) -> dict:
     parsed_json = {
         "id": str(issue.iid),
         "titulo": titulo,
+        "descripcion_original": description_text.strip(),
         "actor": actor,
         "funcionalidad": funcionalidad,
         "objetivo": objetivo,
@@ -59,5 +106,6 @@ def mapear_issue_a_json(issue) -> dict:
         "observaciones": extraer_seccion("Observaciones"),
         "labels": issue.labels
     }
+    parsed_json["validacion_entrada"] = validar_entrada_issue(parsed_json)
     
     return parsed_json

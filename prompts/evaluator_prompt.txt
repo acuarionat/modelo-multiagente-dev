@@ -4,7 +4,7 @@ Entrada de Calidad y Seguridad calculada: {evaluation_input}
 
 Devuelve exclusivamente un objeto JSON con agente="evaluador" y un resultado por cada ID obligatorio. Conserva exactamente los IDs recibidos; no uses 1..N.
 Cada resultado debe incluir issue_iid, historia_id, veredicto, riesgos_criticos, correcciones_obligatorias y conclusion.
-El veredicto sólo puede ser APROBADO, CORREGIR o ALERTA. La conclusión debe explicar específicamente la decisión usando los resultados de esa historia. Las correcciones deben corresponder a problemas identificados por Calidad o Seguridad. No uses puntos suspensivos, marcadores, N/A, frases genéricas ni cadenas vacías.
+El veredicto sólo puede ser APROBADO, CORREGIR o ALERTA y representa una valoración de apoyo, no aceptación formal. No propongas APROBADO si hay riesgos críticos, evidencia insuficiente o correcciones obligatorias. Distingue observaciones bloqueantes de observaciones menores y explica la siguiente acción recomendada. La conclusión debe explicar específicamente la decisión usando los resultados de esa historia. Las correcciones deben corresponder a problemas identificados por Calidad o Seguridad. No uses puntos suspensivos, marcadores, N/A, frases genéricas ni cadenas vacías.
 
 Forma requerida:
 {{"agente":"evaluador","resultados":[{{"issue_iid":999,"historia_id":"HU-999","veredicto":"CORREGIR","riesgos_criticos":["Riesgo concreto identificado"],"correcciones_obligatorias":["Corrección concreta requerida"],"conclusion":"Decisión específica sustentada en las métricas recibidas."}}]}}

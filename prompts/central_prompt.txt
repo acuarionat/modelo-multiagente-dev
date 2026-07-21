@@ -16,9 +16,10 @@ Cada elemento de requerimientos debe incluir obligatoriamente:
 - origen: necesidad, criterio de aceptación o restricción textual que lo origina.
 - justificacion: explicación concreta de por qué se deriva ese requerimiento.
 - prioridad: copia la prioridad de la historia salvo razón explícita para cambiarla.
+- procedencia: usa únicamente "extraido" cuando el contenido esté explícito en la historia, "inferido" cuando se deduzca del contexto o "recomendado" cuando sea una mejora propuesta.
 
-Genera requerimientos completos, no sólo identificadores o tipos. No uses puntos suspensivos, marcadores, N/A, "No especificado", "Sin información" ni cadenas vacías. No evalúes Calidad ni Seguridad.
+No completes silenciosamente datos faltantes ni presentes inferencias como hechos de la fuente. Registra la ausencia de evidencia en informacion_faltante y conserva las inferencias o propuestas únicamente con su procedencia correcta. Genera requerimientos completos, no sólo identificadores o tipos. No uses puntos suspensivos, marcadores, N/A, "No especificado", "Sin información" ni cadenas vacías. No evalúes Calidad ni Seguridad.
 
 Forma JSON requerida:
-{{"agente":"central","milestone":"valor del contexto","resultados":[{{"issue_iid":999,"historia_id":"HU-999","titulo":"Título real","actor":"Actor real","objetivo":"Objetivo real","prioridad":"Alta","requerimientos":[{{"temp_id":"RF-TEMP-01","nombre":"Nombre concreto","descripcion_formal":"El sistema deberá realizar una acción verificable derivada de la historia.","tipo":"RF","origen":"Texto real de origen","justificacion":"Explicación específica vinculada al origen.","prioridad":"Alta"}}],"restricciones":[],"ambiguedades":[],"informacion_faltante":[],"observaciones":[]}}]}}
+{{"agente":"central","milestone":"valor del contexto","resultados":[{{"issue_iid":999,"historia_id":"HU-999","titulo":"Título real","actor":"Actor real","objetivo":"Objetivo real","prioridad":"Alta","requerimientos":[{{"temp_id":"RF-TEMP-01","nombre":"Nombre concreto","descripcion_formal":"El sistema deberá realizar una acción verificable derivada de la historia.","tipo":"RF","origen":"Texto real de origen","justificacion":"Explicación específica vinculada al origen.","prioridad":"Alta","procedencia":"extraido"}}],"restricciones":[],"ambiguedades":[],"informacion_faltante":[],"observaciones":[]}}]}}
 El 999 es sólo una descripción del tipo de dato: reemplázalo por cada ID GitLab obligatorio real.

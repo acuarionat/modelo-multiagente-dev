@@ -223,6 +223,7 @@ def nodo_central_final(state: AgentState):
         analizar_respuesta_lote(state["evaluation"], "Evaluador"),
         state.get("validation_errors", []),
         state.get("content_validation_errors", {}),
+        {int(item["id"]): item.get("validacion_entrada", {}) for item in state["issues_data"]},
     )
     final_report = json.dumps(final, ensure_ascii=False)
     
