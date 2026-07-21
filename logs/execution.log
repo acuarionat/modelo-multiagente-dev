@@ -820,3 +820,13 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-07-21 00:40:09,332 - [INFO] - ✔ Consolidación Central completada en 0.00 segundos.
 2026-07-21 00:40:09,332 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Final", "timestamp": "2026-07-21T00:40:09.332", "elapsed_seconds": 0.0042}
 2026-07-21 00:40:12,420 - [INFO] - Flujo de lote terminado en 989.37s.
+2026-07-21 01:05:24,635 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto

@@ -243,12 +243,211 @@ st.markdown("""
         color: #5B7187;
     }
 
+    .st-key-stage_shell {
+        position: relative;
+        max-width: 1040px;
+        margin: 0.9rem auto 0.7rem;
+        padding: 0.7rem 1.25rem 0.45rem;
+        background: #FFFFFF;
+        border-top: 1px solid #E5ECF3;
+        border-bottom: 1px solid #D8E2EC;
+    }
+
+    .stage-track {
+        position: absolute;
+        top: 2.55rem;
+        left: 12.5%;
+        right: 12.5%;
+        height: 2px;
+        background: #DCE5EE;
+        z-index: 0;
+    }
+
+    .stage-label {
+        min-height: 1.35rem;
+        margin-top: 0.15rem;
+        color: #8A9DB5;
+        font-size: 0.75rem;
+        font-weight: 700;
+        line-height: 1.15;
+        text-align: center;
+    }
+
+    .stage-label.active { color: var(--emi-blue-dark); }
+
+    .stage-status {
+        display: none;
+    }
+
+    [class*="st-key-stage_nav_"] {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: center;
+    }
+
+    .st-key-stage_shell [class*="st-key-stage_nav_"] button {
+        width: 3.3rem !important;
+        min-width: 3.3rem !important;
+        height: 3.3rem !important;
+        min-height: 3.3rem !important;
+        padding: 0.15rem;
+        border: 2px solid #FFFFFF !important;
+        border-radius: 50% !important;
+        background: #0878D1 !important;
+        color: var(--emi-yellow) !important;
+        -webkit-text-fill-color: var(--emi-yellow) !important;
+        font-size: 1.4rem !important;
+        font-weight: 850;
+        line-height: 1;
+        position: relative;
+        text-shadow: 0 1px 1px rgba(6, 58, 107, 0.35);
+        box-shadow: 0 0 0 4px #FFFFFF, 0 3px 8px rgba(7, 84, 154, 0.16);
+    }
+
+    .st-key-stage_shell [class*="st-key-stage_nav_"] button::after {
+        position: absolute;
+        right: -0.18rem;
+        bottom: -0.12rem;
+        display: grid;
+        place-items: center;
+        width: 1.12rem;
+        height: 1.12rem;
+        border: 2px solid #FFFFFF;
+        border-radius: 50%;
+        background: var(--emi-yellow);
+        color: var(--emi-blue-dark);
+        -webkit-text-fill-color: var(--emi-blue-dark) !important;
+        font-size: 0.62rem;
+        font-weight: 900;
+        line-height: 1;
+        text-shadow: none;
+    }
+
+    .st-key-stage_shell [class*="st-key-stage_nav_"] button p {
+        margin: 0 !important;
+        color: var(--emi-yellow) !important;
+        -webkit-text-fill-color: var(--emi-yellow) !important;
+        font-size: 1.4rem !important;
+        line-height: 1 !important;
+    }
+
+    [class*="st-key-stage_nav_requerimientos_"] button::after { content: "1"; }
+    [class*="st-key-stage_nav_diseno_"] button::after { content: "2"; }
+    [class*="st-key-stage_nav_codificacion_"] button::after { content: "3"; }
+    [class*="st-key-stage_nav_pruebas_"] button::after { content: "4"; }
+
+    .st-key-stage_shell [class*="st-key-stage_nav_"] button:hover {
+        border-color: var(--emi-yellow) !important;
+        background: #0968B5 !important;
+        color: #FFE24A !important;
+        -webkit-text-fill-color: #FFE24A !important;
+        transform: translateY(-1px);
+    }
+
+    .st-key-stage_shell [class*="st-key-stage_nav_"][class*="_active"] button {
+        border: 2px solid #FFFFFF !important;
+        background: #005CB9 !important;
+        color: var(--emi-yellow) !important;
+        -webkit-text-fill-color: var(--emi-yellow) !important;
+        box-shadow: 0 0 0 5px #79B9EC, 0 3px 10px rgba(6, 58, 107, 0.28);
+    }
+
+    .coming-soon {
+        margin-top: 1rem;
+        padding: 2.5rem 2rem;
+        border: 1px solid var(--emi-line);
+        border-top: 6px solid var(--emi-yellow);
+        border-radius: 12px;
+        background: linear-gradient(145deg, #FFFFFF, #F5F9FD);
+        box-shadow: 0 8px 24px rgba(7, 84, 154, 0.09);
+        text-align: center;
+    }
+
+    .coming-soon-icon { font-size: 3rem; }
+    .coming-soon h2 { border: 0; margin: 0.6rem 0; }
+    .coming-soon-badge {
+        display: inline-block;
+        margin-top: 0.8rem;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        background: var(--emi-yellow-soft);
+        color: var(--emi-blue-dark);
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
     @media (max-width: 800px) {
         .emi-header { min-height: auto; padding: 1rem; }
+        .st-key-stage_shell { padding: 0.6rem 0.2rem 0.35rem; }
+        .stage-track { left: 13%; right: 13%; }
+        .st-key-stage_shell [class*="st-key-stage_nav_"] button {
+            width: 2.85rem !important; min-width: 2.85rem !important;
+            height: 2.85rem !important; min-height: 2.85rem !important;
+            font-size: 0.9rem !important;
+        }
+        .st-key-stage_shell [class*="st-key-stage_nav_"] button p { font-size: 1.15rem !important; }
+        .stage-label { font-size: 0.65rem; }
         [data-testid="stAppViewContainer"] > .main .block-container { padding-top: 0.8rem; }
     }
 </style>
 """, unsafe_allow_html=True)
+
+STAGES = (
+    ("requerimientos", "Requerimientos", "Recepción de requerimientos", "☷"),
+    ("diseno", "Diseño", "Diseño", "◇"),
+    ("codificacion", "Codificación", "Codificación", "</>"),
+    ("pruebas", "Pruebas", "Pruebas", "✓"),
+)
+
+
+def render_stage_navigation():
+    """Renderiza el menú no lineal y conserva la etapa elegida en la sesión."""
+    if st.session_state.get("etapa_actual") not in {stage[0] for stage in STAGES}:
+        st.session_state["etapa_actual"] = "requerimientos"
+
+    current = st.session_state["etapa_actual"]
+    with st.container(key="stage_shell"):
+        st.markdown('<div class="stage-track"></div>', unsafe_allow_html=True)
+        columns = st.columns(4)
+        for index, (stage_id, short_name, full_name, icon) in enumerate(STAGES, start=1):
+            with columns[index - 1]:
+                state_suffix = "active" if current == stage_id else "pending"
+                if st.button(
+                    icon,
+                    key=f"stage_nav_{stage_id}_{state_suffix}",
+                    help=full_name,
+                    use_container_width=False,
+                ):
+                    st.session_state["etapa_actual"] = stage_id
+                    st.rerun()
+                label_class = "stage-label active" if current == stage_id else "stage-label"
+                st.markdown(f'<div class="{label_class}" title="{full_name}">{short_name}</div>', unsafe_allow_html=True)
+        current_name = next(stage[2] for stage in STAGES if stage[0] == current)
+        st.markdown(f'<div class="stage-status">Etapa actual: {current_name}</div>', unsafe_allow_html=True)
+
+
+def render_coming_soon(stage_id):
+    stage = next(item for item in STAGES if item[0] == stage_id)
+    st.markdown(
+        f"""
+        <div class="coming-soon">
+            <div class="coming-soon-icon">{stage[3]}</div>
+            <h2>Etapa de {stage[2]}</h2>
+            <p>Esta etapa forma parte del flujo de control, seguimiento y trazabilidad del
+            desarrollo de software. Su funcionalidad será incorporada en una siguiente
+            versión del sistema.</p>
+            <span class="coming-soon-badge">Próximamente</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    _, center, _ = st.columns([1, 1.3, 1])
+    with center:
+        if st.button("← Volver a Recepción de requerimientos", type="primary", use_container_width=True):
+            st.session_state["etapa_actual"] = "requerimientos"
+            st.rerun()
 
 logo_col, title_col = st.columns([1.05, 2.45])
 with logo_col:
@@ -257,10 +456,16 @@ with title_col:
     st.markdown("""
     <div class="emi-header">
         <div class="emi-eyebrow">Escuela Militar de Ingeniería</div>
-        <h1>Etapa 1 · Recepción de Requerimientos</h1>
-        <p>Control, evaluación asistida y trazabilidad de Historias de Usuario mediante GitLab.</p>
+        <h1>Modelo Multiagente de Control y Seguimiento</h1>
+        <p>Proceso adaptativo para el desarrollo y la trazabilidad de software.</p>
     </div>
     """, unsafe_allow_html=True)
+
+render_stage_navigation()
+
+if st.session_state["etapa_actual"] != "requerimientos":
+    render_coming_soon(st.session_state["etapa_actual"])
+    st.stop()
 
 st.info("Las métricas e indicadores son valoraciones asistidas basadas en la evidencia disponible. Apoyan la decisión del responsable y no constituyen aprobación automática ni certificación.")
 
