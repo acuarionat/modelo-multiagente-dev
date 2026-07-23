@@ -4,7 +4,8 @@ import unittest
 from core.batch_contract import (
     calcular_metricas_agente, calcular_num_predict, recopilar_recomendaciones,
     consolidar_lote, analizar_respuesta_lote, conciliar_ids_issues,
-    validar_contenido_agente, validar_respuesta_lote,
+    explicar_texto_invalido, normalizar_lista_textos, validar_contenido_agente,
+    validar_respuesta_lote,
 )
 
 
@@ -13,6 +14,18 @@ def batch(agent, results):
 
 
 class BatchContractTests(unittest.TestCase):
+
+    def test_normalizes_text_lists_without_splitting_characters(self):
+        self.assertEqual(normalizar_lista_textos("Corregir permisos"), ["Corregir permisos"])
+        self.assertEqual(normalizar_lista_textos(["Uno", " Dos "]), ["Uno", "Dos"])
+        self.assertEqual(normalizar_lista_textos(None), [])
+        self.assertEqual(normalizar_lista_textos([]), [])
+
+    def test_security_rejection_explains_exact_generic_fragment(self):
+        reason = explicar_texto_invalido("Control concreto")
+        self.assertIn("texto genérico", reason)
+        self.assertIn("control concreto", reason)
+
     def setUp(self):
         self.central = batch("central", [
             {"issue_iid": 22, "historia_id": "HU-022", "titulo": "B", "actor": "Y", "objetivo": "OB", "requerimientos": [{"id": "RF-001", "tipo": "RF", "nombre": "B1", "descripcion": "DB", "justificacion": "JB", "prioridad": "Alta"}]},
@@ -120,6 +133,22 @@ class BatchContractTests(unittest.TestCase):
             "central": {"observaciones": []},
         }
         self.assertEqual(recopilar_recomendaciones(result), ["Definir corrección.", "Agregar auditoría.", "Definir permisos."])
+
+    def test_collects_string_recommendation_as_one_item(self):
+        result = {"quality": {"recomendaciones": "Aclarar el objetivo."}}
+        self.assertEqual(recopilar_recomendaciones(result), ["Aclarar el objetivo."])
+
+    def test_adequacy_matches_case_accents_spacing_and_punctuation(self):
+        response = batch("calidad", [{"issue_iid": 6, "metricas": {
+            "cobertura_funcional": {"elementos_evaluados": ["Mostrar horarios"], "elementos_con_problemas": []},
+            "adecuacion_funcional": {
+                "elementos_evaluados": ["Mostrar  horarios disponibles"],
+                "elementos_alineados": ["MOSTRAR HORARIOS DISPONÍBLES."],
+                "elementos_con_problemas": [],
+            },
+        }}])
+        calcular_metricas_agente(response, "Calidad")
+        self.assertEqual(response["resultados"][0]["metricas"]["adecuacion_funcional"]["valor"], 1.0)
 
     def test_dynamic_output_budget(self):
         self.assertEqual(calcular_num_predict("Central_Init", 5), 1900)

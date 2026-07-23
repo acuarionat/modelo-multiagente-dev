@@ -57,15 +57,18 @@ class InputValidationTests(unittest.TestCase):
 
     def test_missing_actor(self):
         data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION.replace("**Como** administrador\n", "")))
-        self.assertIn("actor", data["validacion_entrada"]["campos_faltantes"])
+        self.assertNotEqual(data["validacion_entrada"]["estado"], "informacion_insuficiente")
+        self.assertIn("actor no identificado", data["validacion_entrada"]["advertencias"])
 
     def test_missing_objective(self):
         data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION.replace("**Para** permitir su acceso", "")))
-        self.assertIn("objetivo", data["validacion_entrada"]["campos_faltantes"])
+        self.assertNotEqual(data["validacion_entrada"]["estado"], "informacion_insuficiente")
+        self.assertIn("objetivo no identificado", data["validacion_entrada"]["advertencias"])
 
     def test_missing_acceptance_criteria(self):
         data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION.replace("- Se rechaza un correo duplicado", "")))
-        self.assertIn("criterios_aceptacion", data["validacion_entrada"]["campos_faltantes"])
+        self.assertNotEqual(data["validacion_entrada"]["estado"], "informacion_insuficiente")
+        self.assertIn("criterios de aceptación no especificados", data["validacion_entrada"]["advertencias"])
 
     def test_optional_priority_only_warns(self):
         data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION.replace("Alta", "")))

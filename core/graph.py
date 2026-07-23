@@ -34,6 +34,7 @@ def _analizar_con_un_reintento(raw_response, agent_name, retry_call):
         return analizar_respuesta_lote(raw_response, agent_name), raw_response
     except ValueError as first_error:
         logger.warning("%s Reintentando una sola vez con mayor presupuesto.", first_error)
+        registrar_evento_grafo("agent_retry", agent_name, reason=str(first_error))
         retry_response = retry_call()
         return analizar_respuesta_lote(retry_response, f"{agent_name} (reintento)"), retry_response
 
@@ -55,7 +56,9 @@ def _validar_y_reparar(parsed, expected_ids, agent_name, funcion_reparacion, exp
     calcular_metricas_agente(parsed, agent_name)
     content_errors = validar_contenido_agente(parsed, agent_name)
     missing = set(expected_ids) - set(indexar_resultados(parsed))
-    repair_ids = sorted(set(content_errors) | missing)
+    # Los campos textuales secundarios generan advertencias, no nuevas llamadas.
+    # Sólo una historia completamente ausente justifica una reparación selectiva.
+    repair_ids = sorted(missing)
     if repair_ids:
         logger.warning("%s: reparación selectiva para Issues %s.", agent_name, repair_ids)
         repair = analizar_respuesta_lote(funcion_reparacion(repair_ids), f"{agent_name} (reparación)")
@@ -180,14 +183,17 @@ def nodo_evaluador(state: AgentState):
     registrar_evento_grafo("node_start", "Evaluator")
     start_time = time.time()
     
-    eval_result = evaluar_reportes(state["quality_report"], state["security_report"])
-    parsed, eval_result = _analizar_con_un_reintento(
-        eval_result, "Evaluador",
-        lambda: evaluar_reportes(state["quality_report"], state["security_report"], num_predict_override=1400),
-    )
-    expected_ids = [int(x["id"]) for x in state["issues_data"]]
     quality = analizar_respuesta_lote(state["quality_report"], "Calidad")
     security = analizar_respuesta_lote(state["security_report"], "Seguridad")
+    expected_ids = [int(x["id"]) for x in state["issues_data"]]
+    if expected_ids:
+        eval_result = evaluar_reportes(state["quality_report"], state["security_report"])
+        parsed, eval_result = _analizar_con_un_reintento(
+            eval_result, "Evaluador",
+            lambda: evaluar_reportes(state["quality_report"], state["security_report"], num_predict_override=1400),
+        )
+    else:
+        parsed = {"agente": "evaluador", "resultados": []}
     def reparar(repair_ids):
         q_subset = [item for item in quality["resultados"] if item.get("issue_iid") in repair_ids]
         s_subset = [item for item in security["resultados"] if item.get("issue_iid") in repair_ids]

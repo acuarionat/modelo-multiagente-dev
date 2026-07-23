@@ -4,7 +4,10 @@ from core.performance_audit import auditar_llamada_agente
 from core.batch_contract import calcular_num_predict
 import json
 
-def analizar_seguridad(issues_json_str: str, num_predict_override: int | None = None) -> str:
+def analizar_seguridad(
+    issues_json_str: str,
+    num_predict_override: int | None = None,
+) -> str:
     """
     Agente de Seguridad: Evalúa el lote de requerimientos estructurados.
     Devuelve un JSON Array.
@@ -18,7 +21,11 @@ def analizar_seguridad(issues_json_str: str, num_predict_override: int | None = 
     
     prompt = PromptTemplate.from_template(prompt_template)
     chain = prompt | llm
-    prompt_text = prompt.format(issues_json_str=issues_json_str, expected_issue_ids=json.dumps(expected_issue_ids))
+    prompt_values = {
+        "issues_json_str": issues_json_str,
+        "expected_issue_ids": json.dumps(expected_issue_ids),
+    }
+    prompt_text = prompt.format(**prompt_values)
     
     from core.performance_audit import parametros_ollama
     params = parametros_ollama(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1)
@@ -30,7 +37,7 @@ def analizar_seguridad(issues_json_str: str, num_predict_override: int | None = 
         input_json_text=issues_json_str,
         model_params=params,
     ) as audit:
-        response = chain.invoke({"issues_json_str": issues_json_str, "expected_issue_ids": json.dumps(expected_issue_ids)})
+        response = chain.invoke(prompt_values)
         audit["response"] = response.content
     
     return response.content

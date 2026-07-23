@@ -14,14 +14,16 @@ def validar_entrada_issue(issue_data: dict) -> dict:
         faltantes.append("titulo")
     if not _texto_identificado(issue_data.get("descripcion_original")):
         faltantes.append("descripcion")
-    for field in ("actor", "funcionalidad", "objetivo"):
-        if not _texto_identificado(issue_data.get(field)):
-            faltantes.append(field)
+    story_fields = ("actor", "funcionalidad", "objetivo")
+    if not any(_texto_identificado(issue_data.get(field)) for field in story_fields):
+        faltantes.append("actor_accion_objetivo")
     criterios = [x for x in issue_data.get("criterios_aceptacion", []) if _texto_identificado(x)]
-    if not criterios:
-        faltantes.append("criterios_aceptacion")
-
     advertencias = []
+    for field in story_fields:
+        if not _texto_identificado(issue_data.get(field)):
+            advertencias.append(f"{field} no identificado")
+    if not criterios:
+        advertencias.append("criterios de aceptación no especificados")
     if not _texto_identificado(issue_data.get("prioridad")):
         advertencias.append("prioridad no especificada")
     if not issue_data.get("restricciones"):

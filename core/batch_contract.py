@@ -1,4 +1,6 @@
 import json
+import re
+import unicodedata
 from collections import Counter
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
@@ -27,19 +29,37 @@ def es_texto_invalido(value: Any) -> bool:
     if not isinstance(value, str):
         return True
     normalized = value.strip().casefold()
-    return normalized in INVALID_TEXT_VALUES or any(fragment in normalized for fragment in GENERIC_TEXT_FRAGMENTS)
+    normalized_placeholder = normalized.rstrip(".:")
+    return normalized in INVALID_TEXT_VALUES or normalized_placeholder in GENERIC_TEXT_FRAGMENTS
+
+
+def explicar_texto_invalido(value: Any) -> str:
+    """Devuelve la regla concreta que rechazó un texto, sin endurecer el contrato."""
+    if not isinstance(value, str):
+        return f"debe ser texto y se recibió {type(value).__name__}"
+    normalized = value.strip().casefold()
+    if normalized in INVALID_TEXT_VALUES:
+        return f"no puede ser un valor vacío o marcador prohibido ({normalized!r})"
+    normalized_placeholder = normalized.rstrip(".:")
+    if normalized_placeholder in GENERIC_TEXT_FRAGMENTS:
+        return f"no puede ser el texto genérico de ejemplo {normalized_placeholder!r}"
+    return "debe ser un texto específico basado en la evidencia de la historia"
 
 
 def _normalizar_lista_evidencia(values: Any) -> tuple[List[str], List[str]]:
-    if not isinstance(values, list):
-        return [], ["la evidencia no era una lista"]
+    if isinstance(values, str):
+        values = [values] if values.strip() else []
+    elif values is None:
+        values = []
+    elif not isinstance(values, list):
+        values = [str(values)]
     clean, warnings, seen = [], [], set()
     for value in values:
         if es_texto_invalido(value):
             warnings.append("se descartó evidencia vacía o genérica")
             continue
         text = " ".join(value.split()).strip()
-        key = text.casefold()
+        key = _clave_texto(text)
         if key in seen:
             warnings.append(f"se eliminó evidencia duplicada: {text}")
             continue
@@ -49,15 +69,29 @@ def _normalizar_lista_evidencia(values: Any) -> tuple[List[str], List[str]]:
 
 
 def _restringir_subconjunto(values: List[str], universe: List[str], label: str) -> tuple[List[str], List[str]]:
-    by_key = {value.casefold(): value for value in universe}
+    by_key = {_clave_texto(value): value for value in universe}
     valid, removed = [], []
     for value in values:
-        canonical = by_key.get(value.casefold())
+        canonical = by_key.get(_clave_texto(value))
         if canonical is None:
             removed.append(f"{label} fuera del universo evaluado: {value}")
         elif canonical not in valid:
             valid.append(canonical)
     return valid, removed
+
+
+def _clave_texto(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value).casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", text).split())
+
+
+def normalizar_lista_textos(valor: Any) -> List[str]:
+    """Convierte texto o colección en una lista sin iterar cadenas por carácter."""
+    if valor is None:
+        return []
+    values = [valor] if isinstance(valor, str) else valor if isinstance(valor, list) else [valor]
+    return [text for item in values if (text := str(item).strip())]
 
 
 def _preparar_metrica(metric: Dict[str, Any], fields: List[str]) -> List[str]:
@@ -100,6 +134,7 @@ def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
     for item in response.get("resultados", []):
         if not isinstance(item, dict):
             continue
+        item["recomendaciones"] = normalizar_lista_textos(item.get("recomendaciones"))
         metrics = item.get("metricas")
         if not isinstance(metrics, dict):
             continue
@@ -208,7 +243,7 @@ def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
 
 def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[int, List[str]]:
     errors: Dict[int, List[str]] = {}
-    justifications: Dict[str, List[int]] = {}
+    justifications: Dict[str, List[Tuple[int, str]]] = {}
     for item in response.get("resultados", []):
         if not isinstance(item, dict):
             continue
@@ -261,7 +296,7 @@ def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[
                     if es_texto_invalido(justification):
                         current.append(f"{metric_name}: justificación inválida")
                     else:
-                        justifications.setdefault(justification.strip().casefold(), []).append(iid)
+                        justifications.setdefault(justification.strip().casefold(), []).append((iid, metric_name))
                     value = metric.get("valor")
                     if isinstance(value, (int, float)) and value < 1 and es_texto_invalido(metric.get("recomendacion")):
                         current.append(f"{metric_name}: recomendación requerida para valor menor que 1")
@@ -272,11 +307,13 @@ def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[
                 current.append("conclusión inválida")
         if current:
             errors[iid] = current
-    for text, iids in justifications.items():
-        unique_iids = sorted(set(iids))
+    for text, occurrences in justifications.items():
+        unique_iids = sorted({iid for iid, _ in occurrences})
         if len(unique_iids) > 1:
-            for iid in unique_iids:
-                errors.setdefault(iid, []).append("justificación repetida exactamente en varias historias")
+            for iid, metric_name in set(occurrences):
+                errors.setdefault(iid, []).append(
+                    f"{metric_name}: justificación repetida exactamente en varias historias"
+                )
     return errors
 
 
@@ -287,28 +324,29 @@ def recopilar_recomendaciones(result: Dict[str, Any]) -> List[str]:
         for metric in metrics.values() if isinstance(metrics, dict) else []:
             if isinstance(metric, dict) and not es_texto_invalido(metric.get("recomendacion")):
                 recommendations.append(metric["recomendacion"].strip())
-        recommendations.extend(x for x in section.get("recomendaciones", []) if not es_texto_invalido(x))
+        recommendations.extend(x for x in normalizar_lista_textos(section.get("recomendaciones")) if not es_texto_invalido(x))
     evaluation = result.get("evaluation") or {}
-    recommendations.extend(x for x in evaluation.get("correcciones_obligatorias", []) if not es_texto_invalido(x))
+    recommendations.extend(x for x in normalizar_lista_textos(evaluation.get("correcciones_obligatorias")) if not es_texto_invalido(x))
     central = result.get("central") or {}
-    recommendations.extend(x for x in central.get("observaciones", []) if not es_texto_invalido(x))
+    recommendations.extend(x for x in normalizar_lista_textos(central.get("observaciones")) if not es_texto_invalido(x))
     return list(dict.fromkeys(recommendations))
 
 
 def construir_etiquetas_resultado(old_labels: list, estado_evaluacion: str, quality_index=None, security_index=None) -> list:
     """Calcula etiquetas coherentes sin crear etiquetas nuevas en GitLab."""
+    if estado_evaluacion not in {"APROBADO", "CORREGIR", "ALERTA", "NO_PROCESABLE", "NO_EVALUADO"}:
+        return list(dict.fromkeys(old_labels))
     removed = {"Pendiente", "En revisión", "Analizado", "Analizada", "Error de análisis"}
     labels = [
         label for label in old_labels
         if label not in removed and not label.startswith(("Calidad:", "Seguridad:", "Veredicto:"))
     ]
-    labels.append("Analizada" if estado_evaluacion == "APROBADO" else "En revisión")
-    if quality_index is not None:
-        labels.append(f"Calidad:{round(quality_index * 100)} %")
-    if security_index is not None:
-        labels.append(f"Seguridad:{round(security_index * 100)} %")
-    if estado_evaluacion != "NO_EVALUADO":
-        labels.append(f"Veredicto:{estado_evaluacion}")
+    if estado_evaluacion == "APROBADO":
+        labels.append("Analizada")
+    elif estado_evaluacion in {"CORREGIR", "ALERTA"}:
+        labels.append("En revisión")
+    elif estado_evaluacion in {"NO_PROCESABLE", "NO_EVALUADO"}:
+        labels.append("Pendiente")
     return list(dict.fromkeys(labels))
 
 
@@ -563,7 +601,7 @@ def consolidar_lote(
     for iid in sorted(expected_issue_ids):
         missing = [name for name, mapping in zip(names, maps) if iid not in mapping]
         errors = [f"Falta la salida del Agente {name}." for name in missing]
-        errors.extend((content_validation_errors or {}).get(iid, []))
+        warnings = list((content_validation_errors or {}).get(iid, []))
         central_item, quality_item, security_item, evaluation_item = (mapping.get(iid) for mapping in maps)
         if central_item is not None and not isinstance(central_item.get("requerimientos"), list):
             errors.append("El Agente Central devolvió requerimientos inválidos.")
@@ -576,8 +614,6 @@ def consolidar_lote(
         if evaluation_item is not None and evaluation_item.get("veredicto") not in {"APROBADO", "CORREGIR", "ALERTA"}:
             errors.append("El Agente Evaluador devolvió un veredicto inválido.")
         input_validation = (input_validations or {}).get(iid, {"estado": "entrada_valida", "advertencias": [], "campos_faltantes": []})
-        if not errors:
-            ajustar_veredicto_determinista(central_item, quality_item, security_item, evaluation_item, input_validation)
         estado_evaluacion = evaluation_item.get("veredicto", "NO_EVALUADO") if evaluation_item else "NO_EVALUADO"
         consolidated.append({
             "issue_iid": iid,
@@ -585,6 +621,7 @@ def consolidar_lote(
             "estado_procesamiento": "error" if errors else "completo",
             "estado_evaluacion": estado_evaluacion,
             "errors": errors,
+            "warnings": warnings,
             "validacion_entrada": input_validation,
             "central": central_item,
             "quality": quality_item,

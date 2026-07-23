@@ -4,7 +4,8 @@ import time
 
 from core.graph import construir_grafo
 from core.config import ALLOW_INCOMPLETE_STORIES
-from core.batch_contract import construir_etiquetas_resultado
+from core.batch_contract import normalizar_lista_textos
+from core.performance_audit import obtener_contadores, reiniciar_contadores
 from core.utils import construir_resultado_lote, extraer_porcentaje
 from database.repository import calcular_hash_issue, guardar_cache, guardar_historial, insertar_o_actualizar_issue
 from integrations.gitlab_adapter import GitLabAdapter
@@ -38,49 +39,36 @@ def _lineas_metricas(metrics: dict) -> str:
 
 
 def construir_comentario_issue(result: dict) -> str:
-    central = result["central"]
-    quality = result["quality"]
-    security = result["security"]
-    evaluation = result["evaluation"]
-    requirements = "\n".join(
-        f"- **{r['id']} — {r.get('nombre', '')}:** {r.get('descripcion', '')}"
-        for r in central["requerimientos"]
-    )
-    recommendations = result.get("recommendations", [])
-    recommendation_text = "\n".join(f"- {x}" for x in recommendations) or "- Sin correcciones obligatorias."
+    quality = result.get("quality") or {}
+    security = result.get("security") or {}
+    evaluation = result.get("evaluation") or {}
+    estado = result.get("estado_evaluacion") or evaluation.get("veredicto") or "REVISAR"
+    recommendations = normalizar_lista_textos(result.get("recommendations"))
+    if not recommendations:
+        recommendations = normalizar_lista_textos(evaluation.get("correcciones_obligatorias"))
+    if not recommendations:
+        conclusions = normalizar_lista_textos(evaluation.get("conclusion"))
+        recommendations = conclusions[:1]
+    recommendation_text = "\n".join(f"- {text}" for text in recommendations[:3]) or "- Revisar el resultado consolidado."
     next_action = (
         "Actualizar la Historia con las correcciones obligatorias y marcarla como **En revisión**."
-        if evaluation["veredicto"] in {"CORREGIR", "ALERTA"}
+        if estado in {"CORREGIR", "ALERTA", "REVISAR"}
         else "Mantener la Historia como **Analizada** y continuar con la siguiente etapa."
     )
     return f"""## Resultado del análisis multiagente
 
-**Estado de evaluación asistida:** {evaluation['veredicto']}<br>
-**Índice parcial de apoyo para calidad funcional:** {extraer_porcentaje(quality['indice'])}<br>
-**Índice de cobertura documental de seguridad:** {extraer_porcentaje(security['indice'])}<br>
-**Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}
+**Estado orientativo:** {estado}<br>
+**Calidad funcional:** {extraer_porcentaje(quality.get('indice'))}<br>
+**Cobertura documental de seguridad:** {extraer_porcentaje(security.get('indice'))}<br>
+**Nivel de aseguramiento recomendado:** {security.get('lot_recomendado', 'No informado')}
 
-> El LoT no representa la confianza del modelo, sino el nivel de aseguramiento recomendado según las condiciones identificadas.
-
-### Evaluación de calidad
-{_lineas_metricas(quality.get('metricas', {}))}
-
-### Evaluación de seguridad
-{_lineas_metricas(security.get('metricas', {}))}
-
-### Requerimientos formalizados sugeridos
-{requirements}
-
-### Correcciones y recomendaciones
+### Hallazgos principales
 {recommendation_text}
 
 ### Próxima acción
 {next_action}
 
-### Alcance del resultado
-{DECISION_SUPPORT_NOTICE}
-
-Los documentos consolidados (PDF, DOCX y matriz CSV) pueden generarse desde la aplicación de recepción de requerimientos.
+> Evaluación asistida para apoyar el control, seguimiento y trazabilidad. La decisión final corresponde al responsable del proyecto.
 """
 
 
@@ -103,8 +91,9 @@ def _resultado_informacion_insuficiente(issue_data: dict) -> dict:
     }
 
 
-def procesar_flujo_lote(issues: list, project_name: str, sprint_context: str = "") -> dict:
-    adapter = GitLabAdapter()
+def procesar_flujo_lote(issues: list, project_name: str, sprint_context: str = "", adapter=None) -> dict:
+    reiniciar_contadores()
+    adapter = adapter or GitLabAdapter()
     issues_data = [mapear_issue_a_json(issue) for issue in issues]
     issues_by_iid = {int(issue.iid): issue for issue in issues}
     processable_data, incomplete_data = separar_entradas_para_analisis(issues_data, ALLOW_INCOMPLETE_STORIES)
@@ -153,14 +142,15 @@ Complete la historia y manténgala en revisión para ejecutar nuevamente la eval
 
 {DECISION_SUPPORT_NOTICE}
 """
+            publication_started = time.perf_counter()
             try:
                 adapter.agregar_comentario(iid, comment)
-                labels = construir_etiquetas_resultado(issues_by_iid[iid].labels, "NO_EVALUADO")
-                adapter.actualizar_etiquetas(iid, labels)
                 result["comment_published"] = True
             except Exception as exc:
                 result["gitlab_error"] = str(exc)
                 logger.exception("No se pudo registrar la entrada insuficiente en GitLab para Issue #%s", iid)
+            finally:
+                logger.info("GitLab Issue #%s completado en %.2fs.", iid, time.perf_counter() - publication_started)
             content_hash = calcular_hash_issue(result["issue_data"])
             insertar_o_actualizar_issue(iid, content_hash, "Información insuficiente")
             continue
@@ -172,21 +162,30 @@ Complete la historia y manténgala en revisión para ejecutar nuevamente la eval
         security, evaluation = result["security"], result["evaluation"]
         content_hash = calcular_hash_issue(result["issue_data"])
         comment = construir_comentario_issue(result)
+        publication_started = time.perf_counter()
         try:
             adapter.agregar_comentario(iid, comment)
-            labels = construir_etiquetas_resultado(
-                issues_by_iid[iid].labels, result["estado_evaluacion"], quality.get("indice"), security.get("indice")
-            )
-            adapter.actualizar_etiquetas(iid, labels)
             result["comment_published"] = True
         except Exception as exc:
             result["gitlab_error"] = str(exc)
             logger.exception("No se pudo actualizar GitLab para Issue #%s", iid)
+        finally:
+            logger.info("GitLab Issue #%s completado en %.2fs.", iid, time.perf_counter() - publication_started)
 
         tracking_state = "Analizada" if result["estado_evaluacion"] == "APROBADO" else "En revisión"
         insertar_o_actualizar_issue(iid, content_hash, tracking_state)
         guardar_historial(iid, quality.get("indice"), security.get("indice"), evaluation["veredicto"], execution_time / max(len(processable_issues), 1), evaluation.get("conclusion", ""))
         guardar_cache(content_hash, SCHEMA_VERSION, central, quality, security, evaluation)
 
-    logger.info("Flujo de lote terminado en %.2fs.", execution_time)
+    published = sum(bool(item.get("comment_published")) for item in batch_result["issues"])
+    failed = sum(item.get("status") != "ok" for item in batch_result["issues"])
+    audit = obtener_contadores()
+    logger.info(
+        "Flujo de lote terminado en %.2fs: recibidas=%s, correctas=%s, con_error=%s, comentarios_publicados=%s, pendientes=%s.",
+        execution_time, len(issues), len(issues) - failed, failed, published, len(issues) - published,
+    )
+    logger.info(
+        "Ollama lote: llamadas=%s, reintentos=%s, por_agente=%s.",
+        audit["llamadas_ollama"], audit["reintentos"], audit["por_agente"],
+    )
     return batch_result

@@ -1,0 +1,11 @@
+Rol: Agente de Seguridad basado en ISO/IEC 27034.
+ID GitLab obligatorio: {expected_issue_ids}
+Historia estructurada del Central: {issues_json_str}
+Solicitud de reparación: {repair_request}
+
+Repara exclusivamente los campos indicados. Cada campo incluye el motivo exacto del rechazo y una muestra truncada del valor anterior. Basa la corrección en los datos, restricciones, requerimientos y controles de esta historia. No inventes evidencia.
+
+Devuelve exclusivamente este objeto JSON:
+{{"agente":"seguridad","resultados":[{{"issue_iid":999,"correcciones":{{"nombre_metrica_solicitada":{{"nombre_campo_solicitado":"Texto corregido"}}}}}}]}}
+
+Incluye dentro de correcciones únicamente las métricas y campos solicitados. No devuelvas campos ya válidos. La justificación de controles debe relacionar requerimientos evaluados, datos o restricciones y controles identificados o ausentes. La justificación de LoT debe relacionar datos, impacto de acceso o alteración y nivel recomendado. Si la evidencia no alcanza, explícalo de manera específica. No uses texto del ejemplo, frases genéricas, puntos suspensivos, marcadores ni cadenas vacías.

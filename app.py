@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from integrations.gitlab_adapter import GitLabAdapter
 from integrations.issue_service import procesar_flujo_lote
 from database.repository import limpiar_datos_seguimiento
+from project_config import load_project_config, save_project_config
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EMI_LOGO_PATH = os.path.join(BASE_DIR, "assets", "emi_logo.png")
@@ -126,6 +127,7 @@ st.markdown("""
     div[data-testid="stMetric"] {
         min-height: 112px;
         padding: 1rem 1.1rem;
+        margin:  1rem 0 0 0;
         background: #FFFFFF;
         border: 1px solid var(--emi-line);
         border-top: 5px solid var(--emi-yellow);
@@ -182,6 +184,7 @@ st.markdown("""
     }
 
     [data-testid="stTextInput"] input,
+    [data-testid="stTextArea"] textarea,
     [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
         border-color: #B8CADB;
         border-radius: 7px;
@@ -190,6 +193,47 @@ st.markdown("""
 
     [data-testid="stTextInput"] input {
         background: #FFFFFF !important;
+    }
+
+    [data-testid="stTextArea"] textarea {
+        background: #FFFFFF !important;
+        color: #111111 !important;
+        -webkit-text-fill-color: #111111 !important;
+        border-color: #B8CADB;
+        border-radius: 7px;
+    }
+
+    /* Los formularios se muestran sobre fondo blanco: sus etiquetas deben
+       conservar contraste sin afectar las etiquetas blancas del sidebar. */
+    [data-testid="stMain"] [data-testid="stWidgetLabel"],
+    [data-testid="stMain"] [data-testid="stWidgetLabel"] p,
+    [data-testid="stMain"] [data-testid="stWidgetLabel"] span,
+    [data-testid="stMain"] label,
+    [data-testid="stMain"] label p,
+    [data-testid="stMain"] label span {
+        color: var(--emi-ink) !important;
+        -webkit-text-fill-color: var(--emi-ink) !important;
+        opacity: 1 !important;
+        font-weight: 650;
+    }
+
+    [data-testid="stMain"] [data-testid="stTextInput"] input,
+    [data-testid="stMain"] [data-testid="stTextArea"] textarea {
+        color: #111111 !important;
+        -webkit-text-fill-color: #111111 !important;
+    }
+
+    [data-testid="stMain"] [data-testid="stTextInput"] input::placeholder,
+    [data-testid="stMain"] [data-testid="stTextArea"] textarea::placeholder {
+        color: #66788A !important;
+        -webkit-text-fill-color: #66788A !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stMain"] [data-testid="stCaptionContainer"],
+    [data-testid="stMain"] [data-testid="InputInstructions"] {
+        color: #5B7187 !important;
+        -webkit-text-fill-color: #5B7187 !important;
     }
 
     [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
@@ -401,6 +445,14 @@ STAGES = (
     ("pruebas", "Pruebas", "Pruebas", "✓"),
 )
 
+MILESTONES_BY_STAGE = {
+    "requerimientos": "Recepción de Requerimientos",
+    "diseno": "Diseño",
+    "codificacion": "Codificación",
+    "pruebas": "Pruebas",
+}
+REQUIRED_MILESTONES = tuple(MILESTONES_BY_STAGE.values())
+
 
 def render_stage_navigation():
     """Renderiza el menú no lineal y conserva la etapa elegida en la sesión."""
@@ -461,11 +513,80 @@ with title_col:
     </div>
     """, unsafe_allow_html=True)
 
-render_stage_navigation()
+saved_config = load_project_config()
+editing_config = st.session_state.get("editing_project_config", False)
 
-if st.session_state["etapa_actual"] != "requerimientos":
-    render_coming_soon(st.session_state["etapa_actual"])
+if saved_config is None or editing_config:
+    st.subheader("Configuración del Proyecto")
+    st.caption("Define el contexto del proyecto y valida GitLab antes de acceder a las etapas.")
+    defaults = saved_config or {}
+    with st.form("project_configuration"):
+        st.markdown("### Información General")
+        left, right = st.columns(2)
+        with left:
+            cfg_name = st.text_input("Nombre del proyecto *", value=defaults.get("name", ""))
+            cfg_description = st.text_area("Descripción general *", value=defaults.get("description", ""))
+            cfg_general_objective = st.text_area("Objetivo general *", value=defaults.get("general_objective", ""))
+        with right:
+            cfg_specific_objectives = st.text_area("Objetivos específicos *", value=defaults.get("specific_objectives", ""))
+            cfg_scope = st.text_area("Alcance *", value=defaults.get("scope", ""))
+            cfg_actors = st.text_area("Actores principales *", value=defaults.get("actors", ""))
+
+        st.markdown("### Integración con GitLab")
+        gitlab_url = st.text_input("URL del servidor GitLab *", value=defaults.get("gitlab_url", os.getenv("GITLAB_URL", "")))
+        gitlab_project = st.text_input("Proyecto GitLab *", value=defaults.get("gitlab_project", os.getenv("GITLAB_PROJECT_ID", "")), help="ID numérico o ruta namespace/proyecto")
+        gitlab_token = st.text_input("Token de acceso *", value=defaults.get("gitlab_token", os.getenv("GITLAB_TOKEN", "")), type="password")
+
+        values = {
+            "name": cfg_name, "description": cfg_description,
+            "general_objective": cfg_general_objective,
+            "specific_objectives": cfg_specific_objectives, "scope": cfg_scope,
+            "actors": cfg_actors, "gitlab_url": gitlab_url,
+            "gitlab_project": gitlab_project, "gitlab_token": gitlab_token,
+        }
+        connection_signature = (gitlab_url.strip(), gitlab_project.strip(), gitlab_token.strip())
+        test_col, save_col = st.columns([1, 2])
+        test_connection = test_col.form_submit_button("Probar conexión", use_container_width=True)
+        save_and_start = save_col.form_submit_button("Guardar configuración e iniciar proyecto", type="primary", use_container_width=True)
+
+    if test_connection:
+        if not all(connection_signature):
+            st.error("Completa la URL, el proyecto y el token de GitLab.")
+        else:
+            try:
+                with st.spinner("Validando GitLab y verificando milestones..."):
+                    test_adapter = GitLabAdapter(*connection_signature[::2], project_id=connection_signature[1])
+                    milestone_status = test_adapter.asegurar_hitos(list(REQUIRED_MILESTONES))
+                st.session_state["verified_gitlab"] = connection_signature
+                st.session_state["milestone_status"] = milestone_status
+                st.success(f"Conexión verificada con {test_adapter.project.name}. Milestones verificados sin duplicados.")
+            except Exception as exc:
+                st.session_state.pop("verified_gitlab", None)
+                st.error(f"No se pudo validar la conexión: {exc}")
+
+    verified = st.session_state.get("verified_gitlab") == connection_signature
+    st.markdown("### Estado")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("GitLab", "Conectado" if verified else "Pendiente")
+    c2.metric("Milestones", "Verificados" if verified else "Pendientes")
+    c3.metric("Contexto", defaults.get("context_version", "v1.0"))
+
+    if save_and_start:
+        missing = [key for key, value in values.items() if not str(value).strip()]
+        if missing:
+            st.error("Completa todos los campos obligatorios.")
+        elif not verified:
+            st.error("Primero debes probar correctamente esta conexión con GitLab.")
+        else:
+            st.session_state["project_config"] = save_project_config(values)
+            st.session_state["editing_project_config"] = False
+            for key in ("issues_by_stage", "last_batch_result", "milestones"):
+                st.session_state.pop(key, None)
+            st.rerun()
     st.stop()
+
+project_config = saved_config
+render_stage_navigation()
 
 st.info("Las métricas e indicadores son valoraciones asistidas basadas en la evidencia disponible. Apoyan la decisión del responsable y no constituyen aprobación automática ni certificación.")
 
@@ -474,14 +595,20 @@ with st.sidebar:
     st.image(EMI_LOGO_PATH, use_container_width=True)
     st.markdown("### Sistema Multiagente")
     st.caption("Recepción y seguimiento de requerimientos")
+    st.markdown(f"**Proyecto:** {project_config['name']}")
+    st.markdown("**GitLab:** 🟢 Conectado")
+    st.markdown(f"**Contexto:** {project_config['context_version']}")
     st.divider()
+    if st.button("Editar configuración", use_container_width=True):
+        st.session_state["editing_project_config"] = True
+        st.rerun()
     st.header("Administración")
     if st.button("Limpiar Base de Seguimiento (Caché e Historial)"):
         limpiar_datos_seguimiento()
         st.success("Base de datos limpia.")
 
 try:
-    adapter = GitLabAdapter()
+    adapter = GitLabAdapter(project_config["gitlab_url"], project_config["gitlab_token"], project_config["gitlab_project"])
 except ValueError as e:
     st.error(f"Error de configuración: {str(e)}")
     st.stop()
@@ -489,53 +616,40 @@ except Exception as e:
     st.error(f"No se pudo conectar a GitLab: {str(e)}")
     st.stop()
 
-if "milestones" not in st.session_state:
-    with st.spinner("Cargando Sprints desde GitLab..."):
-        st.session_state.milestones = adapter.obtener_hitos()
-        st.session_state.all_labels = set()
-        # To get all labels, we'd have to fetch project labels, but we can just let user type or we use predefined.
-        # Simplification: Let user type labels separated by comma.
+project_name = project_config["name"]
+stage_id = st.session_state["etapa_actual"]
+milestone_val = MILESTONES_BY_STAGE[stage_id]
+st.subheader(next(stage[2] for stage in STAGES if stage[0] == stage_id))
+st.write(f"**Milestone asociado:** {milestone_val}")
 
-project_name = st.text_input("Nombre del Proyecto para Reportes:", placeholder="Ej: Sistema de Gestión", value=adapter.project.name)
+if "issues_by_stage" not in st.session_state:
+    st.session_state.issues_by_stage = {}
+refresh_col, analysis_col = st.columns(2)
+refresh_issues = refresh_col.button("Actualizar desde GitLab", use_container_width=True)
+if refresh_issues or stage_id not in st.session_state.issues_by_stage:
+    with st.spinner("Consultando issues del milestone..."):
+        st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_abiertos(milestone_title=milestone_val)
+issues = st.session_state.issues_by_stage[stage_id]
+st.write(f"**Issues encontrados:** {len(issues)}")
+if issues:
+    with st.expander("Lista de issues", expanded=True):
+        for issue in issues:
+            st.markdown(f"- **#{issue.iid}** — {issue.title}")
+else:
+    st.info("No se encontraron issues abiertos en este milestone.")
 
-st.subheader("Configuración del Lote")
-milestone_options = {"Ninguno": None}
-for m in st.session_state.milestones:
-    milestone_options[m.title] = m.title
-selected_milestone = st.selectbox("Seleccionar Sprint (Milestone):", list(milestone_options.keys()))
-
-if st.button("Ejecutar Análisis por Lote", type="primary"):
+start_analysis = analysis_col.button("Iniciar análisis", type="primary", use_container_width=True, disabled=not issues)
+if start_analysis:
     for stale_key in ("last_batch_result", "batch_pdf", "batch_docx"):
         st.session_state.pop(stale_key, None)
     if not project_name:
         st.warning("Debes ingresar el Nombre del Proyecto.")
         st.stop()
         
-    milestone_val = milestone_options[selected_milestone]
-    
-    with st.spinner("Obteniendo issues de GitLab..."):
-        # Solo traer los que sean Historia de Usuario
-        issues = adapter.listar_issues_abiertos(milestone_title=milestone_val, labels=["Historia de Usuario"])
+    issues_to_process = issues
         
-    if not issues:
-        st.info("No se encontraron 'Historias de Usuario' en el Sprint seleccionado.")
-        st.stop()
-        
-    # Filtrar según la lógica estricta de labels
-    issues_to_process = []
-    for iss in issues:
-        labels = iss.labels
-        if "Analizada" in labels:
-            continue
-        if "Pendiente" in labels or "En revisión" in labels:
-            issues_to_process.append(iss)
-            
-    if not issues_to_process:
-        st.success(f"Se encontraron {len(issues)} historias, pero todas están Analizadas o no están Pendientes/En revisión. Nada que hacer.")
-        st.stop()
-        
-    st.markdown(f"### Sprint {milestone_val or 'Personalizado'}")
-    st.write(f"**{len(issues_to_process)} historias pendientes/en revisión encontradas.**")
+    st.markdown(f"### Milestone {milestone_val}")
+    st.write(f"**{len(issues_to_process)} issues encontrados.**")
     
     # Construir Contexto del Sprint
     sprint_context = f"Proyecto: {project_name}\nSprint: {milestone_val or 'Sin milestone'}\nHistorias a analizar: {len(issues_to_process)}\n"
@@ -572,7 +686,7 @@ if st.button("Ejecutar Análisis por Lote", type="primary"):
             
             try:
                 from integrations.issue_service import procesar_flujo_lote
-                batch_result = procesar_flujo_lote(batch, project_name, sprint_context)
+                batch_result = procesar_flujo_lote(batch, project_name, sprint_context, adapter=adapter)
                 batch_results = batch_result["issues"]
                 run_results.extend(batch_results)
                 

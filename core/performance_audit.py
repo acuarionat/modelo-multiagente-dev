@@ -8,6 +8,21 @@ from typing import Any, Dict, Optional
 from core.config import OLLAMA_BASE_URL, OLLAMA_MODEL
 
 logger = logging.getLogger("performance_audit")
+_CONTADORES = {"llamadas_ollama": 0, "reintentos": 0, "por_agente": {}}
+
+
+def reiniciar_contadores() -> None:
+    _CONTADORES["llamadas_ollama"] = 0
+    _CONTADORES["reintentos"] = 0
+    _CONTADORES["por_agente"] = {}
+
+
+def obtener_contadores() -> Dict[str, Any]:
+    return {
+        "llamadas_ollama": _CONTADORES["llamadas_ollama"],
+        "reintentos": _CONTADORES["reintentos"],
+        "por_agente": dict(_CONTADORES["por_agente"]),
+    }
 
 
 def _tamano_texto(value: Any) -> Dict[str, int]:
@@ -56,6 +71,8 @@ def parametros_ollama(json_mode: bool = True, num_predict: int = 500, num_ctx: i
 
 
 def registrar_evento_grafo(event: str, agent: str, **extra: Any) -> None:
+    if event == "agent_retry":
+        _CONTADORES["reintentos"] += 1
     payload = {
         "event": event,
         "agent": agent,
@@ -74,6 +91,9 @@ def auditar_llamada_agente(
     model_params: Optional[Dict[str, Any]] = None,
 ):
     start = time.perf_counter()
+    _CONTADORES["llamadas_ollama"] += 1
+    per_agent = _CONTADORES["por_agente"]
+    per_agent[agent] = per_agent.get(agent, 0) + 1
     started_at = datetime.now().isoformat(timespec="milliseconds")
     params = model_params or parametros_ollama()
     effective_json_text = input_json_text if input_json_text is not None else context_text
