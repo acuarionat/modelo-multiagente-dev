@@ -963,3 +963,19 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-07-22 09:47:09,847 - [INFO] - GitLab Issue #10 completado en 2.04s.
 2026-07-22 09:47:09,885 - [INFO] - Flujo de lote terminado en 4176.66s: recibidas=5, correctas=5, con_error=0, comentarios_publicados=5, pendientes=0.
 2026-07-22 09:47:09,886 - [INFO] - Ollama lote: llamadas=4, reintentos=0, por_agente={'Central_Init_Batch': 1, 'Quality_Batch': 1, 'Security_Batch': 1, 'Evaluator_Batch': 1}.
+2026-07-27 23:22:20,628 - [INFO] - Iniciando ejecución del grafo multiagente para 0 historias válidas.
+2026-07-27 23:22:21,444 - [INFO] - GitLab Issue #11 completado en 0.81s.
+2026-07-27 23:22:22,175 - [INFO] - GitLab Issue #12 completado en 0.72s.
+2026-07-27 23:22:22,952 - [INFO] - GitLab Issue #13 completado en 0.77s.
+2026-07-27 23:22:23,746 - [INFO] - GitLab Issue #14 completado en 0.79s.
+2026-07-27 23:22:24,558 - [INFO] - GitLab Issue #15 completado en 0.80s.
+2026-07-27 23:22:24,565 - [INFO] - Flujo de lote terminado en 0.00s: recibidas=5, correctas=0, con_error=5, comentarios_publicados=5, pendientes=0.
+2026-07-27 23:22:24,576 - [INFO] - Ollama lote: llamadas=0, reintentos=0, por_agente={}.
+2026-07-27 23:22:24,582 - [INFO] - Iniciando ejecución del grafo multiagente para 0 historias válidas.
+2026-07-27 23:22:25,396 - [INFO] - GitLab Issue #6 completado en 0.81s.
+2026-07-27 23:22:26,213 - [INFO] - GitLab Issue #7 completado en 0.81s.
+2026-07-27 23:22:27,213 - [INFO] - GitLab Issue #8 completado en 0.99s.
+2026-07-27 23:22:28,070 - [INFO] - GitLab Issue #9 completado en 0.85s.
+2026-07-27 23:22:28,863 - [INFO] - GitLab Issue #10 completado en 0.78s.
+2026-07-27 23:22:28,875 - [INFO] - Flujo de lote terminado en 0.00s: recibidas=5, correctas=0, con_error=5, comentarios_publicados=5, pendientes=0.
+2026-07-27 23:22:28,880 - [INFO] - Ollama lote: llamadas=0, reintentos=0, por_agente={}.
