@@ -2,6 +2,9 @@ from langchain_core.prompts import PromptTemplate
 from agents import obtener_llm, cargar_prompt
 from core.performance_audit import auditar_llamada_agente
 from core.batch_contract import calcular_num_predict
+import logging
+
+logger = logging.getLogger(__name__)
 
 def evaluar_reportes(quality_reports: str, security_reports: str, num_predict_override: int | None = None) -> str:
     """
@@ -45,5 +48,6 @@ def evaluar_reportes(quality_reports: str, security_reports: str, num_predict_ov
         model_params=params,
     ) as audit:
         response = chain.invoke({"evaluation_input": evaluation_input_str, "expected_issue_ids": json.dumps(common_ids)})
+        logger.info("PHI4_RAW Evaluator:\n%s", response.content)
         audit["response"] = response.content
     return response.content

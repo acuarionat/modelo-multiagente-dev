@@ -3,12 +3,12 @@ import logging
 import time
 
 from core.graph import construir_grafo
-from core.config import ALLOW_INCOMPLETE_STORIES
-from core.batch_contract import normalizar_lista_textos
+from core.config import ALLOW_INCOMPLETE_STORIES, OLLAMA_MODEL
+from core.batch_contract import construir_etiquetas_resultado, normalizar_lista_textos
 from core.performance_audit import obtener_contadores, reiniciar_contadores
 from core.utils import construir_resultado_lote, extraer_porcentaje
 from database.repository import calcular_hash_issue, guardar_cache, guardar_historial, insertar_o_actualizar_issue
-from integrations.gitlab_adapter import GitLabAdapter
+from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente
 from integrations.issue_mapper import mapear_issue_a_json, separar_entradas_para_analisis
 
 logger = logging.getLogger(__name__)
@@ -51,9 +51,9 @@ def construir_comentario_issue(result: dict) -> str:
         recommendations = conclusions[:1]
     recommendation_text = "\n".join(f"- {text}" for text in recommendations[:3]) or "- Revisar el resultado consolidado."
     next_action = (
-        "Actualizar la Historia con las correcciones obligatorias y marcarla como **En revisión**."
+        "Actualizar la Historia con las correcciones obligatorias y volver a marcarla como **Pendiente**."
         if estado in {"CORREGIR", "ALERTA", "REVISAR"}
-        else "Mantener la Historia como **Analizada** y continuar con la siguiente etapa."
+        else "La Historia queda marcada como **Revisada** y puede continuar con la siguiente etapa."
     )
     return f"""## Resultado del análisis multiagente
 
@@ -91,9 +91,36 @@ def _resultado_informacion_insuficiente(issue_data: dict) -> dict:
     }
 
 
+def _actualizar_estado_gitlab(adapter, result: dict, estado_evaluacion: str) -> None:
+    """Aplica el ciclo de etiquetas sin convertir un fallo GitLab en fallo del análisis."""
+    labels = construir_etiquetas_resultado(
+        result.get("issue_data", {}).get("labels", []),
+        estado_evaluacion,
+    )
+    try:
+        adapter.actualizar_etiquetas(result["issue_iid"], labels)
+        result["labels_updated"] = True
+        result["labels_after"] = labels
+    except Exception as exc:
+        result["labels_updated"] = False
+        result["gitlab_label_error"] = str(exc)
+        logger.exception(
+            "No se pudieron actualizar etiquetas de GitLab para Issue #%s.",
+            result["issue_iid"],
+        )
+
+
 def procesar_flujo_lote(issues: list, project_name: str, sprint_context: str = "", adapter=None) -> dict:
     reiniciar_contadores()
+    logger.info("Modelo Ollama efectivo para la ejecución: %s", OLLAMA_MODEL)
     adapter = adapter or GitLabAdapter()
+    received_count = len(issues)
+    issues = [issue for issue in issues if es_issue_pendiente(issue)]
+    if len(issues) != received_count:
+        logger.info(
+            "Filtro GitLab: recibidas=%s, pendientes_elegibles=%s, omitidas_por_estado=%s.",
+            received_count, len(issues), received_count - len(issues),
+        )
     issues_data = [mapear_issue_a_json(issue) for issue in issues]
     issues_by_iid = {int(issue.iid): issue for issue in issues}
     processable_data, incomplete_data = separar_entradas_para_analisis(issues_data, ALLOW_INCOMPLETE_STORIES)
@@ -138,7 +165,7 @@ def procesar_flujo_lote(issues: list, project_name: str, sprint_context: str = "
 
 No se envió esta historia al modelo porque faltan campos esenciales: **{', '.join(missing)}**.
 
-Complete la historia y manténgala en revisión para ejecutar nuevamente la evaluación.
+La historia quedará como **Requiere modificación**. Después de corregirla, vuelva a marcarla como **Pendiente** para ejecutar nuevamente la evaluación.
 
 {DECISION_SUPPORT_NOTICE}
 """
@@ -151,8 +178,9 @@ Complete la historia y manténgala en revisión para ejecutar nuevamente la eval
                 logger.exception("No se pudo registrar la entrada insuficiente en GitLab para Issue #%s", iid)
             finally:
                 logger.info("GitLab Issue #%s completado en %.2fs.", iid, time.perf_counter() - publication_started)
+            _actualizar_estado_gitlab(adapter, result, "NO_PROCESABLE")
             content_hash = calcular_hash_issue(result["issue_data"])
-            insertar_o_actualizar_issue(iid, content_hash, "Información insuficiente")
+            insertar_o_actualizar_issue(iid, content_hash, "Requiere modificación")
             continue
         if result["status"] != "ok":
             logger.error("Issue #%s incompleto: %s", iid, "; ".join(result["errors"]))
@@ -172,7 +200,8 @@ Complete la historia y manténgala en revisión para ejecutar nuevamente la eval
         finally:
             logger.info("GitLab Issue #%s completado en %.2fs.", iid, time.perf_counter() - publication_started)
 
-        tracking_state = "Analizada" if result["estado_evaluacion"] == "APROBADO" else "En revisión"
+        _actualizar_estado_gitlab(adapter, result, result["estado_evaluacion"])
+        tracking_state = "Revisada" if result["estado_evaluacion"] == "APROBADO" else "Requiere modificación"
         insertar_o_actualizar_issue(iid, content_hash, tracking_state)
         guardar_historial(iid, quality.get("indice"), security.get("indice"), evaluation["veredicto"], execution_time / max(len(processable_issues), 1), evaluation.get("conclusion", ""))
         guardar_cache(content_hash, SCHEMA_VERSION, central, quality, security, evaluation)
@@ -182,7 +211,7 @@ Complete la historia y manténgala en revisión para ejecutar nuevamente la eval
     audit = obtener_contadores()
     logger.info(
         "Flujo de lote terminado en %.2fs: recibidas=%s, correctas=%s, con_error=%s, comentarios_publicados=%s, pendientes=%s.",
-        execution_time, len(issues), len(issues) - failed, failed, published, len(issues) - published,
+        execution_time, received_count, len(issues) - failed, failed, published, len(issues) - published,
     )
     logger.info(
         "Ollama lote: llamadas=%s, reintentos=%s, por_agente=%s.",

@@ -3,6 +3,9 @@ from agents import obtener_llm, cargar_prompt
 from core.performance_audit import auditar_llamada_agente
 from core.batch_contract import calcular_num_predict
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 def analizar_calidad(issues_json_str: str, num_predict_override: int | None = None) -> str:
     """
@@ -30,6 +33,7 @@ def analizar_calidad(issues_json_str: str, num_predict_override: int | None = No
         model_params=params,
     ) as audit:
         response = chain.invoke({"issues_json_str": issues_json_str, "expected_issue_ids": json.dumps(expected_issue_ids)})
+        logger.info("PHI4_RAW Quality:\n%s", response.content)
         audit["response"] = response.content
     
     return response.content

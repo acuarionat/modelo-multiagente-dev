@@ -2,6 +2,27 @@ import os
 import gitlab
 from typing import List, Dict, Any, Optional
 
+PENDING_LABEL = "Pendiente"
+REVIEWED_LABEL = "Revisada"
+REWORK_LABEL = "Requiere modificación"
+LEGACY_COMPLETED_LABELS = {"Analizada", "Analizado"}
+WORKFLOW_LABELS = {
+    PENDING_LABEL: "#F2C300",
+    REVIEWED_LABEL: "#1F75CB",
+    REWORK_LABEL: "#D9534F",
+}
+
+
+def es_issue_pendiente(issue) -> bool:
+    """Solo permite analizar issues Pendientes que no tengan un estado final."""
+    labels = {str(label).strip().casefold() for label in getattr(issue, "labels", [])}
+    completed = {
+        REVIEWED_LABEL.casefold(),
+        *(label.casefold() for label in LEGACY_COMPLETED_LABELS),
+    }
+    return PENDING_LABEL.casefold() in labels and not bool(labels & completed)
+
+
 class GitLabAdapter:
     """
     Clase responsable únicamente de comunicarse con la API de GitLab.
@@ -17,6 +38,7 @@ class GitLabAdapter:
             
         self.gl = self.conectar()
         self.project = self.obtener_proyecto()
+        self._workflow_labels_ready = False
         
     def conectar(self) -> gitlab.Gitlab:
         """Establece conexión con GitLab."""
@@ -44,6 +66,21 @@ class GitLabAdapter:
                 status[title] = "creado"
         return status
 
+    def asegurar_etiquetas_flujo(self) -> Dict[str, str]:
+        """Crea una sola vez las etiquetas del ciclo de revisión que aún no existan."""
+        if self._workflow_labels_ready:
+            return {name: "verificada" for name in WORKFLOW_LABELS}
+        existing = {item.name for item in self.project.labels.list(all=True)}
+        status = {}
+        for name, color in WORKFLOW_LABELS.items():
+            if name in existing:
+                status[name] = "reutilizada"
+            else:
+                self.project.labels.create({"name": name, "color": color})
+                status[name] = "creada"
+        self._workflow_labels_ready = True
+        return status
+
     def listar_issues_abiertos(self, milestone_title: Optional[str] = None, labels: Optional[List[str]] = None) -> List[Any]:
         """Lista los issues abiertos del proyecto. Permite filtrar por Milestone o Etiquetas."""
         params = {'state': 'opened', 'all': True}
@@ -53,6 +90,14 @@ class GitLabAdapter:
             params['labels'] = ','.join(labels)
             
         return self.project.issues.list(**params)
+
+    def listar_issues_pendientes(self, milestone_title: Optional[str] = None) -> List[Any]:
+        """Lista exclusivamente issues elegibles para el análisis multiagente."""
+        issues = self.listar_issues_abiertos(
+            milestone_title=milestone_title,
+            labels=[PENDING_LABEL],
+        )
+        return [issue for issue in issues if es_issue_pendiente(issue)]
         
     def obtener_issue(self, issue_iid: int):
         """Obtiene un issue específico por su IID."""
@@ -62,6 +107,14 @@ class GitLabAdapter:
         """Añade un comentario a un issue."""
         issue = self.obtener_issue(issue_iid)
         return issue.notes.create({"body": body})
+
+    def actualizar_etiquetas(self, issue_iid: int, labels: List[str]):
+        """Reemplaza las etiquetas del issue con el nuevo estado de revisión."""
+        self.asegurar_etiquetas_flujo()
+        issue = self.obtener_issue(issue_iid)
+        issue.labels = list(dict.fromkeys(labels))
+        issue.save()
+        return issue
         
     def subir_adjunto(self, filepath: str) -> Dict[str, Any]:
         """Sube un archivo al proyecto y devuelve la información del archivo adjunto."""

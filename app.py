@@ -628,7 +628,7 @@ refresh_col, analysis_col = st.columns(2)
 refresh_issues = refresh_col.button("Actualizar desde GitLab", use_container_width=True)
 if refresh_issues or stage_id not in st.session_state.issues_by_stage:
     with st.spinner("Consultando issues del milestone..."):
-        st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_abiertos(milestone_title=milestone_val)
+        st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_pendientes(milestone_title=milestone_val)
 issues = st.session_state.issues_by_stage[stage_id]
 st.write(f"**Issues encontrados:** {len(issues)}")
 if issues:

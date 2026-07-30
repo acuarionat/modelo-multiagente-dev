@@ -35,6 +35,36 @@ Alta
 Validar con el responsable
 """
 
+OFFICIAL_GITLAB_DESCRIPTION = """# Historia de Usuario
+## Descripción
+La recepcionista necesita reprogramar citas médicas.
+## Como
+Recepcionista
+## Quiero
+Modificar la fecha y hora de una cita.
+## Para
+Adaptar la agenda médica según disponibilidad.
+## Criterios de aceptación
+* Verificar disponibilidad.
+* Notificar al paciente.
+* Registrar el cambio.
+## Restricciones
+Solo horarios disponibles.
+## Seguridad
+## ¿La historia maneja datos sensibles?
+Sí
+Datos personales y datos médicos.
+## Autenticación
+Usuario y contraseña.
+## Autorización / Roles
+Recepcionista.
+## Auditoría
+Sí.
+Registrar usuario, fecha, hora y cambios realizados.
+## Observaciones
+Enviar notificación automática al paciente.
+"""
+
 
 def quality(index=1.0):
     return {
@@ -54,6 +84,19 @@ class InputValidationTests(unittest.TestCase):
     def test_complete_story(self):
         data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION))
         self.assertEqual(data["validacion_entrada"]["estado"], "entrada_valida")
+
+    def test_official_gitlab_template_is_mapped(self):
+        data = mapear_issue_a_json(FakeIssue(OFFICIAL_GITLAB_DESCRIPTION))
+        self.assertEqual(data["actor"], "Recepcionista")
+        self.assertEqual(data["funcionalidad"], "Modificar la fecha y hora de una cita.")
+        self.assertEqual(data["objetivo"], "Adaptar la agenda médica según disponibilidad.")
+        self.assertEqual(len(data["criterios_aceptacion"]), 3)
+        self.assertEqual(data["restricciones"], ["Solo horarios disponibles."])
+        self.assertIn("Datos personales", data["seguridad"]["maneja_datos_sensibles"])
+        self.assertEqual(data["seguridad"]["autenticacion"], "Usuario y contraseña.")
+        self.assertEqual(data["seguridad"]["autorizacion_roles"], "Recepcionista.")
+        self.assertIn("Registrar usuario", data["seguridad"]["auditoria"])
+        self.assertNotEqual(data["validacion_entrada"]["estado"], "informacion_insuficiente")
 
     def test_missing_actor(self):
         data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION.replace("**Como** administrador\n", "")))
@@ -203,13 +246,17 @@ class VerdictAndTraceabilityTests(unittest.TestCase):
 
     def test_gitlab_labels_follow_evaluation(self):
         base = ["Historia de Usuario", "Pendiente", "Analizada"]
-        self.assertIn("Analizada", construir_etiquetas_resultado(base, "APROBADO", 1, 1))
-        self.assertIn("En revisión", construir_etiquetas_resultado(base, "CORREGIR", .8, .9))
+        approved = construir_etiquetas_resultado(base, "APROBADO", 1, 1)
+        self.assertIn("Revisada", approved)
+        self.assertNotIn("Pendiente", approved)
+        self.assertNotIn("Analizada", approved)
+        self.assertIn("Requiere modificación", construir_etiquetas_resultado(base, "CORREGIR", .8, .9))
         alert = construir_etiquetas_resultado(base, "ALERTA", .8, .5)
-        self.assertIn("En revisión", alert)
+        self.assertIn("Requiere modificación", alert)
         self.assertNotIn("Analizada", alert)
         insufficient = construir_etiquetas_resultado(base, "NO_EVALUADO")
-        self.assertNotIn("Analizada", insufficient)
+        self.assertIn("Requiere modificación", insufficient)
+        self.assertNotIn("Pendiente", insufficient)
 
     def test_consolidation_separates_technical_and_evaluation_state(self):
         central = {"resultados": [{"issue_iid": 17, "requerimientos": [{"tipo": "RF", "descripcion_formal": "El sistema deberá registrar.", "procedencia": "extraido"}]}]}

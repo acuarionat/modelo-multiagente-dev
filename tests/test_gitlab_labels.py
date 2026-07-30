@@ -1,0 +1,55 @@
+import unittest
+
+from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente
+
+
+class GitLabLabelWorkflowTests(unittest.TestCase):
+    def test_only_pending_non_final_issues_are_eligible(self):
+        issue = lambda labels: type("Issue", (), {"labels": labels})()
+
+        self.assertTrue(es_issue_pendiente(issue(["Historia de Usuario", "Pendiente"])))
+        self.assertFalse(es_issue_pendiente(issue(["Historia de Usuario", "Revisada"])))
+        self.assertFalse(es_issue_pendiente(issue(["Historia de Usuario", "Analizada"])))
+        self.assertFalse(es_issue_pendiente(issue(["Historia de Usuario", "Requiere modificación"])))
+        self.assertFalse(es_issue_pendiente(issue(["Pendiente", "Revisada"])))
+
+    def test_adapter_updates_issue_labels_and_creates_missing_workflow_labels(self):
+        class Labels:
+            def __init__(self):
+                self.items = [type("Label", (), {"name": "Pendiente"})()]
+                self.created = []
+
+            def list(self, all=False):
+                return self.items
+
+            def create(self, data):
+                self.created.append(data)
+
+        class Issue:
+            def __init__(self):
+                self.labels = ["Historia de Usuario", "Pendiente"]
+                self.saved = False
+
+            def save(self):
+                self.saved = True
+
+        issue = Issue()
+        adapter = object.__new__(GitLabAdapter)
+        adapter._workflow_labels_ready = False
+        adapter.project = type("Project", (), {
+            "labels": Labels(),
+            "issues": type("Issues", (), {"get": lambda self, iid: issue})(),
+        })()
+
+        adapter.actualizar_etiquetas(17, ["Historia de Usuario", "Revisada"])
+
+        self.assertEqual(issue.labels, ["Historia de Usuario", "Revisada"])
+        self.assertTrue(issue.saved)
+        self.assertEqual(
+            {item["name"] for item in adapter.project.labels.created},
+            {"Revisada", "Requiere modificación"},
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

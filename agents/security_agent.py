@@ -3,6 +3,9 @@ from agents import obtener_llm, cargar_prompt
 from core.performance_audit import auditar_llamada_agente
 from core.batch_contract import calcular_num_predict
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 def analizar_seguridad(
     issues_json_str: str,
@@ -38,6 +41,7 @@ def analizar_seguridad(
         model_params=params,
     ) as audit:
         response = chain.invoke(prompt_values)
+        logger.info("PHI4_RAW Security:\n%s", response.content)
         audit["response"] = response.content
     
     return response.content

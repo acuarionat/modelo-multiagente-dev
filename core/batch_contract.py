@@ -333,20 +333,21 @@ def recopilar_recomendaciones(result: Dict[str, Any]) -> List[str]:
 
 
 def construir_etiquetas_resultado(old_labels: list, estado_evaluacion: str, quality_index=None, security_index=None) -> list:
-    """Calcula etiquetas coherentes sin crear etiquetas nuevas en GitLab."""
+    """Calcula el siguiente estado GitLab conservando etiquetas ajenas al flujo."""
     if estado_evaluacion not in {"APROBADO", "CORREGIR", "ALERTA", "NO_PROCESABLE", "NO_EVALUADO"}:
         return list(dict.fromkeys(old_labels))
-    removed = {"Pendiente", "En revisión", "Analizado", "Analizada", "Error de análisis"}
+    removed = {
+        "Pendiente", "Revisada", "Requiere modificación",
+        "En revisión", "Analizado", "Analizada", "Error de análisis",
+    }
     labels = [
         label for label in old_labels
         if label not in removed and not label.startswith(("Calidad:", "Seguridad:", "Veredicto:"))
     ]
     if estado_evaluacion == "APROBADO":
-        labels.append("Analizada")
-    elif estado_evaluacion in {"CORREGIR", "ALERTA"}:
-        labels.append("En revisión")
-    elif estado_evaluacion in {"NO_PROCESABLE", "NO_EVALUADO"}:
-        labels.append("Pendiente")
+        labels.append("Revisada")
+    elif estado_evaluacion in {"CORREGIR", "ALERTA", "NO_PROCESABLE", "NO_EVALUADO"}:
+        labels.append("Requiere modificación")
     return list(dict.fromkeys(labels))
 
 

@@ -3,6 +3,9 @@ from agents import obtener_llm, cargar_prompt
 from core.performance_audit import auditar_llamada_agente
 from core.batch_contract import calcular_num_predict
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str, num_predict_override: int | None = None) -> str:
     """
@@ -38,5 +41,6 @@ def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str
             "sprint_context": sprint_context,
             "expected_issue_ids": json.dumps(expected_issue_ids),
         })
+        logger.info("PHI4_RAW Central:\n%s", response.content)
         audit["response"] = response.content
     return response.content
