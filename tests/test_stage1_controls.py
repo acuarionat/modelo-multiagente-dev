@@ -6,7 +6,7 @@ from core.batch_contract import (
 )
 from core.utils import (
     calcular_resumen_lote, construir_filas_trazabilidad, construir_resultado_lote,
-    generar_documento_formal_lote_docx,
+    generar_documento_formal_lote_docx, generar_reporte_lote_pdf,
 )
 from integrations.issue_mapper import mapear_issue_a_json, separar_entradas_para_analisis, validar_entrada_issue
 
@@ -268,7 +268,7 @@ class VerdictAndTraceabilityTests(unittest.TestCase):
         self.assertEqual(result["estado_evaluacion"], "APROBADO")
         self.assertEqual(result["estado_revision_humana"], "pendiente")
 
-    def test_traceability_contains_provenance_and_human_review(self):
+    def test_traceability_has_only_the_seven_public_columns(self):
         result = {
             "status": "ok", "estado_evaluacion": "CORREGIR", "responsable_revision": None,
             "estado_revision_humana": "pendiente", "issue_data": {"criterios_aceptacion": ["Correo único"]},
@@ -278,9 +278,12 @@ class VerdictAndTraceabilityTests(unittest.TestCase):
             }]},
         }
         row = construir_filas_trazabilidad([result])[0]
-        self.assertEqual(row["procedencia"], "extraido")
-        self.assertEqual(row["estado_evaluacion"], "CORREGIR")
-        self.assertEqual(row["estado_aprobacion_humana"], "Pendiente")
+        self.assertEqual(list(row), [
+            "Código", "Nombre", "Descripción", "Tipo", "Historia de origen",
+            "Fecha de generación", "Estado de cumplimiento",
+        ])
+        self.assertEqual(row["Tipo"], "Funcional")
+        self.assertEqual(row["Estado de cumplimiento"], "Pendiente de revisión")
 
     def test_docx_keeps_main_structure_with_extended_traceability(self):
         result = {
@@ -299,6 +302,28 @@ class VerdictAndTraceabilityTests(unittest.TestCase):
         }
         artifact = generar_documento_formal_lote_docx(construir_resultado_lote("Proyecto", "Sprint", [result]))
         self.assertGreater(len(artifact.getvalue()), 1000)
+
+    def test_pdf_tolerates_mixed_dynamic_values(self):
+        result = {
+            "issue_iid": 17, "status": "ok", "estado_procesamiento": "completo",
+            "estado_evaluacion": "NO_EVALUADO", "issue_data": {},
+            "central": {"historia_id": "HU-017", "titulo": "Registro", "actor": "Usuario",
+                        "objetivo": "Registrar", "observaciones": [], "requerimientos": [
+                            {"tipo": "RC", "nombre": "Registrar", "descripcion_formal": "El sistema deberá registrar."},
+                            {"tipo": "RS", "nombre": "Protección", "descripcion_formal": "Los datos deberán mantenerse protegidos."},
+                        ]},
+            "quality": {"indice": None, "metricas": {
+                "cobertura": {"valor": None, "justificacion": "Sin evidencia", "recomendacion": ""},
+                "observaciones": "Texto independiente", "inesperada": [],
+            }, "observaciones": "Revisar", "recomendaciones": None},
+            "security": {"indice": None, "metricas": None, "observaciones": [], "recomendaciones": "Proteger"},
+            "evaluation": {"veredicto": "NO_EVALUADO", "riesgos_criticos": None,
+                           "correcciones_obligatorias": "Validar manualmente."},
+        }
+        batch = construir_resultado_lote("Proyecto", "Sprint", [result])
+        artifact = generar_reporte_lote_pdf(batch)
+        self.assertTrue(artifact.getvalue().startswith(b"%PDF"))
+        self.assertEqual([row["Tipo"] for row in batch["traceability_rows"]], ["Funcional", "No funcional"])
 
 
 if __name__ == "__main__":

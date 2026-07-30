@@ -1,0 +1,12 @@
+﻿Código,Nombre,Descripción,Tipo,Historia de origen,Fecha de generación,Estado de cumplimiento
+RF-001,Mostrar únicamente horarios disponibles,El sistema deberá mostrar solo los horarios que están actualmente libres para la consulta.,Funcional,HU-006 – Consultar horarios disponibles,29/07/2026,Pendiente de revisión
+RF-002,Mostrar nombre y especialidad del médico,El sistema deberá mostrar el nombre completo y la especialidad de cada médico disponible.,Funcional,HU-006 – Consultar horarios disponibles,29/07/2026,Pendiente de revisión
+RF-003,Actualizar disponibilidad inmediatamente después de una cita,El sistema deberá actualizar la disponibilidad inmediata tras registrar una nueva cita.,Funcional,HU-006 – Consultar horarios disponibles,29/07/2026,Pendiente de revisión
+RF-004,Validar documento de identidad al registrar un nuevo paciente,El sistema deberá validar el documento de identidad del paciente antes de proceder con la inscripción.,Funcional,HU-007 – Registrar pacientes,29/07/2026,Pendiente de revisión
+RF-005,Registrar información obligatoria al inscribir un nuevo paciente,El sistema deberá registrar la información obligatoria requerida por las políticas del centro médico.,Funcional,HU-007 – Registrar pacientes,29/07/2026,Pendiente de revisión
+RF-006,Evitar registros duplicados de pacientes,El sistema deberá evitar registrar el mismo paciente dos veces.,Funcional,HU-007 – Registrar pacientes,29/07/2026,Pendiente de revisión
+RNF-001,Mostrar citas del día en la agenda,El sistema deberá mostrar las citas programadas para el médico del día.,No funcional,HU-008 – Consultar agenda médica,29/07/2026,Pendiente de revisión
+RNF-002,Mostrar nombre del paciente en la agenda,El sistema deberá mostrar el nombre del paciente junto con las citas del día.,No funcional,HU-008 – Consultar agenda médica,29/07/2026,Pendiente de revisión
+RF-007,Exportar reportes de citas en PDF,El sistema deberá permitir que el administrador genere y exporte los reportes de citas como archivos PDF.,Funcional,HU-009 – Generar reportes de citas,29/07/2026,Pendiente de revisión
+RNF-003,Mostrar estadísticas en los reportes,El sistema deberá incluir estadísticas relevantes dentro de los reportes generados.,No funcional,HU-009 – Generar reportes de citas,29/07/2026,Pendiente de revisión
+RF-008,Permitir cancelar la cita médica,El sistema deberá permitir que los pacientes cancelen una cita médica previamente programada.,Funcional,HU-010 – Cancelar cita médica,29/07/2026,Pendiente de revisión

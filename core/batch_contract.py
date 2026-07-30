@@ -1,8 +1,12 @@
 import json
+import logging
 import re
 import unicodedata
 from collections import Counter
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Set, Tuple
+
+logger = logging.getLogger(__name__)
 
 INVALID_TEXT_VALUES = {
     "", "...", "n/a", "ninguno", "ninguna", "desconocido", "desconocida",
@@ -517,19 +521,59 @@ def indexar_resultados(response: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
     return indexed
 
 
+def normalizar_tipo_requerimiento(requirement: Dict[str, Any]) -> str:
+    """Reduce tipos actuales y heredados a RF/RNF usando el contenido."""
+    kind = str(requirement.get("tipo", "")).strip().upper()
+    if kind in {"RF", "RNF"}:
+        return kind
+
+    text = " ".join(str(requirement.get(key, "")) for key in (
+        "nombre", "descripcion", "descripcion_formal", "origen", "justificacion",
+    )).casefold()
+    functional_markers = (
+        "permitir", "registrar", "mostrar", "generar", "filtrar", "autenticar",
+        "validar", "evitar", "cancelar", "consultar", "actualizar", "notificar",
+        "calcular", "enviar", "crear", "eliminar", "modificar", "almacenar",
+    )
+    nonfunctional_markers = (
+        "menos de", "tiempo de respuesta", "rendimiento", "confidencial",
+        "integridad", "disponibilidad", "confiabilidad", "usabilidad",
+        "mantenibilidad", "trazabilidad", "proteg", "restrin", "autorizad",
+        "seguridad", "en tiempo real", "calidad", "deberá garantizar",
+    )
+    functional = any(marker in text for marker in functional_markers)
+    nonfunctional = any(marker in text for marker in nonfunctional_markers)
+    if functional:
+        normalized = "RF"
+    elif nonfunctional:
+        normalized = "RNF"
+    else:
+        normalized = "RNF"
+        requirement["_normalizacion_tipo_pendiente"] = True
+        logger.warning(
+            "Tipo heredado o inesperado %r normalizado conservadoramente a RNF; "
+            "requiere revisión humana. Requerimiento=%r",
+            kind or None, requirement.get("nombre") or requirement.get("id"),
+        )
+    if kind not in {"RC", "RS", ""}:
+        logger.warning("Tipo de requerimiento inesperado %r normalizado a %s.", kind, normalized)
+    requirement["_tipo_original"] = kind or None
+    return normalized
+
+
 def renumerar_requerimientos(items: Iterable[Dict[str, Any]]) -> None:
-    counters = {"RF": 0, "RNF": 0, "RS": 0, "RC": 0}
+    counters = {"RF": 0, "RNF": 0}
+    generation_date = datetime.now().date().isoformat()
     for item in items:
         for requirement in item.get("requerimientos", []):
             if not isinstance(requirement, dict):
                 continue
-            kind = str(requirement.get("tipo", "RF")).upper()
-            if kind not in counters:
-                kind = "RF"
+            kind = normalizar_tipo_requerimiento(requirement)
             counters[kind] += 1
             requirement["tipo"] = kind
             requirement["id"] = f"{kind}-{counters[kind]:03d}"
-            requirement["descripcion"] = requirement.get("descripcion_formal")
+            requirement["descripcion"] = requirement.get("descripcion_formal") or requirement.get("descripcion", "")
+            requirement.setdefault("fecha_generacion", generation_date)
             if requirement.get("procedencia") not in {"extraido", "inferido", "recomendado"}:
                 requirement["procedencia"] = "inferido"
 

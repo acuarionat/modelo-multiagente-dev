@@ -12,7 +12,7 @@ Cada elemento de requerimientos debe incluir obligatoriamente:
 - temp_id: identificador temporal como RF-TEMP-01; Python asignará el ID definitivo.
 - nombre: nombre concreto y breve.
 - descripcion_formal: redacción verificable y específica que comience exactamente con "El sistema deberá".
-- tipo: únicamente RF, RNF, RS o RC.
+- tipo: únicamente RF o RNF. Usa RF para funciones, acciones u operaciones del sistema; usa RNF para restricciones o atributos de calidad, rendimiento, seguridad, protección, disponibilidad o trazabilidad.
 - origen: necesidad, criterio de aceptación o restricción textual que lo origina.
 - justificacion: explicación concreta de por qué se deriva ese requerimiento.
 - prioridad: copia la prioridad de la historia salvo razón explícita para cambiarla.

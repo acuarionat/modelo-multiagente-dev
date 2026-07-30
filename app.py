@@ -748,7 +748,8 @@ if start_analysis:
 if st.session_state.get("last_batch_result", {}).get("issues"):
     st.divider()
     from core.utils import (
-        generar_documento_formal_lote_docx, generar_reporte_lote_pdf,
+        construir_filas_trazabilidad, generar_documento_formal_lote_docx,
+        generar_reporte_lote_pdf,
     )
     batch_result = st.session_state.last_batch_result
     results = batch_result["issues"]
@@ -795,9 +796,12 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             st.write("**Recomendaciones:**", quality.get("recomendaciones", []) + security.get("recomendaciones", []))
             st.write("**Comentario publicado en GitLab:**", "Sí" if result.get("comment_published") else "No")
 
-    st.subheader("Matriz de trazabilidad completa")
+    st.subheader("Matriz de trazabilidad")
     try:
-        rows = batch_result["traceability_rows"]
+        rows = construir_filas_trazabilidad(
+            results, batch_result.get("generated_at")
+        )
+        batch_result["traceability_rows"] = rows
         if not rows:
             raise ValueError("No fue posible construir la matriz porque el Agente Central no devolvió requerimientos formalizados.")
         st.dataframe(rows, use_container_width=True, hide_index=True)

@@ -5,7 +5,7 @@ from core.batch_contract import (
     calcular_metricas_agente, calcular_num_predict, recopilar_recomendaciones,
     consolidar_lote, analizar_respuesta_lote, conciliar_ids_issues,
     explicar_texto_invalido, normalizar_lista_textos, validar_contenido_agente,
-    validar_respuesta_lote,
+    validar_respuesta_lote, renumerar_requerimientos,
 )
 
 
@@ -14,6 +14,18 @@ def batch(agent, results):
 
 
 class BatchContractTests(unittest.TestCase):
+
+    def test_legacy_types_are_semantically_normalized_and_renumbered(self):
+        items = [{"requerimientos": [
+            {"tipo": "RC", "nombre": "Cancelar cita", "descripcion_formal": "El sistema deberá permitir cancelar una cita."},
+            {"tipo": "RS", "nombre": "Protección", "descripcion_formal": "Los datos deberán mantenerse protegidos."},
+            {"tipo": "RS", "nombre": "Caso ambiguo", "descripcion_formal": "Debe revisarse."},
+        ]}]
+        renumerar_requerimientos(items)
+        requirements = items[0]["requerimientos"]
+        self.assertEqual([item["tipo"] for item in requirements], ["RF", "RNF", "RNF"])
+        self.assertEqual([item["id"] for item in requirements], ["RF-001", "RNF-001", "RNF-002"])
+        self.assertTrue(requirements[2]["_normalizacion_tipo_pendiente"])
 
     def test_normalizes_text_lists_without_splitting_characters(self):
         self.assertEqual(normalizar_lista_textos("Corregir permisos"), ["Corregir permisos"])

@@ -1,10 +1,25 @@
 import io
 from datetime import datetime
 import json
+import logging
 import unicodedata
 import re
 from difflib import SequenceMatcher
-from core.batch_contract import recopilar_recomendaciones
+from core.batch_contract import (
+    normalizar_tipo_requerimiento, recopilar_recomendaciones,
+    renumerar_requerimientos,
+)
+
+logger = logging.getLogger(__name__)
+
+TRACEABILITY_COLUMNS = (
+    "Código", "Nombre", "Descripción", "Tipo", "Historia de origen",
+    "Fecha de generación", "Estado de cumplimiento",
+)
+COMPLIANCE_STATES = {
+    "Cumple", "Cumple parcialmente", "No cumple",
+    "Pendiente de revisión", "No evaluado",
+}
 
 DECISION_SUPPORT_NOTICE = (
     "El modelo multiagente apoya el control, seguimiento y trazabilidad del desarrollo. "
@@ -25,32 +40,104 @@ def extraer_porcentaje(val) -> str:
     return "N/D" if val is None else str(val)
 
 
-def construir_filas_trazabilidad(batch_results: list) -> list:
+def _iterar_textos(value, context: str):
+    if value in (None, "", []):
+        return
+    if isinstance(value, str):
+        clean = value.strip()
+        if clean:
+            yield clean
+        return
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                yield item.strip()
+            elif item not in (None, "", []):
+                logger.warning("%s contiene un valor no textual de tipo %s.", context, type(item).__name__)
+        return
+    logger.warning("%s tiene una estructura inesperada de tipo %s.", context, type(value).__name__)
+
+
+def _iterar_metricas(report, context: str):
+    if not isinstance(report, dict):
+        logger.warning("%s no es un diccionario; se omite el bloque.", context)
+        return
+    metrics = report.get("metricas")
+    if metrics in (None, "", []):
+        return
+    if not isinstance(metrics, dict):
+        logger.warning("%s.metricas tiene tipo %s; se omite.", context, type(metrics).__name__)
+        return
+    for name, metric in metrics.items():
+        if isinstance(metric, dict):
+            yield str(name), metric
+        elif name in {"observaciones", "recomendaciones"}:
+            continue
+        elif metric not in (None, "", []):
+            logger.warning(
+                "%s.metricas.%s tiene tipo %s y no se procesa como métrica.",
+                context, name, type(metric).__name__,
+            )
+
+
+def _fecha_visible(value) -> str:
+    text = str(value or "").strip()
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).strftime("%d/%m/%Y")
+    except ValueError:
+        logger.warning("Fecha de generación inesperada %r; se conserva como texto.", value)
+        return text
+
+
+def _normalizar_requerimientos_visibles(batch_results: list, generation_date: str) -> None:
+    centrals = [
+        result.get("central", {}) for result in batch_results
+        if isinstance(result, dict) and result.get("status") == "ok"
+        and isinstance(result.get("central"), dict)
+    ]
+    for central in centrals:
+        requirements = central.get("requerimientos")
+        if not isinstance(requirements, list):
+            logger.warning("'requerimientos' no es una lista para %r.", central.get("historia_id"))
+            central["requerimientos"] = []
+            continue
+        for requirement in requirements:
+            if isinstance(requirement, dict):
+                requirement.setdefault("fecha_generacion", generation_date)
+            else:
+                logger.warning("Requerimiento inesperado de tipo %s ignorado.", type(requirement).__name__)
+    renumerar_requerimientos(centrals)
+
+
+def construir_filas_trazabilidad(batch_results: list, generation_date: str | None = None) -> list:
+    generation_date = generation_date or datetime.now().date().isoformat()
+    _normalizar_requerimientos_visibles(batch_results, generation_date)
     rows = []
     for result in batch_results:
-        if result.get("status") != "ok":
+        if not isinstance(result, dict) or result.get("status") != "ok":
             continue
-        central = result["central"]
-        history = f"{central['historia_id']} — {central['titulo']}"
-        issue_data = result.get("issue_data", {})
-        criterios = issue_data.get("criterios_aceptacion", [])
-        for requirement in central["requerimientos"]:
+        central = result.get("central", {})
+        if not isinstance(central, dict):
+            logger.warning("Bloque central inesperado para Issue %r.", result.get("issue_iid"))
+            continue
+        iid = result.get("issue_iid", 0)
+        history_id = central.get("historia_id") or (f"HU-{iid:03d}" if isinstance(iid, int) else "HU")
+        history = f"{history_id} – {central.get('titulo', 'Sin título')}"
+        for requirement in central.get("requerimientos", []):
+            if not isinstance(requirement, dict):
+                continue
+            kind = normalizar_tipo_requerimiento(requirement)
+            state = requirement.get("estado_cumplimiento")
+            if state not in COMPLIANCE_STATES:
+                state = "Pendiente de revisión"
             rows.append({
-                "id": requirement["id"],
-                "historia": history,
-                "requerimiento_formal": requirement.get("descripcion", ""),
-                "tipo": requirement["tipo"],
-                "justificacion": requirement.get("justificacion", ""),
-                "prioridad": requirement.get("prioridad", ""),
-                "seguimiento": "Sugerido",
-                "origen_textual": requirement.get("origen", ""),
-                "procedencia": requirement.get("procedencia", "inferido"),
-                "criterio_aceptacion_relacionado": " | ".join(criterios),
-                "observacion": " | ".join(central.get("observaciones", [])),
-                "estado_evaluacion": result.get("estado_evaluacion", "NO_EVALUADO"),
-                "fecha_analisis": datetime.now().strftime("%Y-%m-%d"),
-                "responsable_revision_humana": result.get("responsable_revision") or "",
-                "estado_aprobacion_humana": result.get("estado_revision_humana", "pendiente").capitalize(),
+                "Código": requirement.get("id", ""),
+                "Nombre": requirement.get("nombre", ""),
+                "Descripción": requirement.get("descripcion_formal") or requirement.get("descripcion", ""),
+                "Tipo": "Funcional" if kind == "RF" else "No funcional",
+                "Historia de origen": history,
+                "Fecha de generación": _fecha_visible(requirement.get("fecha_generacion")),
+                "Estado de cumplimiento": state,
             })
     if not rows:
         raise ValueError("No fue posible construir la matriz porque el Agente Central no devolvió requerimientos formalizados.")
@@ -58,18 +145,45 @@ def construir_filas_trazabilidad(batch_results: list) -> list:
 
 
 def calcular_resumen_lote(batch_results: list) -> dict:
-    valid = [x for x in batch_results if x.get("status") == "ok"]
-    quality = [x["quality"]["indice"] for x in valid if isinstance(x["quality"].get("indice"), (int, float))]
-    security = [x["security"]["indice"] for x in valid if isinstance(x["security"].get("indice"), (int, float))]
+    valid = [x for x in batch_results if isinstance(x, dict) and x.get("status") == "ok"]
+    quality = [
+        x["quality"]["indice"] for x in valid
+        if isinstance(x.get("quality"), dict)
+        and isinstance(x["quality"].get("indice"), (int, float))
+    ]
+    security = [
+        x["security"]["indice"] for x in valid
+        if isinstance(x.get("security"), dict)
+        and isinstance(x["security"].get("indice"), (int, float))
+    ]
     verdicts = {}
     for item in valid:
-        verdict = item["evaluation"]["veredicto"]
+        evaluation = item.get("evaluation") if isinstance(item.get("evaluation"), dict) else {}
+        verdict = evaluation.get("veredicto", "NO_EVALUADO")
         verdicts[verdict] = verdicts.get(verdict, 0) + 1
-    insufficient = [x for x in batch_results if x.get("estado_procesamiento") == "informacion_insuficiente"]
-    critical_risks = sum(len(x["evaluation"].get("riesgos_criticos", [])) for x in valid)
+    insufficient = [
+        x for x in batch_results if isinstance(x, dict)
+        and x.get("estado_procesamiento") == "informacion_insuficiente"
+    ]
+    critical_risks = sum(
+        len(list(_iterar_textos(
+            x.get("evaluation", {}).get("riesgos_criticos")
+            if isinstance(x.get("evaluation"), dict) else None,
+            "evaluador.riesgos_criticos",
+        )))
+        for x in valid
+    )
     below_target = sum(
-        (isinstance(x["quality"].get("indice"), (int, float)) and x["quality"]["indice"] < 0.95)
-        or (isinstance(x["security"].get("indice"), (int, float)) and x["security"]["indice"] < 0.85)
+        (
+            isinstance(x.get("quality"), dict)
+            and isinstance(x["quality"].get("indice"), (int, float))
+            and x["quality"]["indice"] < 0.95
+        )
+        or (
+            isinstance(x.get("security"), dict)
+            and isinstance(x["security"].get("indice"), (int, float))
+            and x["security"]["indice"] < 0.85
+        )
         for x in valid
     )
     return {
@@ -79,7 +193,11 @@ def calcular_resumen_lote(batch_results: list) -> dict:
         "veredictos": verdicts,
         "calidad_promedio": sum(quality) / len(quality) if quality else None,
         "seguridad_promedio": sum(security) / len(security) if security else None,
-        "requerimientos": sum(len(x["central"]["requerimientos"]) for x in valid),
+        "requerimientos": sum(
+            len(x["central"].get("requerimientos", []))
+            for x in valid if isinstance(x.get("central"), dict)
+            and isinstance(x["central"].get("requerimientos", []), list)
+        ),
         "aprobadas": verdicts.get("APROBADO", 0),
         "requieren_correccion": verdicts.get("CORREGIR", 0),
         "alertas": verdicts.get("ALERTA", 0),
@@ -105,6 +223,7 @@ def _eliminar_recomendaciones_duplicadas(values: list) -> list:
 
 
 def construir_resultado_lote(project_name: str, milestone: str, issues: list) -> dict:
+    generated_at = datetime.now().isoformat(timespec="seconds")
     valid = [item for item in issues if item.get("status") == "ok"]
     requirements = [
         requirement for item in valid
@@ -116,7 +235,7 @@ def construir_resultado_lote(project_name: str, milestone: str, issues: list) ->
     for item in valid:
         item["recommendations"] = recopilar_recomendaciones(item)
     try:
-        traceability_rows = construir_filas_trazabilidad(issues)
+        traceability_rows = construir_filas_trazabilidad(issues, generated_at)
     except ValueError:
         traceability_rows = []
     return {
@@ -127,6 +246,7 @@ def construir_resultado_lote(project_name: str, milestone: str, issues: list) ->
         "requirements": requirements,
         "recommendations": recommendations,
         "traceability_rows": traceability_rows,
+        "generated_at": generated_at,
         "descripcion_resultado": DECISION_SUPPORT_NOTICE,
         "revision_humana_requerida": True,
     }
@@ -141,6 +261,10 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     valid = [x for x in batch_results if x.get("status") == "ok"]
     if not valid:
         raise ValueError("No existen historias completas para generar el PDF.")
+    rows = construir_filas_trazabilidad(
+        batch_results, batch_result.get("generated_at") or datetime.now().date().isoformat()
+    )
+    batch_result["traceability_rows"] = rows
     summary = calcular_resumen_lote(batch_results)
     pdf = FPDF()
     pdf.set_margins(20, 20, 20)
@@ -164,31 +288,57 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     linea(f"Cobertura documental de seguridad promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
     linea(f"Requerimientos sugeridos: {summary['requerimientos']}")
     for result in valid:
-        c, q, s, e = result["central"], result["quality"], result["security"], result["evaluation"]
+        c = result.get("central") if isinstance(result.get("central"), dict) else {}
+        q = result.get("quality") if isinstance(result.get("quality"), dict) else {}
+        s = result.get("security") if isinstance(result.get("security"), dict) else {}
+        e = result.get("evaluation") if isinstance(result.get("evaluation"), dict) else {}
         pdf.add_page()
         encabezado(f"{c['historia_id']} — {c['titulo']}", 13)
-        linea(f"Estado de evaluación: {e['veredicto']} | Índice parcial de calidad: {extraer_porcentaje(q['indice'])} | Cobertura documental de seguridad: {extraer_porcentaje(s['indice'])} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
+        linea(f"Estado de evaluación: {e.get('veredicto', 'No evaluado')} | Índice parcial de calidad: {extraer_porcentaje(q.get('indice'))} | Cobertura documental de seguridad: {extraer_porcentaje(s.get('indice'))} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
         linea(f"Actor: {c.get('actor', '')}")
         linea(f"Objetivo: {c.get('objetivo', '')}")
         encabezado("Métricas de calidad", 11)
-        for name, metric in q.get("metricas", {}).items():
+        for name, metric in _iterar_metricas(q, "calidad"):
             linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
             if metric.get("recomendacion"):
                 linea(f"Recomendación: {metric['recomendacion']}")
+        for label in ("observaciones", "recomendaciones"):
+            for text_value in _iterar_textos(q.get(label), f"calidad.{label}"):
+                linea(f"{label.capitalize()}: {text_value}")
         encabezado("Métricas de seguridad", 11)
-        for name, metric in s.get("metricas", {}).items():
+        for name, metric in _iterar_metricas(s, "seguridad"):
             linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
             if metric.get("recomendacion"):
                 linea(f"Recomendación: {metric['recomendacion']}")
+        for label in ("observaciones", "recomendaciones"):
+            for text_value in _iterar_textos(s.get(label), f"seguridad.{label}"):
+                linea(f"{label.capitalize()}: {text_value}")
         encabezado("Riesgos y recomendaciones", 11)
-        for text_value in e.get("riesgos_criticos", []) + e.get("correcciones_obligatorias", []):
+        evaluator_texts = list(_iterar_textos(e.get("riesgos_criticos"), "evaluador.riesgos_criticos"))
+        evaluator_texts += list(_iterar_textos(e.get("correcciones_obligatorias"), "evaluador.correcciones_obligatorias"))
+        for text_value in evaluator_texts:
             linea(f"- {text_value}")
         encabezado("Requerimientos sugeridos", 11)
-        for requirement in c["requerimientos"]:
-            linea(f"{requirement['id']} — {requirement.get('nombre', '')}")
+        for requirement in c.get("requerimientos", []):
+            if not isinstance(requirement, dict):
+                logger.warning("Requerimiento no válido omitido del PDF: %r.", requirement)
+                continue
+            linea(f"{requirement.get('id', 'Sin código')} — {requirement.get('nombre', '')}")
             linea(requirement.get("descripcion_formal", ""))
             linea(f"Procedencia: {requirement.get('procedencia', 'inferido')}")
-    return io.BytesIO(pdf.output(dest="S"))
+    pdf.add_page(orientation="L")
+    encabezado("Matriz de trazabilidad", 13)
+    pdf.set_font("Helvetica", size=6)
+    table_rows = [list(TRACEABILITY_COLUMNS)] + [
+        [limpiar_texto_para_pdf(row.get(column, "")) for column in TRACEABILITY_COLUMNS]
+        for row in rows
+    ]
+    with pdf.table(
+        rows=table_rows, col_widths=(18, 28, 58, 22, 48, 26, 32),
+        line_height=4, text_align=("CENTER", "LEFT", "LEFT", "CENTER", "LEFT", "CENTER", "CENTER"),
+    ):
+        pass
+    return io.BytesIO(bytes(pdf.output()))
 
 
 def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
@@ -199,7 +349,10 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     valid = [x for x in batch_results if x.get("status") == "ok"]
     if not valid:
         raise ValueError("No existen historias completas para generar el DOCX.")
-    rows = batch_result["traceability_rows"]
+    rows = construir_filas_trazabilidad(
+        batch_results, batch_result.get("generated_at") or datetime.now().date().isoformat()
+    )
+    batch_result["traceability_rows"] = rows
     doc = Document()
     doc.add_heading("Documento Formal Consolidado de Requerimientos", 0)
     doc.add_paragraph(DECISION_SUPPORT_NOTICE)
@@ -226,8 +379,8 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
         for requirement in result["central"]["requerimientos"]:
             doc.add_heading(f"{requirement['id']} — {requirement.get('nombre', '')}", 3)
             doc.add_paragraph(requirement.get("descripcion_formal", ""))
-            type_names = {"RF": "Requerimiento funcional", "RNF": "Requerimiento no funcional", "RS": "Requerimiento de seguridad", "RC": "Restricción"}
-            doc.add_paragraph(f"Tipo: {type_names.get(requirement['tipo'], requirement['tipo'])}")
+            type_names = {"RF": "Funcional", "RNF": "No funcional"}
+            doc.add_paragraph(f"Tipo: {type_names.get(requirement['tipo'], 'No funcional')}")
             doc.add_paragraph(f"Prioridad: {requirement.get('prioridad', '')}")
             doc.add_paragraph(f"Origen: {origin}")
             doc.add_paragraph(f"Justificación: {requirement.get('justificacion', '')}")
@@ -243,22 +396,14 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     else:
         doc.add_paragraph("No se identificaron correcciones adicionales para el lote analizado.")
     doc.add_heading("8. Matriz de trazabilidad", 1)
-    matrix_keys = [
-        "id", "historia", "requerimiento_formal", "tipo", "justificacion", "prioridad", "seguimiento",
-        "origen_textual", "procedencia", "criterio_aceptacion_relacionado", "observacion",
-        "estado_evaluacion", "fecha_analisis", "responsable_revision_humana", "estado_aprobacion_humana",
-    ]
+    matrix_keys = list(TRACEABILITY_COLUMNS)
     table = doc.add_table(rows=1, cols=len(matrix_keys))
     table.style = "Table Grid"
-    headers = [
-        "ID", "Historia", "Requerimiento", "Tipo", "Justificación", "Prioridad", "Seguimiento",
-        "Origen", "Procedencia", "Criterio de aceptación", "Observación", "Estado de evaluación",
-        "Fecha", "Responsable revisión", "Aprobación humana",
-    ]
+    headers = matrix_keys
     for cell, value in zip(table.rows[0].cells, headers): cell.text = value
     for row in rows:
         for cell, key in zip(table.add_row().cells, matrix_keys):
-            cell.text = str(row[key])
+            cell.text = str(row.get(key, ""))
     output = io.BytesIO()
     doc.save(output)
     output.seek(0)
