@@ -10,8 +10,22 @@ class GitLabLabelWorkflowTests(unittest.TestCase):
         self.assertTrue(es_issue_pendiente(issue(["Historia de Usuario", "Pendiente"])))
         self.assertFalse(es_issue_pendiente(issue(["Historia de Usuario", "Revisada"])))
         self.assertFalse(es_issue_pendiente(issue(["Historia de Usuario", "Analizada"])))
-        self.assertFalse(es_issue_pendiente(issue(["Historia de Usuario", "Requiere modificación"])))
+        self.assertTrue(es_issue_pendiente(issue(["Historia de Usuario", "Requiere modificación"])))
         self.assertFalse(es_issue_pendiente(issue(["Pendiente", "Revisada"])))
+
+    def test_adapter_lists_pending_and_rework_but_not_reviewed(self):
+        issue = lambda iid, labels: type("Issue", (), {"iid": iid, "labels": labels})()
+        available = [
+            issue(1, ["Pendiente"]),
+            issue(2, ["Requiere modificación"]),
+            issue(3, ["Revisada"]),
+        ]
+        adapter = object.__new__(GitLabAdapter)
+        adapter.listar_issues_abiertos = lambda milestone_title=None: available
+
+        selected = adapter.listar_issues_pendientes("Sprint 1")
+
+        self.assertEqual([item.iid for item in selected], [1, 2])
 
     def test_adapter_updates_issue_labels_and_creates_missing_workflow_labels(self):
         class Labels:

@@ -3640,3 +3640,644 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-07-29 10:28:04,454 - [INFO] - GitLab Issue #10 completado en 0.92s.
 2026-07-29 10:28:05,348 - [INFO] - Flujo de lote terminado en 2545.34s: recibidas=5, correctas=5, con_error=0, comentarios_publicados=5, pendientes=0.
 2026-07-29 10:28:05,349 - [INFO] - Ollama lote: llamadas=5, reintentos=0, por_agente={'Central_Init_Batch': 1, 'Quality_Batch': 2, 'Security_Batch': 1, 'Evaluator_Batch': 1}.
+2026-07-31 07:58:14,522 - [INFO] - Modelo Ollama efectivo para la ejecución: phi4-mini
+2026-07-31 07:58:14,551 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "10",
+  "titulo": "HU-005 - Cancelar cita médica",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nLos pacientes necesitan cancelar una cita.\n\n### Como\n\nPaciente\n\n### Quiero\n\nCancelar una cita.\n\n### Para\n\nLiberar el horario reservado.\n\n---\n\n## Criterios de aceptación\n\n* Permitir cancelar la cita.\n\n---\n\n## Restricciones\n\nNo se podrá cancelar con menos de 24 horas de anticipación.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nSí\n\nDatos personales.\n\n---\n\n### Autenticación\n\nUsuario y contraseña.\n\n---\n\n### Autorización / Roles\n\nPaciente.\n\n---\n\n### Auditoría\n\nSí.\n\n---\n\n## Observaciones\n\nNinguna.",
+  "actor": "Paciente",
+  "funcionalidad": "Cancelar una cita.",
+  "objetivo": "Liberar el horario reservado.",
+  "criterios_aceptacion": [
+    "Permitir cancelar la cita."
+  ],
+  "restricciones": [
+    "No se podrá cancelar con menos de 24 horas de anticipación."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": "Sí\n\nDatos personales.",
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Paciente.",
+    "auditoria": "Sí."
+  },
+  "observaciones": "Ninguna.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,552 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "10",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,553 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "9",
+  "titulo": "HU-004 - Generar reportes de citas",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nEl administrador necesita generar reportes de citas.\n\n### Como\n\nAdministrador\n\n### Quiero\n\nGenerar reportes.\n\n### Para\n\nAnalizar la actividad del sistema.\n\n---\n\n## Criterios de aceptación\n\n* Filtrar por fecha.\n* Exportar PDF.\n* Mostrar estadísticas.\n\n---\n\n## Restricciones\n\nNinguna.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nNo definido.\n\n---\n\n### Autenticación\n\nNo definido.\n\n---\n\n### Autorización / Roles\n\nAdministrador.\n\n---\n\n### Auditoría\n\nNo definido.\n\n---\n\n## Observaciones\n\nLos reportes deben poder imprimirse.",
+  "actor": "Administrador",
+  "funcionalidad": "Generar reportes.",
+  "objetivo": "Analizar la actividad del sistema.",
+  "criterios_aceptacion": [
+    "Filtrar por fecha.",
+    "Exportar PDF.",
+    "Mostrar estadísticas."
+  ],
+  "restricciones": [
+    "Ninguna."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": "No definido.",
+    "autenticacion": "No definido.",
+    "autorizacion_roles": "Administrador.",
+    "auditoria": "No definido."
+  },
+  "observaciones": "Los reportes deben poder imprimirse.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,554 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "9",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,554 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "8",
+  "titulo": "HU-003 - Consultar agenda médica",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nEl médico necesita visualizar sus citas programadas.\n\n### Como\n\nMédico\n\n### Quiero\n\nConsultar mi agenda.\n\n### Para\n\nOrganizar la atención de pacientes.\n\n---\n\n## Criterios de aceptación\n\n* Mostrar las citas del día.\n* Mostrar el nombre del paciente.\n\n---\n\n## Restricciones\n\nNinguna.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nSí\n\nDatos médicos.\n\n---\n\n### Autenticación\n\nUsuario y contraseña.\n\n---\n\n### Autorización / Roles\n\nMédico.\n\n---\n\n### Auditoría\n\nNo definido.\n\n---\n\n## Observaciones\n\nNinguna.",
+  "actor": "Médico",
+  "funcionalidad": "Consultar mi agenda.",
+  "objetivo": "Organizar la atención de pacientes.",
+  "criterios_aceptacion": [
+    "Mostrar las citas del día.",
+    "Mostrar el nombre del paciente."
+  ],
+  "restricciones": [
+    "Ninguna."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": "Sí\n\nDatos médicos.",
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Médico.",
+    "auditoria": "No definido."
+  },
+  "observaciones": "Ninguna.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,555 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "8",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,556 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "7",
+  "titulo": "HU-002 - Registrar pacientes",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nLa recepcionista necesita registrar nuevos pacientes.\n\n### Como\n\nRecepcionista\n\n### Quiero\n\nRegistrar pacientes nuevos.\n\n### Para\n\nPermitir la programación de citas.\n\n---\n\n## Criterios de aceptación\n\n* Validar documento de identidad.\n* Registrar información obligatoria.\n* Evitar registros duplicados.\n\n---\n\n## Restricciones\n\nSolo recepcionistas autorizadas.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nSí\n\nDatos personales.\n\n---\n\n### Autenticación\n\nUsuario y contraseña.\n\n---\n\n### Autorización / Roles\n\nRecepcionista.\n\n---\n\n### Auditoría\n\nSí.\n\nRegistrar usuario, fecha y hora del registro.\n\n---\n\n## Observaciones\n\nDebe permitir editar posteriormente la información.",
+  "actor": "Recepcionista",
+  "funcionalidad": "Registrar pacientes nuevos.",
+  "objetivo": "Permitir la programación de citas.",
+  "criterios_aceptacion": [
+    "Validar documento de identidad.",
+    "Registrar información obligatoria.",
+    "Evitar registros duplicados."
+  ],
+  "restricciones": [
+    "Solo recepcionistas autorizadas."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": "Sí\n\nDatos personales.",
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Recepcionista.",
+    "auditoria": "Sí.\n\nRegistrar usuario, fecha y hora del registro."
+  },
+  "observaciones": "Debe permitir editar posteriormente la información.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,557 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "7",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,559 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "6",
+  "titulo": "HU-001 - Consultar horarios disponibles",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nEl paciente necesita consultar los horarios disponibles de los médicos antes de solicitar una cita.\n\n---\n\n## Como\n\nPaciente\n\n## Quiero\n\nConsultar los horarios disponibles de los médicos.\n\n## Para\n\nProgramar una cita médica sin conflictos de horario.\n\n---\n\n# Criterios de aceptación\n\n* Mostrar únicamente horarios disponibles.\n* Mostrar el nombre y especialidad del médico.\n* Actualizar la disponibilidad inmediatamente después de registrar una cita.\n\n---\n\n# Restricciones\n\n* Solo pacientes autenticados pueden acceder.\n* La información debe mostrarse en tiempo real.\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales.\n\n---\n\n## Autenticación\n\nUsuario y contraseña.\n\n---\n\n## Autorización / Roles\n\nPaciente.\n\n---\n\n## Auditoría\n\nSí.\n\nRegistrar las consultas realizadas.\n\n---\n\n# Observaciones\n\nLa consulta debe responder en menos de tres segundos.",
+  "actor": "Paciente",
+  "funcionalidad": "Consultar los horarios disponibles de los médicos.",
+  "objetivo": "Programar una cita médica sin conflictos de horario.",
+  "criterios_aceptacion": [
+    "Mostrar únicamente horarios disponibles.",
+    "Mostrar el nombre y especialidad del médico.",
+    "Actualizar la disponibilidad inmediatamente después de registrar una cita."
+  ],
+  "restricciones": [
+    "Solo pacientes autenticados pueden acceder.",
+    "La información debe mostrarse en tiempo real."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": "- [x] Sí\n- [ ] No\n\nDatos personales.",
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Paciente.",
+    "auditoria": "Sí.\n\nRegistrar las consultas realizadas."
+  },
+  "observaciones": "La consulta debe responder en menos de tres segundos.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,560 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "6",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-07-31 07:58:14,576 - [INFO] - Iniciando ejecución del grafo multiagente para 5 historias válidas.
+2026-07-31 07:58:14,699 - [INFO] - ▶ Iniciando Agente Central (Init) para el lote...
+2026-07-31 07:58:14,700 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Init", "timestamp": "2026-07-31T07:58:14.699"}
+2026-07-31 07:58:15,589 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-07-31T07:58:15.589", "started_at": "2026-07-31T07:58:15.588", "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 1900, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 10453, "bytes_utf8": 10581, "tokens_aprox": 2613}, "context_size": {"chars": 7987, "bytes_utf8": 8082, "tokens_aprox": 1997}, "input_json_size": {"json_chars": 7987, "json_bytes_utf8": 8082}}
+2026-07-31 08:00:29,661 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-31 08:07:15,443 - [INFO] - PHI4_RAW Central:
+{
+  "agente": "central",
+  "milestone": "Recepción de Requerimientos para Sistema de Gestión de Citas Médicas",
+  "resultados": [
+    {
+      "issue_iid": 10,
+      "historia_id": "HU-005",
+      "titulo": "Paciente - Cancelar cita médica",
+      "actor": "Paciente",
+      "objetivo": "Liberar el horario reservado",
+      "prioridad": "Alta",
+      "requerimientos": [
+        {
+          "temp_id": "RF-TEMP-01",
+          "nombre": "Permitir cancelar una cita",
+          "descripcion_formal": "El sistema deberá permitir que un paciente cancelle su cita médica.",
+          "tipo": "RF",
+          "origen": "## Historia de Usuario\n> Los pacientes necesitan cancelar una cita.",
+          "justificacion": "Necesidad expresada por el usuario para gestionar citas médicas."
+        }
+      ],
+      "restricciones": [
+        "No se podrá cancelar con menos de 24 horas de anticipación."
+      ],
+      "ambiguedades": [],
+      "informacion_faltante": [],
+      "observaciones": []
+    },
+    {
+      "issue_iid": 9,
+      "historia_id": "HU-004",
+      "titulo": "Administrador - Generar reportes de citas",
+      "actor": "Administrador",
+      "objetivo": "",
+      "prioridad": "Alta",
+      "requerimientos": [
+        {
+          "temp_id": "RF-TEMP-02",
+          "nombre": "Generar y exportar reportes",
+          "descripcion_formal": "El sistema deberá permitir que un administrador genere, filtre por fecha, exporte en PDF y muestre estadísticas de citas.",
+          "tipo": "RF",
+          "origen": "## Criterios de aceptación\n* Filtrar por fecha.\n* Exportar PDF.\n* Mostrar estadísticas.",
+          "justificacion": "Necesidad expresada para análisis del sistema."
+        }
+      ],
+      "restricciones": [],
+      "ambiguedades": ["No definido: Autenticación y Auditoría"],
+      "informacion_faltante": [],
+      "observaciones": [
+        "Los reportes deben poder imprimirse.",
+        "Prioridad no especificada"
+      ]
+    },
+    {
+      "issue_iid": 8,
+      "historia_id": "HU-003",
+      "titulo": "Médico - Consultar agenda médica",
+      "actor": "Médico",
+      "objetivo": "",
+      "prioridad": "Alta",
+      "requerimientos": [
+        {
+          "temp_id": "RF-TEMP-03",
+          "nombre": "Consultar la agenda del médico",
+          "descripcion_formal": "El sistema deberá permitir que un médico consulte sus citas programadas.",
+          "tipo": "RF",
+          "origen": "## Criterios de aceptación\n* Mostrar las citas del día.\n* Mostrar el nombre del paciente.",
+          "justificacion": "Necesidad expresada por el usuario para organizar la atención."
+        }
+      ],
+      "restricciones": [],
+      "ambiguedades": ["No definido: Auditoría"],
+      "informacion_faltante": [],
+      "observaciones": []
+    },
+    {
+      "issue_iid": 7,
+      "historia_id": "HU-002",
+      "titulo": "Recepcionista - Registrar pacientes",
+      "actor": "Recepcionista",
+      "objetivo": "",
+      "prioridad": "Alta",
+      "requerimientos": [
+        {
+          "temp_id": "RF-TEMP-04",
+          "nombre": "Registrar nuevos pacientes",
+          "descripcion_formal": "El sistema deberá permitir que una recepcionista registre nuevos pacientes, validando su documento de identidad y evitando registros duplicados.",
+          "tipo": "RF",
+          "origen": "## Criterios de aceptación\n* Validar documento de identidad.\n* Registrar información obligatoria.\n* Evitar registros duplicados.",
+          "justificacion": "Necesidad expresada por el usuario para gestionar citas médicas."
+        }
+      ],
+      "restricciones": [
+        "Solo recepcionistas autorizadas pueden realizar este registro."
+      ],
+      "ambiguedades": [],
+      "informacion_faltante": [],
+      "observaciones": [
+        "Debe permitir editar posteriormente la información.",
+        "Prioridad no especificada"
+      ]
+    },
+    {
+      "issue_iid": 6,
+      "historia_id": "HU-001",
+      "titulo": "Paciente - Consultar horarios disponibles de médicos",
+      "actor": "Paciente",
+      "objetivo": "",
+      "prioridad": "Alta",
+      "requerimientos": [
+        {
+          "temp_id": "RF-TEMP-05",
+          "nombre": "Consultar horarios disponibles",
+          "descripcion_formal": "El sistema deberá permitir que un paciente consulte los horarios disponibles de médicos, mostrando el nombre y especialidad del médico.",
+          "tipo": "RF",
+          "origen": "# Como\nPaciente\n# Quiero\nConsultar los horarios disponibles de los médicos.",
+          "justificacion": "Necesidad expresada por el usuario para programar una cita médica sin conflictos de horario."
+        }
+      ],
+      "restricciones": [
+        "Solo pacientes autenticados pueden acceder a la información en tiempo real."
+      ],
+      "ambiguedades": [],
+      "informacion_faltante": [],
+      "observaciones": []
+    }
+  ]
+}
+2026-07-31 08:07:15,462 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-07-31T08:07:15.461", "started_at": "2026-07-31T07:58:15.588", "finished_at": "2026-07-31T08:07:15.452", "elapsed_seconds": 539.7428, "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 1900, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 10453, "bytes_utf8": 10581, "tokens_aprox": 2613}, "context_size": {"chars": 7987, "bytes_utf8": 8082, "tokens_aprox": 1997}, "input_json_size": {"json_chars": 7987, "json_bytes_utf8": 8082}, "response_size": {"chars": 4852, "bytes_utf8": 4890, "tokens_aprox": 1213}, "response_json_size": {"json_chars": 3934, "json_bytes_utf8": 3972}}
+2026-07-31 08:07:15,525 - [INFO] - ✔ Agente Central (Init) completado en 540.82 segundos.
+2026-07-31 08:07:15,525 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Init", "timestamp": "2026-07-31T08:07:15.525", "elapsed_seconds": 540.824}
+2026-07-31 08:07:15,618 - [INFO] - ▶ Iniciando Agente de Calidad (Lote)...
+2026-07-31 08:07:15,619 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Quality", "timestamp": "2026-07-31T08:07:15.619"}
+2026-07-31 08:07:16,236 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-07-31T08:07:16.236", "started_at": "2026-07-31T08:07:16.235", "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 1750, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 5946, "bytes_utf8": 6009, "tokens_aprox": 1486}, "context_size": {"chars": 4049, "bytes_utf8": 4087, "tokens_aprox": 1012}, "input_json_size": {"json_chars": 4049, "json_bytes_utf8": 4087}}
+2026-07-31 08:08:19,403 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-31 08:10:45,002 - [INFO] - PHI4_RAW Quality:
+{"agente":"calidad","resultados":[{"issue_iid":10,"historia_id":"HU-010","metricas":{"cobertura_funcional":{"elementos_evaluados":["Permitir cancelar una cita médica"],"elementos_con_problemas":[], "justificacion":"La historia especifica la necesidad de permitir que un paciente cancelle su cita médica, lo cual es una función funcional esperada del sistema. Sin embargo, no se proporciona información sobre si esta función está completamente implementada o si cumple con todas las restricciones y requisitos mencionados (por ejemplo, el requisito de 24 horas de anticipación). Por lo tanto, la cobertura funcional debe evaluarse en mayor detalle para confirmar su completitud.","recomendacion":"Realizar pruebas completas del proceso de cancelación de citas para asegurar que cumpla con todos los criterios especificados."},"adecuacion_funcional":{"elementos_evaluados":["Liberar el horario reservado"],"elementos_alineados":["Permitir cancelar una cita médica"],"elementos_con_problemas":[], "justificacion":"La función 'Permitir cancelar una cita médica' está alineada con la necesidad del paciente de poder cancelar su cita, lo que lleva a liberar su horario reservado. Esta es una relación directa entre el requisito y la funcionalidad proporcionada.","recomendacion":"Verificar si la implementación permite efectivamente liberación del horario para los pacientes después de cancelar sus citas."}},"observaciones":"La historia indica claramente un elemento funcional necesario; sin embargo, se requiere evaluación adicional para confirmar su adecuación completa. Se recomienda realizar pruebas detalladas y verificar el cumplimiento con las restricciones especificadas.","recomendaciones":[]}],"issue_iid":9,"historia_id":"HU-009","metricas":{"cobertura_funcional":{"elementos_evaluados":["Generar y exportar reportes"],"elementos_con_problemas":["No definido: Autenticación y Auditoría"],"justificacion=":"La historia requiere la capacidad de generar y exportar reportes, lo cual es una función funcional esperada. Sin embargo, el proceso de autenticación y auditoría no está claramente definido, presentando un problema en términos de completitud del requisito."},"recomendacion":"Definir los requisitos para el proceso de autenticación y auditoría antes de proceder con la implementación del reporte generador."},"adecuacion_funcional":{"elementos_evaluados":["Generar y exportar reportes"],"elementos_alineados":["Generar y exportar reportes"],"elementos_con_problemas":[], "justificacion":"La capacidad de generar y exportar reportes está alineada con la necesidad del administrador para analizar el sistema mediante informes. Sin embargo, las ambigüedades en torno a autenticación y auditoría pueden afectar negativamente al cumplimiento general."},"recomendacion":"Asegurar que los procesos de generación y exportación de reportes incluyan medidas claras de seguridad e integridad auditables."}
+2026-07-31 08:10:45,015 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-07-31T08:10:45.015", "started_at": "2026-07-31T08:07:16.235", "finished_at": "2026-07-31T08:10:45.010", "elapsed_seconds": 208.7278, "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 1750, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 5946, "bytes_utf8": 6009, "tokens_aprox": 1486}, "context_size": {"chars": 4049, "bytes_utf8": 4087, "tokens_aprox": 1012}, "input_json_size": {"json_chars": 4049, "json_bytes_utf8": 4087}, "response_size": {"chars": 2906, "bytes_utf8": 2940, "tokens_aprox": 726}, "response_json_size": {"json_chars": 2959, "json_bytes_utf8": 2993}}
+2026-07-31 08:10:45,059 - [WARNING] - Calidad: reparación selectiva para Issues [6, 7, 8, 9].
+2026-07-31 08:10:45,699 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-07-31T08:10:45.699", "started_at": "2026-07-31T08:10:45.698", "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 1490, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 5147, "bytes_utf8": 5201, "tokens_aprox": 1287}, "context_size": {"chars": 3254, "bytes_utf8": 3283, "tokens_aprox": 814}, "input_json_size": {"json_chars": 3254, "json_bytes_utf8": 3283}}
+2026-07-31 08:11:40,338 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-31 08:15:32,948 - [INFO] - PHI4_RAW Quality:
+{
+  "agente": "calidad",
+  "resultados": [
+    {
+      "issue_iid": 9,
+      "historia_id": "HU-009",
+      "metricas": {
+        "cobertura_funcional": {
+          "elementos_evaluados": ["Generar y exportar reportes"],
+          "elementos_con_problemas": [],
+          "justificacion": "La historia especifica la necesidad de generar, filtrar por fecha, exportar en PDF y mostrar estadísticas de citas. La función 'generar y exportar reportes' ha sido evaluada según los criterios de aceptación proporcionados.",
+          "recomendacion": ""
+        },
+        "adecuacion_funcional": {
+          "elementos_evaluados": ["Generar y exportar reportes"],
+          "elementos_alineados": [],
+          "justificacion": "La función 'generar y exportar reportes' no está alineada con ningún objetivo específico mencionado en la historia, excepto el requisito general de generar informes para análisis del sistema.",
+          "recomendacion": ""
+        }
+      },
+      "observaciones": "La calidad se mantiene al cumplir con los requisitos funcionales. Sin embargo, es necesario evaluar si la generación y exportación de reportes contribuyen directamente a objetivos específicos más allá del análisis general."
+    },
+    {
+      "issue_iid": 8,
+      "historia_id": "HU-008",
+      "metricas": {
+        "cobertura_funcional": {
+          "elementos_evaluados": ["Consultar la agenda médica"],
+          "elementos_con_problemas": [],
+          "justificacion": "La historia especifica que un médico debe poder consultar su agenda. La función 'consultar la agenda médica' ha sido evaluada y cumple con los criterios de aceptación proporcionados.",
+          "recomendacion": ""
+        },
+        "adecuacion_funcional": {
+          "elementos_evaluados": ["Consultar la agenda médica"],
+          "elementos_alineados": [],
+          "justificacion": "La función 'consultar la agenda médica' no está alineada con ningún objetivo específico más allá del requisito de que el médico pueda consultar su propia agenda.",
+          "recomendacion": ""
+        }
+      },
+      "observaciones": "La calidad se mantiene al cumplir con los requisitos funcionales. La función cumple con las necesidades expresadas por el usuario, pero es necesario evaluar si hay objetivos adicionales no cubiertos."
+    },
+    {
+      "issue_iid": 7,
+      "historia_id": "HU-007",
+      "metricas": {
+        "cobertura_funcional": {
+          "elementos_evaluados": ["Registrar nuevos pacientes"],
+          "elementos_con_problemas": [],
+          "justificacion": "La historia especifica que una recepcionista debe poder registrar nuevos pacientes, validando su documento de identidad y evitando registros duplicados. La función 'registrar nuevos pacientes' ha sido evaluada según los criterios de aceptación proporcionados.",
+          "recomendacion": ""
+        },
+        "adecuacion_funcional": {
+          "elementos_evaluados": ["Registrar nuevos pacientes"],
+          "elementos_alineados": [],
+          "justificacion": "La función 'registrar nuevos pacientes' no está alineada con ningún objetivo específico más allá del requisito de gestionar citas médicas.",
+          "recomendacion": ""
+        }
+      },
+      "observaciones": "La calidad se mantiene al cumplir con los requisitos funcionales. La restricción de que solo recepcionistas autorizados pueden realizar este registro debe ser asegurada."
+    },
+    {
+      "issue_iid": 6,
+      "historia_id": "HU-006",
+      "metricas": {
+        "cobertura_funcional": {
+          "elementos_evaluados": ["Consultar horarios disponibles de médicos"],
+          "elementos_con_problemas": [],
+          "justificacion": "La historia especifica que un paciente debe poder consultar los horarios disponibles de médicos. La función 'consultar horarios disponibles de médicos' ha sido evaluada y cumple con el criterio de aceptación proporcionado.",
+          "recomendacion": ""
+        },
+        "adecuacion_funcional": {
+          "elementos_evaluados": ["Consultar horarios disponibles de médicos"],
+          "elementos_alineados": [],
+          "justificacion": "La función 'consultar horarios disponibles de médicos' no está alineada con ningún objetivo específico más allá del requisito de que el paciente pueda programar una cita médica sin conflictos de horario.",
+          "recomendacion": ""
+        }
+      },
+      "observaciones": "La calidad se mantiene al cumplir con los requisitos funcionales. La función cumple con las necesidades expresadas por el usuario, pero es necesario evaluar si hay objetivos adicionales no cubiertos."
+    }
+  ]
+}
+2026-07-31 08:15:32,952 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-07-31T08:15:32.952", "started_at": "2026-07-31T08:10:45.698", "finished_at": "2026-07-31T08:15:32.949", "elapsed_seconds": 287.2041, "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 1490, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 5147, "bytes_utf8": 5201, "tokens_aprox": 1287}, "context_size": {"chars": 3254, "bytes_utf8": 3283, "tokens_aprox": 814}, "input_json_size": {"json_chars": 3254, "json_bytes_utf8": 3283}, "response_size": {"chars": 4603, "bytes_utf8": 4659, "tokens_aprox": 1151}, "response_json_size": {"json_chars": 3961, "json_bytes_utf8": 4017}}
+2026-07-31 08:15:32,969 - [INFO] - ✔ Agente de Calidad completado en 497.35 segundos.
+2026-07-31 08:15:32,970 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Quality", "timestamp": "2026-07-31T08:15:32.970", "elapsed_seconds": 497.35}
+2026-07-31 08:15:33,002 - [INFO] - ▶ Iniciando Agente de Seguridad (Lote)...
+2026-07-31 08:15:33,003 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Security", "timestamp": "2026-07-31T08:15:33.002"}
+2026-07-31 08:15:33,596 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Security_Batch", "timestamp": "2026-07-31T08:15:33.596", "started_at": "2026-07-31T08:15:33.596", "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 2000, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 6053, "bytes_utf8": 6107, "tokens_aprox": 1513}, "context_size": {"chars": 4049, "bytes_utf8": 4087, "tokens_aprox": 1012}, "input_json_size": {"json_chars": 4049, "json_bytes_utf8": 4087}}
+2026-07-31 08:16:36,945 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-31 08:20:13,009 - [INFO] - PHI4_RAW Security:
+{
+  "agente": "seguridad",
+  "resultados": [
+    {
+      "issue_iid": 10,
+      "historia_id": "HU-010",
+      "metricas": {
+        "controles_seguridad": {
+          "requerimientos_evaluados": ["Permitir cancelar una cita"],
+          "requerimientos_con_controles": [],
+          "controles_identificados": [],
+          "controles_ausentes": [
+            "Control de verificación para garantizar que la cancelación no se realice con menos de 24 horas de anticipación"
+          ],
+          "justificacion": "La historia requiere permitir a los pacientes cancelar citas, pero falta un control para asegurar el cumplimiento del requisito mínimo de 24 horas antes.",
+          "recomendacion": "Implementar un mecanismo de verificación que confirme la fecha actual y compare con la fecha de la cita cancelada para garantizar que no se realice una cancelación con menos de 24 horas de anticipación."
+        }
+      }
+    },
+    {
+      "issue_iid": 9,
+      "historia_id": "HU-009",
+      "metricas": {
+        "controles_seguridad": {
+          "requerimientos_evaluados": ["Generar y exportar reportes"],
+          "requerimientos_con_controles": [],
+          "controles_identificados": [],
+          "controles_ausentes": [
+            "Control de autenticación",
+            "Control de auditoría"
+          ],
+          "justificacion": "La historia requiere la generación y el reporte, pero no se define cómo se manejará la autenticación ni qué controles auditivos serán aplicados.",
+          "recomendacion": "Establecer procedimientos claros para la autenticación del usuario que genere los reportes. Definir también un marco de auditoría para garantizar la integridad y trazabilidad de los datos."
+        }
+      }
+    },
+    {
+      "issue_iid": 8,
+      "historia_id": "HU-008",
+      "metricas": {
+        "controles_seguridad": {
+          "requerimientos_evaluados": ["Consultar la agenda médica"],
+          "requerimientos_con_controles": [],
+          "controles_identificados": [],
+          "controles_ausentes": [
+            "Control de auditoría"
+          ],
+          "justificacion": "La historia requiere que los médicos puedan consultar su agenda, pero no se especifica cómo se manejará la seguridad y el acceso.",
+          "recomendacion": "Asegurar controles adecuados para garantizar que solo los usuarios autorizados accedan a las agendas médicas."
+        }
+      }
+    },
+    {
+      "issue_iid": 7,
+      "historia_id": "HU-007",
+      "metricas": {
+        "controles_seguridad": {
+          "requerimientos_evaluados": ["Registrar nuevos pacientes"],
+          "requerimientos_con_controles": [
+            "Validación de documento de identidad"
+          ],
+          "controles_identificados": [],
+          "controles_ausentes": [
+            "Control para evitar registros duplicados",
+            "Control de acceso basado en roles (RBAC) para recepcionistas autorizados"
+          ],
+          "justificacion": "La historia requiere la validación del documento de identidad y evita el registro duplicado, pero no se mencionan controles específicos para prevenir accesos no autorizados.",
+          "recomendacion": "Implementar un sistema robusto de verificación de documentos. Establecer mecanismos para evitar registros duplicados y aplicar RBAC para asegurar que solo recepcionistas autorizados puedan registrar pacientes."
+        }
+      }
+    },
+    {
+      "issue_iid": 6,
+      "historia_id": "HU-006",
+      "metricas": {
+        "controles_seguridad": {
+          "requerimientos_evaluados": ["Consultar horarios disponibles de médicos"],
+          "requerimientos_con_controles": [],
+          "controles_identificados": [
+            "Control de autenticación"
+          ],
+          "controles_ausentes": [],
+          "justificacion": "La historia requiere que los pacientes puedan consultar horarios, pero no se menciona cómo se manejará la seguridad y el acceso.",
+          "recomendacion": "Aplicar controles de autenticación para asegurar que solo usuarios autorizados accedan a esta información."
+        }
+      }
+    }
+  ]
+}
+2026-07-31 08:20:13,012 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Security_Batch", "timestamp": "2026-07-31T08:20:13.012", "started_at": "2026-07-31T08:15:33.596", "finished_at": "2026-07-31T08:20:13.009", "elapsed_seconds": 279.3682, "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.1, "num_predict": 2000, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 6053, "bytes_utf8": 6107, "tokens_aprox": 1513}, "context_size": {"chars": 4049, "bytes_utf8": 4087, "tokens_aprox": 1012}, "input_json_size": {"json_chars": 4049, "json_bytes_utf8": 4087}, "response_size": {"chars": 4096, "bytes_utf8": 4130, "tokens_aprox": 1024}, "response_json_size": {"json_chars": 3348, "json_bytes_utf8": 3382}}
+2026-07-31 08:20:13,016 - [INFO] - ✔ Agente de Seguridad completado en 280.01 segundos.
+2026-07-31 08:20:13,017 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Security", "timestamp": "2026-07-31T08:20:13.017", "elapsed_seconds": 280.013}
+2026-07-31 08:20:13,020 - [INFO] - ▶ Iniciando Agente Evaluador (Lote)...
+2026-07-31 08:20:13,021 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Evaluator", "timestamp": "2026-07-31T08:20:13.021"}
+2026-07-31 08:20:13,567 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Evaluator_Batch", "timestamp": "2026-07-31T08:20:13.567", "started_at": "2026-07-31T08:20:13.563", "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 750, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 15452, "bytes_utf8": 15621, "tokens_aprox": 3863}, "context_size": {"chars": 14427, "bytes_utf8": 14585, "tokens_aprox": 3607}, "input_json_size": {"json_chars": 14427, "json_bytes_utf8": 14585}}
+2026-07-31 08:23:09,960 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-31 08:28:09,310 - [INFO] - PHI4_RAW Evaluator:
+{
+  "agente": "evaluador",
+  "resultados": [
+    {
+      "issue_iid": 6,
+      "historia_id": "HU-006",
+      "veredicto": "CORREGIR",
+      "riesgos_criticos": ["Falta de controles de seguridad para la consulta de horarios"],
+      "correcciones_obligatorias": ["Aplicar controles de autenticación para asegurar que solo usuarios autorizados accedan a esta información"],
+      "conclusion": "La historia requiere que los pacientes puedan consultar horarios, pero no se menciona cómo se manejará la seguridad y el acceso. Se recomienda aplicar controles de autenticación."
+    },
+    {
+      "issue_iid": 7,
+      "historia_id": "HU-007",
+      "veredicto": "CORREGIR",
+      "riesgos_criticos": ["Falta de controles para evitar registros duplicados y control basado en roles"],
+      "correcciones_obligatorias": ["Implementar un sistema robusto de verificación de documentos. Establecer mecanismos para evitar registros duplicados y aplicar RBAC para asegurar que solo recepcionistas autorizados puedan registrar pacientes"],
+      "conclusion": "La historia requiere la validación del documento de identidad y evita el registro duplicado, pero no se mencionan controles específicos para prevenir accesos no autorizados."
+    },
+    {
+      "issue_iid": 8,
+      "historia_id": "HU-008",
+      "veredicto": "CORREGIR",
+      "riesgos_criticos": ["Falta de control de auditoría"],
+      "correcciones_obligatorias": ["Asegurar controles adecuados para garantizar que solo los usuarios autorizados accedan a las agendas médicas"],
+      "conclusion": "La historia requiere que los médicos puedan consultar su agenda, pero no se especifica cómo se manejará la seguridad y el acceso. Se recomienda asegurar controles apropiados."
+    },
+    {
+      "issue_iid": 9,
+      "historia_id": "HU-009",
+      "veredicto": "CORREGIR",
+      "riesgos_criticos": ["Falta de procedimientos claros para autenticación del usuario y marco de auditoría"],
+      "correcciones_obligatorias": ["Establecer procedimientos claros para la autenticación del usuario que genere los reportes. Definir también un marco de auditoría para garantizar la integridad y trazabilidad de los datos.",
+      "conclusion" 		] 	},
+    {
+      "issue_iid": 10,
+      "historia_id": "HU-010",
+      "veredicto": "CORREGIR",
+      "riesgos_criticos": ["Falta de control para garantizar el mínimo requisito de 24 horas antes de la cancelación"],
+      "correcciones_obligatorias":["Implementar un mecanismo de verificación que confirme la fecha actual y compare con la fecha de la cita cancelada para garantizar que no se realice una cancelación con menos de 24 horas de anticipación."],
+      "conclusion": "La historia requiere permitir a los pacientes cancelar citas, pero falta un control para asegurar el cumplimiento del requisito mínimo de 24 horas antes."
+    }
+  ]
+}
+2026-07-31 08:28:09,322 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Evaluator_Batch", "timestamp": "2026-07-31T08:28:09.322", "started_at": "2026-07-31T08:20:13.563", "finished_at": "2026-07-31T08:28:09.314", "elapsed_seconds": 475.6752, "model": "phi4-mini", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 750, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 15452, "bytes_utf8": 15621, "tokens_aprox": 3863}, "context_size": {"chars": 14427, "bytes_utf8": 14585, "tokens_aprox": 3607}, "input_json_size": {"json_chars": 14427, "json_bytes_utf8": 14585}, "response_size": {"chars": 2835, "bytes_utf8": 2859, "tokens_aprox": 709}, "response_json_size": {"json_chars": 2596, "json_bytes_utf8": 2620}}
+2026-07-31 08:28:09,350 - [INFO] - ✔ Agente Evaluador completado en 476.33 segundos.
+2026-07-31 08:28:09,351 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Evaluator", "timestamp": "2026-07-31T08:28:09.351", "elapsed_seconds": 476.3291}
+2026-07-31 08:28:09,365 - [INFO] - ▶ Iniciando Nodo de Consolidación Central (Final, solo Python)...
+2026-07-31 08:28:09,365 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Final", "timestamp": "2026-07-31T08:28:09.365"}
+2026-07-31 08:28:09,373 - [INFO] - ✔ Consolidación Central completada en 0.01 segundos.
+2026-07-31 08:28:09,373 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Final", "timestamp": "2026-07-31T08:28:09.373", "elapsed_seconds": 0.0071}
+2026-07-31 08:28:11,359 - [INFO] - GitLab Issue #6 completado en 1.91s.
+2026-07-31 08:28:13,890 - [INFO] - GitLab Issue #7 completado en 0.93s.
+2026-07-31 08:28:15,677 - [INFO] - GitLab Issue #8 completado en 0.86s.
+2026-07-31 08:28:17,831 - [INFO] - GitLab Issue #9 completado en 0.98s.
+2026-07-31 08:28:19,894 - [INFO] - GitLab Issue #10 completado en 1.06s.
+2026-07-31 08:28:20,819 - [INFO] - Flujo de lote terminado en 1794.80s: recibidas=5, correctas=5, con_error=0, comentarios_publicados=5, pendientes=0.
+2026-07-31 08:28:20,819 - [INFO] - Ollama lote: llamadas=5, reintentos=0, por_agente={'Central_Init_Batch': 1, 'Quality_Batch': 2, 'Security_Batch': 1, 'Evaluator_Batch': 1}.

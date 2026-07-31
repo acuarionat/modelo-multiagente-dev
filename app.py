@@ -622,6 +622,11 @@ milestone_val = MILESTONES_BY_STAGE[stage_id]
 st.subheader(next(stage[2] for stage in STAGES if stage[0] == stage_id))
 st.write(f"**Milestone asociado:** {milestone_val}")
 
+ISSUE_FILTER_VERSION = "pending-or-rework-v1"
+if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
+    st.session_state.pop("issues_by_stage", None)
+    st.session_state["issue_filter_version"] = ISSUE_FILTER_VERSION
+
 if "issues_by_stage" not in st.session_state:
     st.session_state.issues_by_stage = {}
 refresh_col, analysis_col = st.columns(2)
