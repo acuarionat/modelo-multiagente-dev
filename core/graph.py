@@ -123,17 +123,31 @@ def nodo_calidad(state: AgentState):
     registrar_evento_grafo("node_start", "Quality")
     start_time = time.time()
     
-    req_text = state["central_init"]
+    central_payload = analizar_respuesta_lote(state["central_init"], "Central")
+    originals = {int(item["id"]): item for item in state["issues_data"]}
+    req_text = json.dumps({"agente": "entrada_calidad", "resultados": [
+        {
+            "issue_iid": central.get("issue_iid"),
+            "historia_id": central.get("historia_id"),
+            "historia_original": originals.get(central.get("issue_iid"), {}),
+            "formalizacion_central": central,
+        }
+        for central in central_payload["resultados"] if isinstance(central, dict)
+    ]}, ensure_ascii=False)
     report_str = analizar_calidad(req_text)
     parsed, report_str = _analizar_con_un_reintento(
         report_str, "Calidad",
         lambda: analizar_calidad(req_text, num_predict_override=2400),
     )
     expected_ids = [int(x["id"]) for x in state["issues_data"]]
-    central = analizar_respuesta_lote(req_text, "Central")
+    central = central_payload
+    history_ids = {item.get("issue_iid"): item.get("historia_id") for item in central["resultados"]}
+    for item in parsed.get("resultados", []):
+        if isinstance(item, dict) and item.get("issue_iid") in history_ids:
+            item["historia_id"] = history_ids[item["issue_iid"]]
     def reparar(repair_ids):
-        subset = [item for item in central["resultados"] if item.get("issue_iid") in repair_ids]
-        return analizar_calidad(json.dumps({"agente": "central", "resultados": subset}, ensure_ascii=False))
+        subset = [item for item in json.loads(req_text)["resultados"] if item.get("issue_iid") in repair_ids]
+        return analizar_calidad(json.dumps({"agente": "entrada_calidad", "resultados": subset}, ensure_ascii=False))
     errors, content_errors = _validar_y_reparar(parsed, expected_ids, "Calidad", reparar)
     final_report = json.dumps(parsed, ensure_ascii=False)
     
@@ -153,17 +167,31 @@ def nodo_seguridad(state: AgentState):
     registrar_evento_grafo("node_start", "Security")
     start_time = time.time()
     
-    req_text = state["central_init"]
+    central_payload = analizar_respuesta_lote(state["central_init"], "Central")
+    originals = {int(item["id"]): item for item in state["issues_data"]}
+    req_text = json.dumps({"agente": "entrada_seguridad", "resultados": [
+        {
+            "issue_iid": central.get("issue_iid"),
+            "historia_id": central.get("historia_id"),
+            "historia_original": originals.get(central.get("issue_iid"), {}),
+            "formalizacion_central": central,
+        }
+        for central in central_payload["resultados"] if isinstance(central, dict)
+    ]}, ensure_ascii=False)
     report_str = analizar_seguridad(req_text)
     parsed, report_str = _analizar_con_un_reintento(
         report_str, "Seguridad",
         lambda: analizar_seguridad(req_text, num_predict_override=2800),
     )
     expected_ids = [int(x["id"]) for x in state["issues_data"]]
-    central = analizar_respuesta_lote(req_text, "Central")
+    central = central_payload
+    history_ids = {item.get("issue_iid"): item.get("historia_id") for item in central["resultados"]}
+    for item in parsed.get("resultados", []):
+        if isinstance(item, dict) and item.get("issue_iid") in history_ids:
+            item["historia_id"] = history_ids[item["issue_iid"]]
     def reparar(repair_ids):
-        subset = [item for item in central["resultados"] if item.get("issue_iid") in repair_ids]
-        return analizar_seguridad(json.dumps({"agente": "central", "resultados": subset}, ensure_ascii=False))
+        subset = [item for item in json.loads(req_text)["resultados"] if item.get("issue_iid") in repair_ids]
+        return analizar_seguridad(json.dumps({"agente": "entrada_seguridad", "resultados": subset}, ensure_ascii=False))
     errors, content_errors = _validar_y_reparar(parsed, expected_ids, "Seguridad", reparar)
     final_report = json.dumps(parsed, ensure_ascii=False)
     

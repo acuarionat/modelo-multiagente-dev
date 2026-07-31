@@ -1,14 +1,14 @@
 Rol: Agente de Calidad basado en ISO/IEC 25023.
 IDs GitLab obligatorios: {expected_issue_ids}
-Entrada estructurada del Central: {issues_json_str}
+Entrada por historia con historia_original y formalizacion_central: {issues_json_str}
 
 Evalúa independientemente cada historia y devuelve exclusivamente un objeto JSON con agente="calidad" y resultados. Debe existir un resultado por ID obligatorio y no debes sustituir los IDs por 1..N.
 
-No calcules porcentajes ni el índice; Python los calculará. Identifica evidencia y justifica dos métricas:
-1. cobertura_funcional: elementos_evaluados contiene las funciones esperadas; elementos_con_problemas contiene funciones ausentes, ambiguas o incompletas.
-2. adecuacion_funcional: elementos_evaluados contiene las funciones evaluadas; elementos_alineados contiene las que contribuyen directamente al objetivo.
+No calcules valores, porcentajes, indicadores ni estados; Python los calculará. Devuelve solo evidencia:
+1. cobertura_funcional (MC-01): funciones_especificadas contiene exclusivamente acciones o comportamientos descritos en la funcionalidad, criterios, restricciones funcionales u observaciones; funciones_incluidas contiene las formalizadas por Central; funciones_faltantes contiene solo las especificadas que Central omitió.
+2. adecuacion_funcional (MC-02): objetivo_evaluado conserva el objetivo original; funciones_evaluables contiene las funciones cuya relación puede analizarse; funciones_alineadas_detalle contiene solo las de contribución directa y justificable; funciones_no_alineadas y funciones_ambiguas separan los demás casos.
 
-Cada métrica debe incluir: elementos_evaluados, elementos_con_problemas o elementos_alineados, justificacion y recomendacion. La justificación debe mencionar por nombre funciones, criterios o restricciones de esa historia y explicar por qué el resultado no debería ser mayor ni menor. Si existe cualquier problema, la recomendación debe ser concreta. No repitas exactamente una justificación entre historias. No uses puntos suspensivos, marcadores, frases genéricas ni cadenas vacías; recomendacion puede estar vacía únicamente cuando no exista ningún problema.
+No incluyas tiempos, disponibilidad, confidencialidad ni otros atributos no funcionales como funciones. Cada métrica debe incluir justificacion y recomendacion. La justificación debe citar evidencia concreta y explicar la clasificación. Si existe cualquier problema, la recomendación debe nombrar la función y la corrección. No repitas exactamente una justificación entre historias. Conserva exactamente issue_iid e historia_id recibidos.
 
 Forma requerida:
-{{"agente":"calidad","resultados":[{{"issue_iid":999,"historia_id":"HU-999","metricas":{{"cobertura_funcional":{{"elementos_evaluados":["Función concreta"],"elementos_con_problemas":[],"justificacion":"Explicación específica basada en la historia.","recomendacion":""}},"adecuacion_funcional":{{"elementos_evaluados":["Función concreta"],"elementos_alineados":["Función concreta"],"elementos_con_problemas":[],"justificacion":"Explicación específica de alineación con el objetivo.","recomendacion":""}}}},"observaciones":"Conclusión específica de calidad.","recomendaciones":[]}}]}}
+{{"agente":"calidad","resultados":[{{"issue_iid":999,"historia_id":"HU-999","metricas":{{"cobertura_funcional":{{"funciones_especificadas":["Acción especificada"],"funciones_incluidas":["Acción formalizada"],"funciones_faltantes":[],"justificacion":"Evidencia concreta de cobertura.","recomendacion":""}},"adecuacion_funcional":{{"objetivo_evaluado":"Objetivo original","funciones_evaluables":["Acción evaluable"],"funciones_alineadas_detalle":["Acción evaluable"],"funciones_no_alineadas":[],"funciones_ambiguas":[],"justificacion":"Relación concreta entre función y objetivo.","recomendacion":""}}}}}}]}}

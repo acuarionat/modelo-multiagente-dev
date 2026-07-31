@@ -14,13 +14,14 @@ WORKFLOW_LABELS = {
 
 
 def es_issue_pendiente(issue) -> bool:
-    """Solo permite analizar issues Pendientes que no tengan un estado final."""
+    """Permite analizar issues pendientes o que requieren una nueva revisión."""
     labels = {str(label).strip().casefold() for label in getattr(issue, "labels", [])}
     completed = {
         REVIEWED_LABEL.casefold(),
         *(label.casefold() for label in LEGACY_COMPLETED_LABELS),
     }
-    return PENDING_LABEL.casefold() in labels and not bool(labels & completed)
+    eligible = {PENDING_LABEL.casefold(), REWORK_LABEL.casefold()}
+    return bool(labels & eligible) and not bool(labels & completed)
 
 
 class GitLabAdapter:
@@ -92,11 +93,10 @@ class GitLabAdapter:
         return self.project.issues.list(**params)
 
     def listar_issues_pendientes(self, milestone_title: Optional[str] = None) -> List[Any]:
-        """Lista exclusivamente issues elegibles para el análisis multiagente."""
-        issues = self.listar_issues_abiertos(
-            milestone_title=milestone_title,
-            labels=[PENDING_LABEL],
-        )
+        """Lista issues pendientes o marcados para modificación."""
+        # GitLab combina varias etiquetas como AND. Se consulta el milestone
+        # completo y se aplica localmente la alternativa Pendiente/Modificación.
+        issues = self.listar_issues_abiertos(milestone_title=milestone_title)
         return [issue for issue in issues if es_issue_pendiente(issue)]
         
     def obtener_issue(self, issue_iid: int):

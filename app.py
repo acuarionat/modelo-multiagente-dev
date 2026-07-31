@@ -622,6 +622,11 @@ milestone_val = MILESTONES_BY_STAGE[stage_id]
 st.subheader(next(stage[2] for stage in STAGES if stage[0] == stage_id))
 st.write(f"**Milestone asociado:** {milestone_val}")
 
+ISSUE_FILTER_VERSION = "pending-or-rework-v2"
+if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
+    st.session_state.pop("issues_by_stage", None)
+    st.session_state["issue_filter_version"] = ISSUE_FILTER_VERSION
+
 if "issues_by_stage" not in st.session_state:
     st.session_state.issues_by_stage = {}
 refresh_col, analysis_col = st.columns(2)
@@ -751,6 +756,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         construir_filas_trazabilidad, generar_documento_formal_lote_docx,
         generar_reporte_lote_pdf,
     )
+    from core.batch_contract import normalizar_metricas_resultado
     batch_result = st.session_state.last_batch_result
     results = batch_result["issues"]
     summary = batch_result["summary"]
@@ -760,7 +766,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
     a.metric("Historias procesadas", summary["procesadas"])
     b.metric("Con error", summary["errores"])
     c.metric("Índice parcial de calidad promedio", f"{summary['calidad_promedio'] * 100:.0f} %" if summary["calidad_promedio"] is not None else "N/D")
-    d.metric("Cobertura documental de seguridad promedio", f"{summary['seguridad_promedio'] * 100:.0f} %" if summary["seguridad_promedio"] is not None else "N/D")
+    d.metric("Índice de seguridad promedio", f"{summary['seguridad_promedio'] * 100:.0f} %" if summary["seguridad_promedio"] is not None else "N/D")
     st.write(f"**Veredictos:** {summary['veredictos']} — **Requerimientos sugeridos:** {summary['requerimientos']}")
     st.write(
         f"**Total:** {summary['total']} · **Aprobadas:** {summary['aprobadas']} · "
@@ -783,15 +789,64 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             continue
         central, quality = result["central"], result["quality"]
         security, evaluation = result["security"], result["evaluation"]
+        normalizar_metricas_resultado(quality, "Calidad")
+        normalizar_metricas_resultado(security, "Seguridad")
         title = f"{central['historia_id']} — {central['titulo']}"
         with st.expander(title):
             quality_value = f"{quality['indice'] * 100:.0f} %" if quality.get("indice") is not None else "N/D"
             security_value = f"{security['indice'] * 100:.0f} %" if security.get("indice") is not None else "N/D"
-            st.write(f"**Estado de evaluación asistida:** {result['estado_evaluacion']} · **Índice parcial de calidad funcional:** {quality_value} · **Índice de cobertura documental de seguridad:** {security_value} · **Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}")
+            st.write(f"**Estado de evaluación asistida:** {result['estado_evaluacion']} · **Índice de Calidad de Requerimientos:** {quality_value} · **Índice de Seguridad en Requerimientos:** {security_value} · **Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}")
             st.caption("El LoT no representa la confianza del modelo. La aceptación final requiere revisión humana.")
             st.write(f"**Requerimientos sugeridos:** {len(central['requerimientos'])} · **Correcciones obligatorias:** {len(evaluation.get('correcciones_obligatorias', []))}")
-            st.write("**Métricas de calidad:**", quality.get("metricas", {}))
-            st.write("**Métricas de seguridad:**", security.get("metricas", {}))
+            for domain, report in (("Calidad", quality), ("Seguridad", security)):
+                st.markdown(f"#### {domain}")
+                metric_rows = []
+                for metric in report.get("metricas", {}).values():
+                    if not isinstance(metric, dict):
+                        continue
+                    variables = metric.get("variables", {})
+                    metric_rows.append({
+                        "Código": metric.get("codigo", ""),
+                        "Métrica": metric.get("nombre", ""),
+                        "Variables": ", ".join(f"{key}={value}" for key, value in variables.items()),
+                        "Cálculo": metric.get("calculo", "No evaluado"),
+                        "Valor": f"{metric['valor']:.2f}" if isinstance(metric.get("valor"), (int, float)) else metric.get("estado_calculo", "No evaluado"),
+                    })
+                st.dataframe(metric_rows, use_container_width=True, hide_index=True)
+                for metric in report.get("metricas", {}).values():
+                    if not isinstance(metric, dict):
+                        continue
+                    with st.expander(f"{metric.get('codigo', '')} — detalle"):
+                        st.write("**Justificación:**", metric.get("justificacion", "No disponible"))
+                        st.write("**Recomendación:**", metric.get("recomendacion") or "Sin recomendación adicional.")
+                        detail_fields = (
+                            ("funciones_especificadas", "Funciones especificadas"),
+                            ("funciones_incluidas", "Funciones incluidas"),
+                            ("funciones_faltantes", "Funciones faltantes"),
+                            ("funciones_alineadas_detalle", "Funciones alineadas"),
+                            ("funciones_no_alineadas", "Funciones no alineadas"),
+                            ("aspectos_aplicables", "Aspectos aplicables"),
+                            ("aspectos_documentados", "Aspectos documentados"),
+                            ("aspectos_faltantes", "Aspectos faltantes"),
+                            ("aspectos_inferidos", "Aspectos inferidos"),
+                            ("datos_identificados_detalle", "Datos identificados"),
+                            ("datos_clasificados_detalle", "Datos clasificados"),
+                            ("datos_sin_clasificacion", "Datos sin clasificación"),
+                            ("clasificaciones_inferidas", "Clasificaciones inferidas"),
+                        )
+                        for key, label in detail_fields:
+                            if metric.get(key):
+                                st.write(f"**{label}:**", metric[key])
+                indicator = report.get("indicador", {})
+                st.info(
+                    f"**{indicator.get('nombre', 'Indicador')}**  \n"
+                    f"Valor: {indicator.get('valor') if indicator.get('valor') is not None else 'No evaluado'} · "
+                    f"Porcentaje: {indicator.get('porcentaje') if indicator.get('porcentaje') is not None else 'N/D'} % · "
+                    f"LoT: {indicator.get('lot', 'No aplica')} · "
+                    f"Meta: {indicator.get('meta') if indicator.get('meta') is not None else 'N/D'} · "
+                    f"Estado: {indicator.get('estado', 'No evaluado')}  \n"
+                    f"Recomendación: {indicator.get('recomendacion', '')}"
+                )
             st.write("**Riesgos:**", evaluation.get("riesgos_criticos", []))
             st.write("**Recomendaciones:**", quality.get("recomendaciones", []) + security.get("recomendaciones", []))
             st.write("**Comentario publicado en GitLab:**", "Sí" if result.get("comment_published") else "No")

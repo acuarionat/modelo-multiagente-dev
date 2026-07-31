@@ -99,15 +99,21 @@ class BatchContractTests(unittest.TestCase):
         self.assertEqual(validar_respuesta_lote(response, {6, 7, 9, 10}, "Central"), [])
         self.assertEqual(len(notes), 4)
 
+    def test_valid_issue_iid_does_not_replace_original_history_id(self):
+        response = batch("calidad", [{"issue_iid": 10, "historia_id": "HU-005", "metricas": {}}])
+        conciliar_ids_issues(response, [10], "Calidad")
+        self.assertEqual(response["resultados"][0]["issue_iid"], 10)
+        self.assertEqual(response["resultados"][0]["historia_id"], "HU-005")
+
     def test_quality_math_preserves_specific_evidence(self):
         response = batch("calidad", [{
             "issue_iid": 6,
             "metricas": {
                 "cobertura_funcional": {
                     "elementos_evaluados": ["Registrar", "Validar", "Evitar duplicado"],
-                    "elementos_con_problemas": ["Corregir rechazo"],
-                    "justificacion": "Se evaluaron Registrar, Validar y Evitar duplicado; falta definir Corregir rechazo.",
-                    "recomendacion": "Definir cómo corregir un registro rechazado.",
+                    "elementos_con_problemas": ["Evitar duplicado"],
+                    "justificacion": "Se evaluaron Registrar, Validar y Evitar duplicado; falta formalizar Evitar duplicado.",
+                    "recomendacion": "Formalizar cómo se evitan registros duplicados.",
                 },
                 "adecuacion_funcional": {
                     "elementos_evaluados": ["Registrar", "Validar"],
@@ -120,9 +126,9 @@ class BatchContractTests(unittest.TestCase):
         }])
         calcular_metricas_agente(response, "Calidad")
         item = response["resultados"][0]
-        self.assertAlmostEqual(item["metricas"]["cobertura_funcional"]["valor"], 2 / 3)
+        self.assertEqual(item["metricas"]["cobertura_funcional"]["valor"], 0.6667)
         self.assertEqual(item["metricas"]["adecuacion_funcional"]["valor"], 1)
-        self.assertIn("Corregir rechazo", item["metricas"]["cobertura_funcional"]["justificacion"])
+        self.assertIn("Evitar duplicado", item["metricas"]["cobertura_funcional"]["justificacion"])
         self.assertEqual(validar_contenido_agente(response, "Calidad"), {})
 
     def test_rejects_placeholder_content(self):

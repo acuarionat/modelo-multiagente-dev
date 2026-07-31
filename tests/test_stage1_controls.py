@@ -176,25 +176,28 @@ class MetricSafetyTests(unittest.TestCase):
         calcular_metricas_agente(response, "Calidad")
         self.assertEqual(response["resultados"][0]["metricas"]["cobertura_funcional"]["elementos_evaluados"], ["Registrar"])
 
-    def test_out_of_universe_aligned_item_is_removed(self):
+    def test_out_of_universe_aligned_item_is_not_silently_corrected(self):
         response = {"resultados": [{"metricas": {
             "cobertura_funcional": {"elementos_evaluados": ["Registrar"], "elementos_con_problemas": []},
             "adecuacion_funcional": {"elementos_evaluados": ["Registrar"], "elementos_alineados": ["Eliminar"], "elementos_con_problemas": []},
         }}]}
         calcular_metricas_agente(response, "Calidad")
         metric = response["resultados"][0]["metricas"]["adecuacion_funcional"]
-        self.assertEqual(metric["elementos_alineados"], [])
-        self.assertTrue(metric["advertencias_tecnicas"])
+        self.assertIsNone(metric["valor"])
+        self.assertEqual(metric["estado_calculo"], "No evaluado")
+        self.assertTrue(metric["errores_validacion"])
 
-    def test_non_applicable_controls_are_excluded(self):
+    def test_legacy_security_metrics_are_not_reinterpreted_as_new_metrics(self):
         response = {"resultados": [{"metricas": {
             "controles_seguridad": {"estado_medicion": "no_aplicable", "requerimientos_evaluados": [], "requerimientos_con_controles": [], "controles_identificados": [], "controles_ausentes": []},
             "lot_asignado": {"requerimientos_evaluados": ["RF-1"], "requerimientos_con_lot_justificado": ["RF-1"], "factores_considerados": ["Dato"], "lot_recomendado": "LoT-1"},
         }}]}
         calcular_metricas_agente(response, "Seguridad")
         item = response["resultados"][0]
-        self.assertIsNone(item["metricas"]["controles_seguridad"]["valor"])
-        self.assertEqual(item["indice"], 1.0)
+        self.assertIsNone(item["metricas"]["cobertura_seguridad"]["valor"])
+        self.assertIsNone(item["metricas"]["clasificacion_datos"]["valor"])
+        self.assertIsNone(item["indice"])
+        self.assertEqual(item["indicador"]["estado"], "No evaluado")
 
     def test_explicit_non_evaluable_state_does_not_calculate_value(self):
         response = {"resultados": [{"metricas": {

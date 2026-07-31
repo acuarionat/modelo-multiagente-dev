@@ -6,7 +6,7 @@ import unicodedata
 import re
 from difflib import SequenceMatcher
 from core.batch_contract import (
-    normalizar_tipo_requerimiento, recopilar_recomendaciones,
+    normalizar_metricas_resultado, normalizar_tipo_requerimiento, recopilar_recomendaciones,
     renumerar_requerimientos,
 )
 
@@ -146,6 +146,11 @@ def construir_filas_trazabilidad(batch_results: list, generation_date: str | Non
 
 def calcular_resumen_lote(batch_results: list) -> dict:
     valid = [x for x in batch_results if isinstance(x, dict) and x.get("status") == "ok"]
+    for item in valid:
+        if isinstance(item.get("quality"), dict):
+            normalizar_metricas_resultado(item["quality"], "Calidad")
+        if isinstance(item.get("security"), dict):
+            normalizar_metricas_resultado(item["security"], "Seguridad")
     quality = [
         x["quality"]["indice"] for x in valid
         if isinstance(x.get("quality"), dict)
@@ -181,8 +186,8 @@ def calcular_resumen_lote(batch_results: list) -> dict:
         )
         or (
             isinstance(x.get("security"), dict)
-            and isinstance(x["security"].get("indice"), (int, float))
-            and x["security"]["indice"] < 0.85
+            and isinstance(x["security"].get("indicador"), dict)
+            and x["security"]["indicador"].get("estado") == "No cumple"
         )
         for x in valid
     )
@@ -276,6 +281,70 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     def linea(text):
         pdf.set_font("Helvetica", size=10)
         pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
+    def seccion_metricas(report, domain):
+        normalizar_metricas_resultado(report, domain)
+        encabezado(f"Métricas de {domain.lower()}", 11)
+        table_rows = [["Código", "Nombre", "Variables", "Cálculo", "Valor", "Porcentaje"]]
+        for metric in report.get("metricas", {}).values():
+            variables = metric.get("variables", {}) if isinstance(metric, dict) else {}
+            table_rows.append([
+                metric.get("codigo", ""),
+                metric.get("nombre", ""),
+                ", ".join(f"{key}={value}" for key, value in variables.items()),
+                metric.get("calculo", "No evaluado"),
+                f"{metric['valor']:.2f}" if isinstance(metric.get("valor"), (int, float)) else metric.get("estado_calculo", "No evaluado"),
+                f"{metric['porcentaje']:.2f} %" if isinstance(metric.get("porcentaje"), (int, float)) else "N/D",
+            ])
+        pdf.set_font("Helvetica", size=6)
+        with pdf.table(
+            rows=[[limpiar_texto_para_pdf(value) for value in row] for row in table_rows],
+            col_widths=(14, 38, 42, 28, 20, 23), line_height=4,
+        ):
+            pass
+        detail_fields = {
+            "MC-01": (
+                ("funciones_especificadas", "Funciones especificadas"),
+                ("funciones_incluidas", "Funciones incluidas"),
+                ("funciones_faltantes", "Funciones faltantes"),
+            ),
+            "MC-02": (
+                ("objetivo_evaluado", "Objetivo evaluado"),
+                ("funciones_alineadas_detalle", "Funciones alineadas"),
+                ("funciones_no_alineadas", "Funciones no alineadas"),
+            ),
+            "MS-01": (
+                ("aspectos_aplicables", "Aspectos aplicables"),
+                ("aspectos_documentados", "Aspectos documentados"),
+                ("aspectos_faltantes", "Aspectos faltantes"),
+                ("aspectos_inferidos", "Aspectos inferidos"),
+            ),
+            "MS-02": (
+                ("datos_identificados_detalle", "Datos identificados"),
+                ("datos_clasificados_detalle", "Datos clasificados"),
+                ("datos_sin_clasificacion", "Datos sin clasificación"),
+                ("clasificaciones_inferidas", "Clasificaciones inferidas"),
+            ),
+        }
+        for metric in report.get("metricas", {}).values():
+            encabezado(f"Detalle {metric.get('codigo', '')}", 10)
+            for key, label in detail_fields.get(metric.get("codigo"), ()):
+                value = metric.get(key)
+                if value not in (None, "", []):
+                    linea(f"{label}: {json.dumps(value, ensure_ascii=False) if isinstance(value, (list, dict)) else value}")
+            linea(f"Justificación: {metric.get('justificacion', 'No disponible')}")
+            linea(f"Recomendación: {metric.get('recomendacion') or 'Sin recomendación adicional.'}")
+        indicator = report.get("indicador", {})
+        encabezado(indicator.get("nombre", f"Indicador de {domain}"), 10)
+        if domain == "Seguridad":
+            linea(f"LoT: {indicator.get('lot') or 'No determinado'}")
+        linea(f"Fórmula: {indicator.get('formula', '')}")
+        linea(f"Cálculo: {indicator.get('calculo', 'No evaluado')}")
+        linea(
+            f"Valor: {indicator.get('valor') if indicator.get('valor') is not None else 'No evaluado'} | "
+            f"Meta: {indicator.get('meta') if indicator.get('meta') is not None else 'No determinada'} | "
+            f"Estado: {indicator.get('estado', 'No evaluado')}"
+        )
+        linea(f"Recomendación general: {indicator.get('recomendacion', '')}")
     encabezado("Reporte Ejecutivo Consolidado", 16)
     linea(DECISION_SUPPORT_NOTICE)
     linea(f"Proyecto: {project_name}")
@@ -285,34 +354,22 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     encabezado("Resumen global", 13)
     linea(f"Historias procesadas: {summary['procesadas']} | Con error: {summary['errores']}")
     linea(f"Índice parcial de calidad promedio: {extraer_porcentaje(summary['calidad_promedio'])}")
-    linea(f"Cobertura documental de seguridad promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
+    linea(f"Índice de seguridad promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
     linea(f"Requerimientos sugeridos: {summary['requerimientos']}")
     for result in valid:
         c = result.get("central") if isinstance(result.get("central"), dict) else {}
         q = result.get("quality") if isinstance(result.get("quality"), dict) else {}
         s = result.get("security") if isinstance(result.get("security"), dict) else {}
         e = result.get("evaluation") if isinstance(result.get("evaluation"), dict) else {}
+        normalizar_metricas_resultado(q, "Calidad")
+        normalizar_metricas_resultado(s, "Seguridad")
         pdf.add_page()
         encabezado(f"{c['historia_id']} — {c['titulo']}", 13)
-        linea(f"Estado de evaluación: {e.get('veredicto', 'No evaluado')} | Índice parcial de calidad: {extraer_porcentaje(q.get('indice'))} | Cobertura documental de seguridad: {extraer_porcentaje(s.get('indice'))} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
+        linea(f"Estado de evaluación: {e.get('veredicto', 'No evaluado')} | Índice de calidad: {extraer_porcentaje(q.get('indice'))} | Índice de seguridad: {extraer_porcentaje(s.get('indice'))} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
         linea(f"Actor: {c.get('actor', '')}")
         linea(f"Objetivo: {c.get('objetivo', '')}")
-        encabezado("Métricas de calidad", 11)
-        for name, metric in _iterar_metricas(q, "calidad"):
-            linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
-            if metric.get("recomendacion"):
-                linea(f"Recomendación: {metric['recomendacion']}")
-        for label in ("observaciones", "recomendaciones"):
-            for text_value in _iterar_textos(q.get(label), f"calidad.{label}"):
-                linea(f"{label.capitalize()}: {text_value}")
-        encabezado("Métricas de seguridad", 11)
-        for name, metric in _iterar_metricas(s, "seguridad"):
-            linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
-            if metric.get("recomendacion"):
-                linea(f"Recomendación: {metric['recomendacion']}")
-        for label in ("observaciones", "recomendaciones"):
-            for text_value in _iterar_textos(s.get(label), f"seguridad.{label}"):
-                linea(f"{label.capitalize()}: {text_value}")
+        seccion_metricas(q, "Calidad")
+        seccion_metricas(s, "Seguridad")
         encabezado("Riesgos y recomendaciones", 11)
         evaluator_texts = list(_iterar_textos(e.get("riesgos_criticos"), "evaluador.riesgos_criticos"))
         evaluator_texts += list(_iterar_textos(e.get("correcciones_obligatorias"), "evaluador.correcciones_obligatorias"))
