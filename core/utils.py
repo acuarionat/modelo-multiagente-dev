@@ -299,7 +299,7 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         linea(f"Objetivo: {c.get('objetivo', '')}")
         encabezado("Métricas de calidad", 11)
         for name, metric in _iterar_metricas(q, "calidad"):
-            linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
+            linea(f"{metric.get('codigo', name)} — {metric.get('nombre', name)}: {extraer_porcentaje(metric.get('valor'))} ({metric.get('estado_calculo', 'No evaluado')}). {metric.get('justificacion', '')}")
             if metric.get("recomendacion"):
                 linea(f"Recomendación: {metric['recomendacion']}")
         for label in ("observaciones", "recomendaciones"):
@@ -307,7 +307,7 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
                 linea(f"{label.capitalize()}: {text_value}")
         encabezado("Métricas de seguridad", 11)
         for name, metric in _iterar_metricas(s, "seguridad"):
-            linea(f"{name}: {extraer_porcentaje(metric.get('valor'))}. {metric.get('justificacion', '')}")
+            linea(f"{metric.get('codigo', name)} — {metric.get('nombre', name)}: {extraer_porcentaje(metric.get('valor'))} ({metric.get('estado_calculo', 'No evaluado')}). {metric.get('justificacion', '')}")
             if metric.get("recomendacion"):
                 linea(f"Recomendación: {metric['recomendacion']}")
         for label in ("observaciones", "recomendaciones"):

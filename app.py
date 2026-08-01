@@ -795,8 +795,24 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             st.write(f"**Estado de evaluación asistida:** {result['estado_evaluacion']} · **Índice parcial de calidad funcional:** {quality_value} · **Índice de cobertura documental de seguridad:** {security_value} · **Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}")
             st.caption("El LoT no representa la confianza del modelo. La aceptación final requiere revisión humana.")
             st.write(f"**Requerimientos sugeridos:** {len(central['requerimientos'])} · **Correcciones obligatorias:** {len(evaluation.get('correcciones_obligatorias', []))}")
-            st.write("**Métricas de calidad:**", quality.get("metricas", {}))
-            st.write("**Métricas de seguridad:**", security.get("metricas", {}))
+            st.write("**Métricas de calidad:**")
+            for metric in (quality.get("metricas") or {}).values():
+                if isinstance(metric, dict):
+                    st.write(
+                        f"{metric.get('codigo', '')} — {metric.get('nombre', '')}: "
+                        f"{metric.get('porcentaje') if metric.get('porcentaje') is not None else 'N/D'} % "
+                        f"({metric.get('estado_calculo', 'No evaluado')})"
+                    )
+                    st.caption(metric.get("justificacion", ""))
+            st.write("**Métricas de seguridad:**")
+            for metric in (security.get("metricas") or {}).values():
+                if isinstance(metric, dict):
+                    st.write(
+                        f"{metric.get('codigo', '')} — {metric.get('nombre', '')}: "
+                        f"{metric.get('porcentaje') if metric.get('porcentaje') is not None else 'N/D'} % "
+                        f"({metric.get('estado_calculo', 'No evaluado')})"
+                    )
+                    st.caption(metric.get("justificacion", ""))
             st.write("**Riesgos:**", evaluation.get("riesgos_criticos", []))
             st.write("**Recomendaciones:**", quality.get("recomendaciones", []) + security.get("recomendaciones", []))
             st.write("**Comentario publicado en GitLab:**", "Sí" if result.get("comment_published") else "No")

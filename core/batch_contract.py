@@ -134,6 +134,149 @@ def _asegurar_recomendacion(metric: Dict[str, Any], metric_name: str) -> None:
     )
 
 
+def _calcular_proporcion_metrica(
+    metric: Dict[str, Any], numerator: int, denominator: int,
+    formula: str, calculation: str,
+) -> Dict[str, Any]:
+    """Completa una métrica sin convertir ausencia de evidencia en cero."""
+    metric["formula"] = formula
+    metric["variables"] = {"numerador": numerator, "denominador": denominator}
+    if denominator == 0:
+        metric.update({
+            "estado_calculo": "No aplica", "estado_medicion": "no_aplicable",
+            "valor": None, "porcentaje": None, "calculo": "No aplica",
+        })
+    elif numerator < 0 or numerator > denominator:
+        metric.update({
+            "estado_calculo": "No evaluado", "estado_medicion": "evidencia_insuficiente",
+            "valor": None, "porcentaje": None, "calculo": "No evaluado",
+        })
+        metric.setdefault("advertencias_tecnicas", []).append(
+            "El numerador no puede superar el denominador."
+        )
+    else:
+        value = numerator / denominator
+        metric.update({
+            "estado_calculo": "Calculada", "estado_medicion": "evaluable",
+            "valor": round(value, 4), "porcentaje": round(value * 100, 2),
+            "calculo": calculation,
+        })
+    return metric
+
+
+def _completar_indicador(
+    first: Dict[str, Any], second: Dict[str, Any],
+    name: str, meta: float | None, lot: str | None = None,
+) -> Dict[str, Any]:
+    indicator = {
+        "nombre": name, "valor": None, "porcentaje": None,
+        "meta": meta, "meta_porcentaje": round(meta * 100, 2) if meta is not None else None,
+        "estado": "No evaluado", "calculo": "No evaluado",
+    }
+    if lot is not None:
+        indicator["lot"] = lot
+    if (
+        first.get("estado_calculo") != "Calculada"
+        or second.get("estado_calculo") != "Calculada"
+        or meta is None
+    ):
+        return indicator
+    value = round((first["valor"] + second["valor"]) / 2, 4)
+    indicator.update({
+        "valor": value, "porcentaje": round(value * 100, 2),
+        "calculo": f"({first['valor']:.4f} + {second['valor']:.4f}) / 2",
+        "estado": "Cumple" if value >= meta else "No cumple",
+    })
+    return indicator
+
+
+def completar_resultado_calidad(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Normaliza evidencia y calcula MC-01, MC-02 e Índice de Calidad."""
+    metrics = item.get("metricas")
+    metrics = metrics if isinstance(metrics, dict) else {}
+    mc01 = metrics.get("cobertura_funcional")
+    mc02 = metrics.get("adecuacion_funcional")
+    mc01 = mc01 if isinstance(mc01, dict) else {}
+    mc02 = mc02 if isinstance(mc02, dict) else {}
+    _preparar_metrica(mc01, ["funciones_especificadas", "funciones_incluidas", "funciones_faltantes"])
+    _preparar_metrica(mc02, ["funciones_evaluables", "funciones_alineadas", "funciones_no_alineadas"])
+    specified = mc01["funciones_especificadas"]
+    missing = mc01["funciones_faltantes"]
+    evaluable = mc02["funciones_evaluables"]
+    aligned = mc02["funciones_alineadas"]
+    mc01.update({"codigo": "MC-01", "nombre": "Cobertura Funcional"})
+    _calcular_proporcion_metrica(
+        mc01, len(missing), len(specified),
+        "1 - (funciones_faltantes / funciones_especificadas)",
+        f"1 - ({len(missing)} / {len(specified)})",
+    )
+    if mc01.get("estado_calculo") == "Calculada":
+        value = round(1 - len(missing) / len(specified), 4)
+        mc01.update({"valor": value, "porcentaje": round(value * 100, 2)})
+    mc02.update({"codigo": "MC-02", "nombre": "Adecuación Funcional"})
+    _calcular_proporcion_metrica(
+        mc02, len(aligned), len(evaluable),
+        "funciones_alineadas / funciones_evaluables",
+        f"{len(aligned)} / {len(evaluable)}",
+    )
+    metrics = {"cobertura_funcional": mc01, "adecuacion_funcional": mc02}
+    indicator = _completar_indicador(
+        mc01, mc02, "Índice de Calidad", 0.95,
+    )
+    item.update({
+        "metricas": metrics, "indicador": indicator, "indice": indicator["valor"],
+        "meta_cumplida": indicator["estado"] == "Cumple",
+        "estado_medicion": "evaluable" if indicator["valor"] is not None else "evidencia_insuficiente",
+    })
+    return item
+
+
+def completar_resultado_seguridad(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Normaliza evidencia y calcula MS-01, MS-02 e Índice de Seguridad."""
+    metrics = item.get("metricas")
+    metrics = metrics if isinstance(metrics, dict) else {}
+    ms01 = metrics.get("cobertura_seguridad")
+    ms02 = metrics.get("clasificacion_datos")
+    ms01 = ms01 if isinstance(ms01, dict) else {}
+    ms02 = ms02 if isinstance(ms02, dict) else {}
+    _preparar_metrica(ms01, [
+        "aspectos_aplicables", "aspectos_documentados", "aspectos_parciales",
+        "aspectos_faltantes", "aspectos_inferidos",
+    ])
+    _preparar_metrica(ms02, [
+        "datos_identificados", "datos_clasificados", "datos_sin_clasificacion",
+        "clasificaciones_inferidas",
+    ])
+    applicable = ms01["aspectos_aplicables"]
+    documented = ms01["aspectos_documentados"]
+    identified = ms02["datos_identificados"]
+    classified = ms02["datos_clasificados"]
+    ms01.update({"codigo": "MS-01", "nombre": "Cobertura de Seguridad"})
+    _calcular_proporcion_metrica(
+        ms01, len(documented), len(applicable),
+        "aspectos_documentados / aspectos_aplicables",
+        f"{len(documented)} / {len(applicable)}",
+    )
+    ms02.update({"codigo": "MS-02", "nombre": "Clasificación de Datos"})
+    _calcular_proporcion_metrica(
+        ms02, len(classified), len(identified),
+        "datos_clasificados / datos_identificados",
+        f"{len(classified)} / {len(identified)}",
+    )
+    lot = item.get("lot_recomendado")
+    meta = {"LoT-2": 0.90, "LoT-3": 0.95}.get(lot)
+    indicator = _completar_indicador(
+        ms01, ms02, "Índice de Seguridad", meta, lot,
+    )
+    item.update({
+        "metricas": {"cobertura_seguridad": ms01, "clasificacion_datos": ms02},
+        "indicador": indicator, "indice": indicator["valor"],
+        "meta_cumplida": indicator["estado"] == "Cumple",
+        "estado_medicion": "evaluable" if indicator["valor"] is not None else "evidencia_insuficiente",
+    })
+    return item
+
+
 def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
     for item in response.get("resultados", []):
         if not isinstance(item, dict):
@@ -143,6 +286,10 @@ def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
         if not isinstance(metrics, dict):
             continue
         if agent_name == "Calidad":
+            coverage_candidate = metrics.get("cobertura_funcional")
+            if isinstance(coverage_candidate, dict) and "funciones_especificadas" in coverage_candidate:
+                completar_resultado_calidad(item)
+                continue
             coverage = metrics.get("cobertura_funcional", {})
             adequacy = metrics.get("adecuacion_funcional", {})
             if not isinstance(coverage, dict) or not isinstance(adequacy, dict):
@@ -191,6 +338,9 @@ def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
             adequacy["interpretacion"] = "Adecuación funcional estimada según las funciones identificadas y el objetivo declarado."
             item["interpretacion_indice"] = "Índice parcial de apoyo para la revisión de calidad funcional."
         elif agent_name == "Seguridad":
+            if "cobertura_seguridad" in metrics or "clasificacion_datos" in metrics:
+                completar_resultado_seguridad(item)
+                continue
             controls = metrics.get("controles_seguridad", {})
             lot = metrics.get("lot_asignado", {})
             if not isinstance(controls, dict) or not isinstance(lot, dict):
@@ -275,8 +425,18 @@ def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[
                         current.append(f"requerimiento {index} tiene procedencia inválida")
         elif agent_name in {"Calidad", "Seguridad"}:
             metrics = item.get("metricas")
+            new_quality = (
+                agent_name == "Calidad" and isinstance(metrics, dict)
+                and isinstance(metrics.get("cobertura_funcional"), dict)
+                and "funciones_especificadas" in metrics["cobertura_funcional"]
+            )
+            new_security = (
+                agent_name == "Seguridad" and isinstance(metrics, dict)
+                and ("cobertura_seguridad" in metrics or "clasificacion_datos" in metrics)
+            )
             expected_names = (
                 ["cobertura_funcional", "adecuacion_funcional"] if agent_name == "Calidad"
+                else ["cobertura_seguridad", "clasificacion_datos"] if new_security
                 else ["controles_seguridad", "lot_asignado"]
             )
             if not isinstance(metrics, dict):
@@ -288,8 +448,12 @@ def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[
                         current.append(f"falta la métrica {metric_name}")
                         continue
                     evidence_fields = (
-                        (["elementos_evaluados", "elementos_con_problemas"] if metric_name == "cobertura_funcional" else
+                        (["funciones_especificadas", "funciones_incluidas", "funciones_faltantes"] if metric_name == "cobertura_funcional" and new_quality else
+                         ["funciones_evaluables", "funciones_alineadas", "funciones_no_alineadas"] if metric_name == "adecuacion_funcional" and new_quality else
+                         ["elementos_evaluados", "elementos_con_problemas"] if metric_name == "cobertura_funcional" else
                          ["elementos_evaluados", "elementos_alineados"] if metric_name == "adecuacion_funcional" else
+                         ["aspectos_aplicables", "aspectos_documentados", "aspectos_parciales", "aspectos_faltantes", "aspectos_inferidos"] if metric_name == "cobertura_seguridad" else
+                         ["datos_identificados", "datos_clasificados", "datos_sin_clasificacion", "clasificaciones_inferidas"] if metric_name == "clasificacion_datos" else
                          ["requerimientos_evaluados", "requerimientos_con_controles", "controles_identificados", "controles_ausentes"] if metric_name == "controles_seguridad" else
                          ["requerimientos_evaluados", "requerimientos_con_lot_justificado", "factores_considerados"])
                     )

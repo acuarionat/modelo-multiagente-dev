@@ -4,11 +4,11 @@ Entrada estructurada del Central: {issues_json_str}
 
 Evalúa independientemente cada historia y devuelve exclusivamente un objeto JSON con agente="calidad" y resultados. Debe existir un resultado por ID obligatorio y no debes sustituir los IDs por 1..N.
 
-No calcules porcentajes ni el índice; Python los calculará. Identifica evidencia y justifica dos métricas:
-1. cobertura_funcional: elementos_evaluados contiene las funciones esperadas; elementos_con_problemas contiene funciones ausentes, ambiguas o incompletas.
-2. adecuacion_funcional: elementos_evaluados contiene las funciones evaluadas; elementos_alineados contiene las que contribuyen directamente al objetivo.
+No calcules valores, porcentajes, indicadores, metas ni estados. Python realizará todos los cálculos. Identifica evidencia y justifica dos métricas:
+1. MC-01 cobertura_funcional: funciones_especificadas, funciones_incluidas y funciones_faltantes.
+2. MC-02 adecuacion_funcional: objetivo_evaluado, funciones_evaluables, funciones_alineadas y funciones_no_alineadas.
 
-Cada métrica debe incluir: elementos_evaluados, elementos_con_problemas o elementos_alineados, justificacion y recomendacion. La justificación debe mencionar por nombre funciones, criterios o restricciones de esa historia y explicar por qué el resultado no debería ser mayor ni menor. Si existe cualquier problema, la recomendación debe ser concreta. No repitas exactamente una justificación entre historias. No uses puntos suspensivos, marcadores, frases genéricas ni cadenas vacías; recomendacion puede estar vacía únicamente cuando no exista ningún problema.
+Devuelve únicamente las listas de evidencia indicadas, justificacion y recomendacion. La justificación debe mencionar por nombre funciones o criterios de esa historia. Si existe cualquier problema, la recomendación debe ser concreta. Conserva exactamente issue_iid e historia_id. No repitas exactamente una justificación entre historias. recomendacion puede estar vacía únicamente cuando no exista ningún problema.
 
 Forma requerida:
-{{"agente":"calidad","resultados":[{{"issue_iid":999,"historia_id":"HU-999","metricas":{{"cobertura_funcional":{{"elementos_evaluados":["Función concreta"],"elementos_con_problemas":[],"justificacion":"Explicación específica basada en la historia.","recomendacion":""}},"adecuacion_funcional":{{"elementos_evaluados":["Función concreta"],"elementos_alineados":["Función concreta"],"elementos_con_problemas":[],"justificacion":"Explicación específica de alineación con el objetivo.","recomendacion":""}}}},"observaciones":"Conclusión específica de calidad.","recomendaciones":[]}}]}}
+{{"agente":"calidad","resultados":[{{"issue_iid":999,"historia_id":"HU-999","metricas":{{"cobertura_funcional":{{"codigo":"MC-01","funciones_especificadas":["Función esperada"],"funciones_incluidas":["Función incluida"],"funciones_faltantes":[],"justificacion":"Evidencia concreta de cobertura.","recomendacion":""}},"adecuacion_funcional":{{"codigo":"MC-02","objetivo_evaluado":"Objetivo de la historia","funciones_evaluables":["Función evaluable"],"funciones_alineadas":["Función alineada"],"funciones_no_alineadas":[],"justificacion":"Evidencia concreta de alineación.","recomendacion":""}}}},"observaciones":"Conclusión específica de calidad.","recomendaciones":[]}}]}}
