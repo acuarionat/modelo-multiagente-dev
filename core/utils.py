@@ -284,8 +284,8 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     pdf.ln(4)
     encabezado("Resumen global", 13)
     linea(f"Historias procesadas: {summary['procesadas']} | Con error: {summary['errores']}")
-    linea(f"Índice parcial de calidad promedio: {extraer_porcentaje(summary['calidad_promedio'])}")
-    linea(f"Cobertura documental de seguridad promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
+    linea(f"Índice de Calidad de Requerimientos promedio: {extraer_porcentaje(summary['calidad_promedio'])}")
+    linea(f"Índice de Seguridad en Requerimientos promedio: {extraer_porcentaje(summary['seguridad_promedio'])}")
     linea(f"Requerimientos sugeridos: {summary['requerimientos']}")
     for result in valid:
         c = result.get("central") if isinstance(result.get("central"), dict) else {}
@@ -294,7 +294,7 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         e = result.get("evaluation") if isinstance(result.get("evaluation"), dict) else {}
         pdf.add_page()
         encabezado(f"{c['historia_id']} — {c['titulo']}", 13)
-        linea(f"Estado de evaluación: {e.get('veredicto', 'No evaluado')} | Índice parcial de calidad: {extraer_porcentaje(q.get('indice'))} | Cobertura documental de seguridad: {extraer_porcentaje(s.get('indice'))} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
+        linea(f"Estado de evaluación: {e.get('veredicto', 'No evaluado')} | Índice de Calidad de Requerimientos: {extraer_porcentaje(q.get('indice'))} | Índice de Seguridad en Requerimientos: {extraer_porcentaje(s.get('indice'))} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
         linea(f"Actor: {c.get('actor', '')}")
         linea(f"Objetivo: {c.get('objetivo', '')}")
         encabezado("Métricas de calidad", 11)
@@ -325,7 +325,7 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
                 continue
             linea(f"{requirement.get('id', 'Sin código')} — {requirement.get('nombre', '')}")
             linea(requirement.get("descripcion_formal", ""))
-            linea(f"Procedencia: {requirement.get('procedencia', 'inferido')}")
+            linea(f"Procedencia: {requirement.get('procedencia', 'inferida')}")
     pdf.add_page(orientation="L")
     encabezado("Matriz de trazabilidad", 13)
     pdf.set_font("Helvetica", size=6)
@@ -384,7 +384,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
             doc.add_paragraph(f"Prioridad: {requirement.get('prioridad', '')}")
             doc.add_paragraph(f"Origen: {origin}")
             doc.add_paragraph(f"Justificación: {requirement.get('justificacion', '')}")
-            doc.add_paragraph(f"Procedencia: {requirement.get('procedencia', 'inferido')}")
+            doc.add_paragraph(f"Procedencia: {requirement.get('procedencia', 'inferida')}")
             doc.add_paragraph("Revisión humana: Pendiente")
     doc.add_heading("6. Restricciones consolidadas", 1)
     restrictions = dict.fromkeys(r for x in valid for r in x["central"].get("restricciones", []))

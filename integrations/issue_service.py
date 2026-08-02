@@ -58,8 +58,8 @@ def construir_comentario_issue(result: dict) -> str:
     return f"""## Resultado del análisis multiagente
 
 **Estado orientativo:** {estado}<br>
-**Calidad funcional:** {extraer_porcentaje(quality.get('indice'))}<br>
-**Cobertura documental de seguridad:** {extraer_porcentaje(security.get('indice'))}<br>
+**Índice de Calidad de Requerimientos:** {extraer_porcentaje(quality.get('indice'))}<br>
+**Índice de Seguridad en Requerimientos:** {extraer_porcentaje(security.get('indice'))}<br>
 **Nivel de aseguramiento recomendado:** {security.get('lot_recomendado', 'No informado')}
 
 ### Hallazgos principales

@@ -17,6 +17,11 @@ GENERIC_TEXT_FRAGMENTS = {
     "título real", "actor real", "objetivo real", "riesgo concreto",
     "corrección concreta", "control concreto", "dato o impacto concreto",
 }
+PROCEDENCIAS_EXPLICITAS = {
+    "explícita — funcionalidad", "explícita — criterio de aceptación",
+    "explícita — restricción", "explícita — observación",
+}
+PROCEDENCIAS_VALIDAS = PROCEDENCIAS_EXPLICITAS | {"inferida"}
 
 
 def calcular_num_predict(agent: str, issue_count: int) -> int:
@@ -96,6 +101,105 @@ def normalizar_lista_textos(valor: Any) -> List[str]:
         return []
     values = [valor] if isinstance(valor, str) else valor if isinstance(valor, list) else [valor]
     return [text for item in values if (text := str(item).strip())]
+
+
+def _tipo_desde_texto(text: str) -> str:
+    key = _clave_texto(text)
+    return "RNF" if any(marker in key for marker in (
+        "menos de", "segundo", "tiempo de respuesta", "en tiempo real",
+        "rendimiento", "disponibilidad", "actualizacion inmediata",
+    )) else "RF"
+
+
+def _descripcion_requerimiento_explicito(text: str) -> str:
+    clean = text.strip().strip("-*• ").rstrip(".")
+    key = _clave_texto(clean)
+    if "reportes deben poder imprimirse" in key:
+        return "El sistema deberá permitir imprimir los reportes."
+    if "menos de" in key and "segundo" in key:
+        return "El sistema deberá responder en menos de tres segundos."
+    if "tiempo real" in key:
+        return "El sistema deberá mostrar la información en tiempo real."
+    if "editar" in key and "informacion" in key and "paciente" in key:
+        return "El sistema deberá permitir editar la información del paciente."
+    if clean.casefold().startswith("el sistema deberá"):
+        return f"{clean}."
+    return f"El sistema deberá {clean[:1].lower() + clean[1:]}."
+
+
+def completar_requerimientos_explicitos_faltantes(
+    requerimientos_central: Any, issue_original: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Conserva la salida válida del Central y añade evidencia explícita omitida."""
+    requirements = (
+        [item for item in requerimientos_central if isinstance(item, dict)]
+        if isinstance(requerimientos_central, list) else []
+    )
+    candidates: List[tuple[str, str]] = []
+    functionality = str(issue_original.get("funcionalidad") or "").strip()
+    if functionality and not _es_no_definido(functionality):
+        candidates.append((functionality, "funcionalidad"))
+    candidates.extend(
+        (text, "criterio de aceptación")
+        for text in normalizar_lista_textos(issue_original.get("criterios_aceptacion"))
+        if not _es_no_definido(text)
+    )
+    candidates.extend(
+        (text, "restricción")
+        for text in normalizar_lista_textos(issue_original.get("restricciones"))
+        if not _es_no_definido(text)
+    )
+    observations = normalizar_lista_textos(issue_original.get("observaciones"))
+    for observation in observations:
+        for text in (part.strip(" -*•") for part in re.split(r"[\r\n]+", observation)):
+            key = _clave_texto(text)
+            if text and not _es_no_definido(text) and any(marker in key for marker in (
+                "imprimir", "editar", "actualizar", "tiempo de respuesta",
+                "en tiempo real", "mostrar", "registrar", "permitir",
+            )):
+                candidates.append((text, "observación"))
+
+    def semantic_key(value: Any) -> Set[str]:
+        normalized = _clave_texto(value)
+        replacements = {
+            "imprimirse": "imprimir", "impresion": "imprimir",
+            "mostrada": "mostrar", "mostrarse": "mostrar",
+            "actualizada": "actualizar", "actualizacion": "actualizar",
+            "edicion": "editar", "validacion": "validar",
+        }
+        ignored = {
+            "el", "la", "los", "las", "un", "una", "de", "del", "al", "en",
+            "y", "que", "se", "debe", "debera", "sistema", "permitir", "poder",
+        }
+        return {replacements.get(word, word) for word in normalized.split() if word not in ignored}
+
+    def requirement_text(requirement: Dict[str, Any]) -> str:
+        return " ".join(str(requirement.get(field) or "") for field in (
+            "nombre", "descripcion_formal", "descripcion", "origen",
+        ))
+
+    def covers(requirement: Dict[str, Any], source_text: str) -> bool:
+        source_words = semantic_key(source_text)
+        requirement_words = semantic_key(requirement_text(requirement))
+        return bool(source_words) and source_words.issubset(requirement_words)
+
+    for text, origin_kind in candidates:
+        matches = [requirement for requirement in requirements if covers(requirement, text)]
+        if matches:
+            for requirement in matches:
+                requirement["tipo"] = _tipo_desde_texto(text)
+                requirement["procedencia"] = f"explícita — {origin_kind}"
+            continue
+        requirements.append({
+            "nombre": text.strip().rstrip("."),
+            "descripcion_formal": _descripcion_requerimiento_explicito(text),
+            "tipo": _tipo_desde_texto(text),
+            "origen": text.strip(),
+            "justificacion": f"Formalizado desde texto explícito de {origin_kind}.",
+            "prioridad": issue_original.get("prioridad"),
+            "procedencia": f"explícita — {origin_kind}",
+        })
+    return requirements
 
 
 def _preparar_metrica(metric: Dict[str, Any], fields: List[str]) -> List[str]:
@@ -190,7 +294,20 @@ def _completar_indicador(
     return indicator
 
 
-def completar_resultado_calidad(item: Dict[str, Any]) -> Dict[str, Any]:
+def _justificacion_proporcion(
+    nombre: str, universo: List[str], incluidos: List[str], faltantes: List[str],
+) -> str:
+    total = len(universo)
+    return (
+        f"{nombre}: A={total} elementos especificados y B={len(faltantes)} faltantes. "
+        f"Incluidos: {', '.join(incluidos) if incluidos else 'ninguno'}. "
+        f"Faltantes: {', '.join(faltantes) if faltantes else 'ninguno'}."
+    )
+
+
+def completar_resultado_calidad(
+    item: Dict[str, Any], context: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     """Normaliza evidencia y calcula MC-01, MC-02 e Índice de Calidad."""
     metrics = item.get("metricas")
     metrics = metrics if isinstance(metrics, dict) else {}
@@ -201,9 +318,30 @@ def completar_resultado_calidad(item: Dict[str, Any]) -> Dict[str, Any]:
     _preparar_metrica(mc01, ["funciones_especificadas", "funciones_incluidas", "funciones_faltantes"])
     _preparar_metrica(mc02, ["funciones_evaluables", "funciones_alineadas", "funciones_no_alineadas"])
     specified = mc01["funciones_especificadas"]
-    missing = mc01["funciones_faltantes"]
-    evaluable = mc02["funciones_evaluables"]
-    aligned = mc02["funciones_alineadas"]
+    included, notes = _restringir_subconjunto(
+        mc01["funciones_incluidas"], specified, "función incluida",
+    )
+    missing, missing_notes = _restringir_subconjunto(
+        mc01["funciones_faltantes"], specified, "función faltante",
+    )
+    mc01["funciones_incluidas"] = included
+    mc01["funciones_faltantes"] = missing
+    if notes or missing_notes:
+        mc01.setdefault("advertencias_tecnicas", []).extend(notes + missing_notes)
+
+    # MC-02 usa exactamente el universo de MC-01; el agente solo aporta alineación.
+    evaluable = list(specified)
+    aligned, alignment_notes = _restringir_subconjunto(
+        mc02["funciones_alineadas"], evaluable, "función alineada",
+    )
+    not_aligned = [function for function in evaluable if function not in aligned]
+    mc02["funciones_evaluables"] = evaluable
+    mc02["funciones_alineadas"] = aligned
+    mc02["funciones_no_alineadas"] = not_aligned
+    if alignment_notes:
+        mc02.setdefault("advertencias_tecnicas", []).extend(alignment_notes)
+    if context and isinstance(context.get("objetivo"), str):
+        mc02["objetivo_evaluado"] = context["objetivo"].strip()
     mc01.update({"codigo": "MC-01", "nombre": "Cobertura Funcional"})
     _calcular_proporcion_metrica(
         mc01, len(missing), len(specified),
@@ -213,25 +351,103 @@ def completar_resultado_calidad(item: Dict[str, Any]) -> Dict[str, Any]:
     if mc01.get("estado_calculo") == "Calculada":
         value = round(1 - len(missing) / len(specified), 4)
         mc01.update({"valor": value, "porcentaje": round(value * 100, 2)})
+    if specified and not included and not missing:
+        mc01.update({
+            "estado_calculo": "No evaluado", "estado_medicion": "evidencia_insuficiente",
+            "valor": None, "porcentaje": None, "calculo": "No evaluado",
+        })
+    mc01["justificacion"] = _justificacion_proporcion(
+        "MC-01", specified, included, missing,
+    )
+    mc01["recomendacion"] = (
+        "Clasificar las funciones especificadas como incluidas o faltantes."
+        if specified and not included and not missing else
+        f"Incorporar o aclarar las funciones faltantes: {', '.join(missing)}."
+        if missing else ""
+    )
     mc02.update({"codigo": "MC-02", "nombre": "Adecuación Funcional"})
     _calcular_proporcion_metrica(
         mc02, len(aligned), len(evaluable),
         "funciones_alineadas / funciones_evaluables",
         f"{len(aligned)} / {len(evaluable)}",
     )
+    objective = str(mc02.get("objetivo_evaluado") or "no definido").strip()
+    mc02["justificacion"] = (
+        f"MC-02: {len(aligned)} de {len(evaluable)} funciones especificadas se alinean "
+        f"con el objetivo '{objective}'. Alineadas: "
+        f"{', '.join(aligned) if aligned else 'ninguna'}. No alineadas: "
+        f"{', '.join(not_aligned) if not_aligned else 'ninguna'}."
+    )
+    mc02["recomendacion"] = (
+        f"Alinear con el objetivo las funciones: {', '.join(not_aligned)}."
+        if not_aligned else ""
+    )
     metrics = {"cobertura_funcional": mc01, "adecuacion_funcional": mc02}
     indicator = _completar_indicador(
-        mc01, mc02, "Índice de Calidad", 0.95,
+        mc01, mc02, "Índice de Calidad de Requerimientos", 0.95,
     )
     item.update({
         "metricas": metrics, "indicador": indicator, "indice": indicator["valor"],
         "meta_cumplida": indicator["estado"] == "Cumple",
         "estado_medicion": "evaluable" if indicator["valor"] is not None else "evidencia_insuficiente",
     })
+    item["recomendaciones"] = [
+        text for text in (mc01["recomendacion"], mc02["recomendacion"]) if text
+    ]
     return item
 
 
-def completar_resultado_seguridad(item: Dict[str, Any]) -> Dict[str, Any]:
+def _es_no_definido(value: Any) -> bool:
+    return _clave_texto(value) in {
+        "", "no", "no definido", "no definida", "desconocido", "desconocida", "n a",
+    }
+
+
+def _evidencia_seguridad_contexto(context: Dict[str, Any]) -> tuple[List[str], List[str], List[str], List[str]]:
+    security = context.get("seguridad") if isinstance(context.get("seguridad"), dict) else {}
+    applicable = ["Autenticación", "Autorización", "Auditoría"]
+    documented = []
+    for label, field in (
+        ("Autenticación", "autenticacion"),
+        ("Autorización", "autorizacion_roles"),
+        ("Auditoría", "auditoria"),
+    ):
+        if not _es_no_definido(security.get(field)):
+            documented.append(label)
+
+    sensitive_text = str(security.get("maneja_datos_sensibles") or security.get("descripcion") or "")
+    normalized_sensitive = _clave_texto(sensitive_text)
+    data = []
+    if normalized_sensitive and not normalized_sensitive.startswith("no"):
+        for line in re.split(r"[\n,;]+", sensitive_text):
+            clean = line.strip().strip(".-")
+            key = _clave_texto(clean)
+            if key and key not in {"si", "datos sensibles"}:
+                data.append(clean)
+    data = list(dict.fromkeys(data))
+    classified = [
+        value for value in data
+        if any(marker in _clave_texto(value) for marker in (
+            "personal", "sensible", "clinico", "salud", "biometrico", "financiero",
+        ))
+    ]
+    return applicable, documented, data, classified
+
+
+def _determinar_lot(context: Dict[str, Any] | None) -> tuple[str, str]:
+    context_text = _clave_texto(str(context or {}))
+    high_impact = any(marker in context_text for marker in (
+        "datos clinicos", "historial clinico", "diagnostico", "datos de salud",
+        "biometrico", "alto impacto", "riesgo critico",
+    ))
+    if high_impact:
+        return "LoT-3", "LoT-3 asignado por evidencia explícita de alto impacto o datos altamente sensibles."
+    return "LoT-2", "LoT-2 asignado por defecto al no existir una regla explícita de alto impacto."
+
+
+def completar_resultado_seguridad(
+    item: Dict[str, Any], context: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     """Normaliza evidencia y calcula MS-01, MS-02 e Índice de Seguridad."""
     metrics = item.get("metricas")
     metrics = metrics if isinstance(metrics, dict) else {}
@@ -247,15 +463,34 @@ def completar_resultado_seguridad(item: Dict[str, Any]) -> Dict[str, Any]:
         "datos_identificados", "datos_clasificados", "datos_sin_clasificacion",
         "clasificaciones_inferidas",
     ])
-    applicable = ms01["aspectos_aplicables"]
-    documented = ms01["aspectos_documentados"]
-    identified = ms02["datos_identificados"]
-    classified = ms02["datos_clasificados"]
+    if context:
+        applicable, documented, identified, classified = _evidencia_seguridad_contexto(context)
+        ms01["aspectos_aplicables"] = applicable
+        ms01["aspectos_documentados"] = documented
+        ms01["aspectos_faltantes"] = [x for x in applicable if x not in documented]
+        ms02["datos_identificados"] = identified
+        ms02["datos_clasificados"] = classified
+        ms02["datos_sin_clasificacion"] = [x for x in identified if x not in classified]
+    else:
+        applicable = ms01["aspectos_aplicables"]
+        documented = ms01["aspectos_documentados"]
+        identified = ms02["datos_identificados"]
+        classified = ms02["datos_clasificados"]
     ms01.update({"codigo": "MS-01", "nombre": "Cobertura de Seguridad"})
     _calcular_proporcion_metrica(
         ms01, len(documented), len(applicable),
         "aspectos_documentados / aspectos_aplicables",
         f"{len(documented)} / {len(applicable)}",
+    )
+    missing_aspects = [x for x in applicable if x not in documented]
+    ms01["justificacion"] = (
+        f"MS-01: {len(documented)} de {len(applicable)} aspectos aplicables están "
+        f"documentados. Documentados: {', '.join(documented) if documented else 'ninguno'}. "
+        f"Faltantes: {', '.join(missing_aspects) if missing_aspects else 'ninguno'}."
+    )
+    ms01["recomendacion"] = (
+        f"Documentar los aspectos faltantes: {', '.join(missing_aspects)}."
+        if missing_aspects else ""
     )
     ms02.update({"codigo": "MS-02", "nombre": "Clasificación de Datos"})
     _calcular_proporcion_metrica(
@@ -263,10 +498,24 @@ def completar_resultado_seguridad(item: Dict[str, Any]) -> Dict[str, Any]:
         "datos_clasificados / datos_identificados",
         f"{len(classified)} / {len(identified)}",
     )
-    lot = item.get("lot_recomendado")
+    unclassified = [x for x in identified if x not in classified]
+    ms02["justificacion"] = (
+        "MS-02: No aplica porque la historia no identifica datos." if not identified else
+        f"MS-02: {len(classified)} de {len(identified)} datos identificados tienen "
+        f"clasificación explícita. Clasificados: "
+        f"{', '.join(classified) if classified else 'ninguno'}. Sin clasificación: "
+        f"{', '.join(unclassified) if unclassified else 'ninguno'}."
+    )
+    ms02["recomendacion"] = (
+        f"Clasificar explícitamente los datos identificados: {', '.join(unclassified)}."
+        if unclassified else ""
+    )
+    lot, lot_reason = _determinar_lot(context)
+    item["lot_recomendado"] = lot
+    item["justificacion_lot"] = lot_reason
     meta = {"LoT-2": 0.90, "LoT-3": 0.95}.get(lot)
     indicator = _completar_indicador(
-        ms01, ms02, "Índice de Seguridad", meta, lot,
+        ms01, ms02, "Índice de Seguridad en Requerimientos", meta, lot,
     )
     item.update({
         "metricas": {"cobertura_seguridad": ms01, "clasificacion_datos": ms02},
@@ -274,13 +523,20 @@ def completar_resultado_seguridad(item: Dict[str, Any]) -> Dict[str, Any]:
         "meta_cumplida": indicator["estado"] == "Cumple",
         "estado_medicion": "evaluable" if indicator["valor"] is not None else "evidencia_insuficiente",
     })
+    item["recomendaciones"] = [
+        text for text in (ms01["recomendacion"], ms02["recomendacion"]) if text
+    ]
     return item
 
 
-def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
+def calcular_metricas_agente(
+    response: Dict[str, Any], agent_name: str,
+    context_by_iid: Dict[int, Dict[str, Any]] | None = None,
+) -> None:
     for item in response.get("resultados", []):
         if not isinstance(item, dict):
             continue
+        context = (context_by_iid or {}).get(normalizar_iid(item.get("issue_iid")))
         item["recomendaciones"] = normalizar_lista_textos(item.get("recomendaciones"))
         metrics = item.get("metricas")
         if not isinstance(metrics, dict):
@@ -288,7 +544,7 @@ def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
         if agent_name == "Calidad":
             coverage_candidate = metrics.get("cobertura_funcional")
             if isinstance(coverage_candidate, dict) and "funciones_especificadas" in coverage_candidate:
-                completar_resultado_calidad(item)
+                completar_resultado_calidad(item, context)
                 continue
             coverage = metrics.get("cobertura_funcional", {})
             adequacy = metrics.get("adecuacion_funcional", {})
@@ -336,10 +592,10 @@ def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
             item["meta_cumplida"] = item["indice"] is not None and item["indice"] >= 0.95
             coverage["interpretacion"] = "Cobertura funcional estimada según los elementos identificados y formalizados."
             adequacy["interpretacion"] = "Adecuación funcional estimada según las funciones identificadas y el objetivo declarado."
-            item["interpretacion_indice"] = "Índice parcial de apoyo para la revisión de calidad funcional."
+            item["interpretacion_indice"] = "Índice de Calidad de Requerimientos."
         elif agent_name == "Seguridad":
             if "cobertura_seguridad" in metrics or "clasificacion_datos" in metrics:
-                completar_resultado_seguridad(item)
+                completar_resultado_seguridad(item, context)
                 continue
             controls = metrics.get("controles_seguridad", {})
             lot = metrics.get("lot_asignado", {})
@@ -390,9 +646,11 @@ def calcular_metricas_agente(response: Dict[str, Any], agent_name: str) -> None:
             )
             item["meta_cumplida"] = item["indice"] is not None and item["indice"] >= 0.85
             item["lot_recomendado"] = lot.get("lot_recomendado")
+            if context is not None:
+                item["lot_recomendado"], item["justificacion_lot"] = _determinar_lot(context)
             controls["interpretacion"] = "Cobertura documental estimada de controles de seguridad aplicables."
             lot["interpretacion"] = "Nivel de aseguramiento recomendado; no representa la confianza del modelo."
-            item["interpretacion_indice"] = "Índice de cobertura documental de seguridad."
+            item["interpretacion_indice"] = "Índice de Seguridad en Requerimientos."
 
 
 def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[int, List[str]]:
@@ -421,7 +679,7 @@ def validar_contenido_agente(response: Dict[str, Any], agent_name: str) -> Dict[
                     description = requirement.get("descripcion_formal", "")
                     if isinstance(description, str) and not description.strip().casefold().startswith("el sistema deberá"):
                         current.append(f"requerimiento {index} no comienza con 'El sistema deberá'")
-                    if requirement.get("procedencia") not in {"extraido", "inferido", "recomendado"}:
+                    if requirement.get("procedencia") not in PROCEDENCIAS_VALIDAS:
                         current.append(f"requerimiento {index} tiene procedencia inválida")
         elif agent_name in {"Calidad", "Seguridad"}:
             metrics = item.get("metricas")
@@ -738,8 +996,8 @@ def renumerar_requerimientos(items: Iterable[Dict[str, Any]]) -> None:
             requirement["id"] = f"{kind}-{counters[kind]:03d}"
             requirement["descripcion"] = requirement.get("descripcion_formal") or requirement.get("descripcion", "")
             requirement.setdefault("fecha_generacion", generation_date)
-            if requirement.get("procedencia") not in {"extraido", "inferido", "recomendado"}:
-                requirement["procedencia"] = "inferido"
+            if requirement.get("procedencia") not in PROCEDENCIAS_VALIDAS:
+                requirement["procedencia"] = "inferida"
 
 
 def ajustar_veredicto_determinista(
@@ -769,9 +1027,9 @@ def ajustar_veredicto_determinista(
         reasons = alert_reasons
     else:
         if isinstance(quality.get("indice"), (int, float)) and quality["indice"] < 0.95:
-            reasons.append("Índice parcial de calidad bajo la meta de apoyo.")
+            reasons.append("Índice de Calidad de Requerimientos bajo la meta de apoyo.")
         if isinstance(security.get("indice"), (int, float)) and security["indice"] < 0.85:
-            reasons.append("Índice de cobertura documental de seguridad bajo la meta de apoyo.")
+            reasons.append("Índice de Seguridad en Requerimientos bajo la meta de apoyo.")
         if evaluation.get("correcciones_obligatorias"):
             reasons.append("Existen correcciones obligatorias.")
         if central.get("ambiguedades") or central.get("informacion_faltante"):
@@ -802,9 +1060,20 @@ def consolidar_lote(
     security: Dict[str, Any], evaluation: Dict[str, Any], validation_errors: List[str] | None = None,
     content_validation_errors: Dict[int, List[str]] | None = None,
     input_validations: Dict[int, Dict[str, Any]] | None = None,
+    original_issues: Dict[int, Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     maps = [indexar_resultados(x) for x in (central, quality, security, evaluation)]
     names = ["Central", "Calidad", "Seguridad", "Evaluador"]
+    for iid, central_item in maps[0].items():
+        source = (original_issues or {}).get(iid)
+        if not source:
+            continue
+        for field in ("actor", "funcionalidad", "objetivo"):
+            if not _es_no_definido(source.get(field)):
+                central_item[field] = source[field]
+        central_item["requerimientos"] = completar_requerimientos_explicitos_faltantes(
+            central_item.get("requerimientos"), source,
+        )
     renumerar_requerimientos(maps[0][iid] for iid in sorted(maps[0]))
     consolidated = []
     for iid in sorted(expected_issue_ids):
@@ -822,6 +1091,16 @@ def consolidar_lote(
                     errors.append(f"El Agente de {name} devolvió un índice inválido.")
         if evaluation_item is not None and evaluation_item.get("veredicto") not in {"APROBADO", "CORREGIR", "ALERTA"}:
             errors.append("El Agente Evaluador devolvió un veredicto inválido.")
+        if evaluation_item is not None:
+            derived_risks = []
+            security_metrics = security_item.get("metricas", {}) if isinstance(security_item, dict) else {}
+            ms01 = security_metrics.get("cobertura_seguridad", {})
+            ms02 = security_metrics.get("clasificacion_datos", {})
+            for aspect in normalizar_lista_textos(ms01.get("aspectos_faltantes")):
+                derived_risks.append(f"Aspecto de seguridad sin documentar: {aspect}.")
+            for datum in normalizar_lista_textos(ms02.get("datos_sin_clasificacion")):
+                derived_risks.append(f"Dato identificado sin clasificación: {datum}.")
+            evaluation_item["riesgos_criticos"] = list(dict.fromkeys(derived_risks))
         input_validation = (input_validations or {}).get(iid, {"estado": "entrada_valida", "advertencias": [], "campos_faltantes": []})
         estado_evaluacion = evaluation_item.get("veredicto", "NO_EVALUADO") if evaluation_item else "NO_EVALUADO"
         consolidated.append({

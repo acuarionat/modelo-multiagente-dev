@@ -764,8 +764,8 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
     a, b, c, d = st.columns(4)
     a.metric("Historias procesadas", summary["procesadas"])
     b.metric("Con error", summary["errores"])
-    c.metric("Índice parcial de calidad promedio", f"{summary['calidad_promedio'] * 100:.0f} %" if summary["calidad_promedio"] is not None else "N/D")
-    d.metric("Cobertura documental de seguridad promedio", f"{summary['seguridad_promedio'] * 100:.0f} %" if summary["seguridad_promedio"] is not None else "N/D")
+    c.metric("Índice de Calidad de Requerimientos promedio", f"{summary['calidad_promedio'] * 100:.0f} %" if summary["calidad_promedio"] is not None else "N/D")
+    d.metric("Índice de Seguridad en Requerimientos promedio", f"{summary['seguridad_promedio'] * 100:.0f} %" if summary["seguridad_promedio"] is not None else "N/D")
     st.write(f"**Veredictos:** {summary['veredictos']} — **Requerimientos sugeridos:** {summary['requerimientos']}")
     st.write(
         f"**Total:** {summary['total']} · **Aprobadas:** {summary['aprobadas']} · "
@@ -792,7 +792,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         with st.expander(title):
             quality_value = f"{quality['indice'] * 100:.0f} %" if quality.get("indice") is not None else "N/D"
             security_value = f"{security['indice'] * 100:.0f} %" if security.get("indice") is not None else "N/D"
-            st.write(f"**Estado de evaluación asistida:** {result['estado_evaluacion']} · **Índice parcial de calidad funcional:** {quality_value} · **Índice de cobertura documental de seguridad:** {security_value} · **Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}")
+            st.write(f"**Estado de evaluación asistida:** {result['estado_evaluacion']} · **Índice de Calidad de Requerimientos:** {quality_value} · **Índice de Seguridad en Requerimientos:** {security_value} · **Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}")
             st.caption("El LoT no representa la confianza del modelo. La aceptación final requiere revisión humana.")
             st.write(f"**Requerimientos sugeridos:** {len(central['requerimientos'])} · **Correcciones obligatorias:** {len(evaluation.get('correcciones_obligatorias', []))}")
             st.write("**Métricas de calidad:**")

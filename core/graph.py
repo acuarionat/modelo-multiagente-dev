@@ -50,10 +50,13 @@ def _combinar_reparacion(base, repair):
     base["resultados"].extend(item for iid, item in repaired.items() if iid not in existing)
 
 
-def _validar_y_reparar(parsed, expected_ids, agent_name, funcion_reparacion, expected_titles=None):
+def _validar_y_reparar(
+    parsed, expected_ids, agent_name, funcion_reparacion, expected_titles=None,
+    context_by_iid=None,
+):
     for note in conciliar_ids_issues(parsed, expected_ids, agent_name, expected_titles):
         logger.warning(note)
-    calcular_metricas_agente(parsed, agent_name)
+    calcular_metricas_agente(parsed, agent_name, context_by_iid)
     content_errors = validar_contenido_agente(parsed, agent_name)
     missing = set(expected_ids) - set(indexar_resultados(parsed))
     # Los campos textuales secundarios generan advertencias, no nuevas llamadas.
@@ -67,9 +70,9 @@ def _validar_y_reparar(parsed, expected_ids, agent_name, funcion_reparacion, exp
             repair_titles = {title: iid for title, iid in expected_titles.items() if iid in repair_ids}
         for note in conciliar_ids_issues(repair, repair_ids, f"{agent_name} (reparación)", repair_titles):
             logger.warning(note)
-        calcular_metricas_agente(repair, agent_name)
+        calcular_metricas_agente(repair, agent_name, context_by_iid)
         _combinar_reparacion(parsed, repair)
-        calcular_metricas_agente(parsed, agent_name)
+        calcular_metricas_agente(parsed, agent_name, context_by_iid)
         content_errors = validar_contenido_agente(parsed, agent_name)
     structural_errors = validar_respuesta_lote(parsed, set(expected_ids), agent_name)
     return structural_errors, content_errors
@@ -130,11 +133,15 @@ def nodo_calidad(state: AgentState):
         lambda: analizar_calidad(req_text, num_predict_override=2400),
     )
     expected_ids = [int(x["id"]) for x in state["issues_data"]]
+    context_by_iid = {int(x["id"]): x for x in state["issues_data"]}
     central = analizar_respuesta_lote(req_text, "Central")
     def reparar(repair_ids):
         subset = [item for item in central["resultados"] if item.get("issue_iid") in repair_ids]
         return analizar_calidad(json.dumps({"agente": "central", "resultados": subset}, ensure_ascii=False))
-    errors, content_errors = _validar_y_reparar(parsed, expected_ids, "Calidad", reparar)
+    errors, content_errors = _validar_y_reparar(
+        parsed, expected_ids, "Calidad", reparar,
+        context_by_iid=context_by_iid,
+    )
     final_report = json.dumps(parsed, ensure_ascii=False)
     
     elapsed = time.time() - start_time
@@ -160,11 +167,15 @@ def nodo_seguridad(state: AgentState):
         lambda: analizar_seguridad(req_text, num_predict_override=2800),
     )
     expected_ids = [int(x["id"]) for x in state["issues_data"]]
+    context_by_iid = {int(x["id"]): x for x in state["issues_data"]}
     central = analizar_respuesta_lote(req_text, "Central")
     def reparar(repair_ids):
         subset = [item for item in central["resultados"] if item.get("issue_iid") in repair_ids]
         return analizar_seguridad(json.dumps({"agente": "central", "resultados": subset}, ensure_ascii=False))
-    errors, content_errors = _validar_y_reparar(parsed, expected_ids, "Seguridad", reparar)
+    errors, content_errors = _validar_y_reparar(
+        parsed, expected_ids, "Seguridad", reparar,
+        context_by_iid=context_by_iid,
+    )
     final_report = json.dumps(parsed, ensure_ascii=False)
     
     elapsed = time.time() - start_time
@@ -230,6 +241,7 @@ def nodo_central_final(state: AgentState):
         state.get("validation_errors", []),
         state.get("content_validation_errors", {}),
         {int(item["id"]): item.get("validacion_entrada", {}) for item in state["issues_data"]},
+        {int(item["id"]): item for item in state["issues_data"]},
     )
     final_report = json.dumps(final, ensure_ascii=False)
     
