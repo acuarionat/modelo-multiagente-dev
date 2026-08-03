@@ -6,6 +6,8 @@ from core.batch_contract import (
     completar_resultado_calidad,
     completar_resultado_seguridad,
     consolidar_lote,
+    funciones_equivalentes,
+    recopilar_recomendaciones,
 )
 
 
@@ -58,6 +60,67 @@ def fixture_seguridad(aplicables=2, documentados=2, identificados=2, clasificado
 
 
 class MetricasOficialesTests(unittest.TestCase):
+    def test_equivalencias_funcionales_positivas(self):
+        cases = (
+            ("Cancelar una cita médica", "Permitir la cancelación de una cita médica"),
+            ("Consultar horarios disponibles", "Mostrar los horarios disponibles"),
+            ("Registrar pacientes", "Permitir el registro de pacientes"),
+            ("Generar reportes", "Permitir la generación de reportes"),
+            ("Exportar reportes en PDF", "Permitir exportar reportes como PDF"),
+        )
+        for left, right in cases:
+            with self.subTest(left=left, right=right):
+                self.assertTrue(funciones_equivalentes(left, right))
+
+    def test_equivalencias_funcionales_negativas(self):
+        cases = (
+            ("Cancelar cita", "Consultar cita"),
+            ("Mostrar agenda", "Registrar pacientes"),
+            ("Generar reportes", "Imprimir reportes"),
+            ("Cancelar cita", "Impedir la cancelación en menos de 24 horas"),
+        )
+        for left, right in cases:
+            with self.subTest(left=left, right=right):
+                self.assertFalse(funciones_equivalentes(left, right))
+
+    def test_hu010_equivalence_recalculates_quality_without_stale_recommendations(self):
+        fixture = fixture_calidad(especificadas=1, faltantes=1, alineadas=0)
+        mc01 = fixture["metricas"]["cobertura_funcional"]
+        mc02 = fixture["metricas"]["adecuacion_funcional"]
+        mc01["funciones_especificadas"] = ["Permitir la Cancelación de una Cita Médica"]
+        mc01["funciones_incluidas"] = [
+            "El sistema deberá permitir al paciente cancelar su cita médica cuando se cumplan los criterios"
+        ]
+        mc01["funciones_faltantes"] = ["Permitir la Cancelación de una Cita Médica"]
+        mc02["funciones_alineadas"] = ["Cancelar una cita médica"]
+        result = completar_resultado_calidad(
+            fixture, {"objetivo": "Liberar el horario reservado"},
+        )
+        coverage = result["metricas"]["cobertura_funcional"]
+        adequacy = result["metricas"]["adecuacion_funcional"]
+        self.assertEqual((coverage["valor"], coverage["funciones_faltantes"]), (1.0, []))
+        self.assertEqual((adequacy["valor"], adequacy["funciones_no_alineadas"]), (1.0, []))
+        self.assertEqual(result["indicador"]["valor"], 1.0)
+        self.assertEqual(result["recomendaciones"], [])
+        consolidated_recommendations = recopilar_recomendaciones({
+            "quality": result,
+            "security": {
+                "recomendaciones": ["Clasificar explícitamente los datos identificados."],
+                "metricas": {"clasificacion_datos": {
+                    "datos_identificados": ["Nombre ficticio"],
+                    "datos_sin_clasificacion": ["Nombre ficticio"], "valor": 0.0,
+                }},
+            },
+            "evaluation": {"correcciones_obligatorias": [
+                "Incorporar o aclarar las funciones faltantes: Cancelar una cita médica.",
+                "Alinear con el objetivo las funciones: Cancelar una cita médica.",
+            ]},
+        })
+        self.assertEqual(
+            consolidated_recommendations,
+            ["Clasificar explícitamente los datos identificados."],
+        )
+
     def test_mc01_mc02_and_quality_indicator(self):
         result = completar_resultado_calidad(
             fixture_calidad(especificadas=4, faltantes=1, evaluables=4, alineadas=3)
@@ -102,6 +165,7 @@ class MetricasOficialesTests(unittest.TestCase):
             fixture_seguridad(lot="LoT-3"),
             {"seguridad": {
                 "maneja_datos_sensibles": "Sí\nDatos clínicos",
+                "tipos_datos_sensibles": ["Diagnóstico: CLÍNICO"],
                 "autenticacion": "Usuario y contraseña",
                 "autorizacion_roles": "Médico",
                 "auditoria": "Sí",
@@ -114,7 +178,8 @@ class MetricasOficialesTests(unittest.TestCase):
         result = completar_resultado_calidad(fixture_calidad())
         metric = result["metricas"]["cobertura_funcional"]
         self.assertEqual(metric["valor"], 1.0)
-        self.assertIn("A=2", metric["justificacion"])
+        self.assertIn("A=0", metric["justificacion"])
+        self.assertIn("B=2", metric["justificacion"])
         self.assertIn("Faltantes: ninguno", metric["justificacion"])
         self.assertNotIn("no existe cobertura", metric["justificacion"].casefold())
 
@@ -144,7 +209,9 @@ class MetricasOficialesTests(unittest.TestCase):
         self.assertNotIn("report", mc02["justificacion"].casefold())
 
     def test_ms01_explicit_auth_role_and_audit_are_documented(self):
-        result = completar_resultado_seguridad(fixture_seguridad(), {
+        fixture = fixture_seguridad()
+        fixture["metricas"]["cobertura_seguridad"]["aspectos_aplicables"] = None
+        result = completar_resultado_seguridad(fixture, {
             "seguridad": {
                 "maneja_datos_sensibles": "Sí\nDatos personales",
                 "autenticacion": "Usuario y contraseña",
@@ -156,19 +223,26 @@ class MetricasOficialesTests(unittest.TestCase):
         self.assertEqual(ms01["valor"], 1.0)
         self.assertEqual(
             ms01["aspectos_documentados"],
-            ["Autenticación", "Autorización", "Auditoría"],
+            ["Autenticación", "Autorización", "Auditoría", "Protección de datos"],
         )
 
-    def test_ms02_personal_data_is_classified(self):
-        result = completar_resultado_seguridad(fixture_seguridad(), {
-            "seguridad": {"maneja_datos_sensibles": "Sí\nDatos personales"},
+    def test_ms02_personal_data_requires_explicit_classification(self):
+        fixture = fixture_seguridad()
+        fixture["metricas"]["clasificacion_datos"]["datos_identificados"] = None
+        result = completar_resultado_seguridad(fixture, {
+            "seguridad": {
+                "maneja_datos_sensibles": "Sí\nDatos personales",
+                "tipos_datos_sensibles": ["Nombre del paciente"],
+            },
         })
         ms02 = result["metricas"]["clasificacion_datos"]
-        self.assertEqual(ms02["datos_identificados"], ["Datos personales"])
-        self.assertEqual(ms02["valor"], 1.0)
+        self.assertEqual(ms02["datos_identificados"], ["Nombre del paciente"])
+        self.assertEqual(ms02["valor"], 0.0)
 
     def test_ms02_is_not_applicable_without_identified_data(self):
-        result = completar_resultado_seguridad(fixture_seguridad(), {
+        fixture = fixture_seguridad()
+        fixture["metricas"]["clasificacion_datos"]["datos_identificados"] = None
+        result = completar_resultado_seguridad(fixture, {
             "seguridad": {"maneja_datos_sensibles": "No definido"},
         })
         ms02 = result["metricas"]["clasificacion_datos"]
@@ -176,8 +250,13 @@ class MetricasOficialesTests(unittest.TestCase):
         self.assertIsNone(ms02["valor"])
 
     def test_ms02_is_zero_when_identified_data_has_no_classification(self):
-        result = completar_resultado_seguridad(fixture_seguridad(), {
-            "seguridad": {"maneja_datos_sensibles": "Sí\nCódigo interno"},
+        fixture = fixture_seguridad()
+        fixture["metricas"]["clasificacion_datos"]["datos_identificados"] = None
+        result = completar_resultado_seguridad(fixture, {
+            "seguridad": {
+                "maneja_datos_sensibles": "Sí\nCódigo interno",
+                "tipos_datos_sensibles": ["Código interno"],
+            },
         })
         ms02 = result["metricas"]["clasificacion_datos"]
         self.assertEqual(ms02["estado_calculo"], "Calculada")
@@ -276,7 +355,9 @@ class MetricasOficialesTests(unittest.TestCase):
         }
         result_a = completar_requerimientos_explicitos_faltantes([], issue_a)
         result_b = completar_requerimientos_explicitos_faltantes([], issue_b)
-        text_a = " ".join(r["descripcion_formal"] for r in result_a).casefold()
+        text_a = " ".join(
+            f"{r['descripcion_formal']} {r.get('origen', '')}" for r in result_a
+        ).casefold()
         text_b = " ".join(r["descripcion_formal"] for r in result_b).casefold()
         self.assertIn("citas del día", text_a)
         self.assertIn("nombre del paciente", text_a)
@@ -284,7 +365,7 @@ class MetricasOficialesTests(unittest.TestCase):
         self.assertIn("estadísticas", text_b)
         self.assertIn("imprimir", text_b)
         self.assertTrue(all(r["tipo"] == "RF" for r in result_a + result_b))
-        self.assertGreaterEqual(len(result_a + result_b), 6)
+        self.assertGreaterEqual(len(result_a + result_b), 5)
 
     def test_consolidation_recovers_five_actors_and_objectives_from_original(self):
         ids = set(range(1, 6))
@@ -338,6 +419,43 @@ class MetricasOficialesTests(unittest.TestCase):
         result = consolidar_lote({6}, central, quality, security, evaluation)
         risks = result["resultados"][0]["evaluation"]["riesgos_criticos"]
         self.assertEqual(risks, ["Aspecto de seguridad sin documentar: Auditoría."])
+
+    def test_hu010_consolidation_preserves_post_python_classification_recommendation(self):
+        central = {"resultados": [{"issue_iid": 10, "requerimientos": []}]}
+        quality = {"resultados": [{"issue_iid": 10, "indice": 1.0, "estado_medicion": "evaluable", "metricas": {}}]}
+        security = {"resultados": [{
+            "issue_iid": 10, "indice": 0.5, "estado_medicion": "evaluable",
+            "metricas": {
+                "cobertura_seguridad": {"aspectos_faltantes": [], "recomendacion": ""},
+                "clasificacion_datos": {
+                    "datos_sin_clasificacion": ["Nombre ficticio", "Documento ficticio"],
+                    "recomendacion": "Clasificar explícitamente los datos identificados: Nombre ficticio, Documento ficticio.",
+                },
+            },
+            "recomendaciones": ["Clasificar explícitamente los datos identificados: Nombre ficticio, Documento ficticio."],
+        }]}
+        evaluation = {"resultados": [{"issue_iid": 10, "veredicto": "APROBADO", "riesgos_criticos": []}]}
+        item = consolidar_lote({10}, central, quality, security, evaluation)["resultados"][0]
+        self.assertEqual(item["estado_evaluacion"], "CORREGIR")
+        self.assertEqual(item["recommendations"], [
+            "Clasificar explícitamente los datos identificados: Nombre ficticio, Documento ficticio."
+        ])
+        self.assertEqual(len(item["evaluation"]["riesgos_criticos"]), 2)
+
+    def test_hu009_without_identified_data_remains_not_evaluable_without_classification_recommendation(self):
+        central = {"resultados": [{"issue_iid": 9, "requerimientos": []}]}
+        quality = {"resultados": [{"issue_iid": 9, "indice": 1.0, "estado_medicion": "evaluable", "metricas": {}}]}
+        security = {"resultados": [{
+            "issue_iid": 9, "indice": None, "estado_medicion": "evidencia_insuficiente",
+            "metricas": {
+                "cobertura_seguridad": {"aspectos_faltantes": [], "recomendacion": ""},
+                "clasificacion_datos": {"datos_sin_clasificacion": [], "recomendacion": ""},
+            }, "recomendaciones": [],
+        }]}
+        evaluation = {"resultados": [{"issue_iid": 9, "veredicto": "APROBADO", "riesgos_criticos": []}]}
+        item = consolidar_lote({9}, central, quality, security, evaluation)["resultados"][0]
+        self.assertEqual(item["estado_evaluacion"], "REVISIÓN REQUERIDA")
+        self.assertEqual(item["recommendations"], [])
 
     def test_invalid_security_value_does_not_feed_indicator(self):
         result = completar_resultado_seguridad(

@@ -48,6 +48,15 @@ def evaluar_reportes(quality_reports: str, security_reports: str, num_predict_ov
         model_params=params,
     ) as audit:
         response = chain.invoke({"evaluation_input": evaluation_input_str, "expected_issue_ids": json.dumps(common_ids)})
-        logger.info("PHI4_RAW Evaluator:\n%s", response.content)
+        try:
+            parsed_response = json.loads(response.content)
+            keys = sorted(parsed_response) if isinstance(parsed_response, dict) else []
+            json_valid = True
+        except (TypeError, json.JSONDecodeError):
+            keys, json_valid = [], False
+        logger.info(
+            "LOCAL_RESPONSE Evaluator provider=ollama chars=%s json_valid=%s keys=%s",
+            len(response.content), json_valid, keys,
+        )
         audit["response"] = response.content
     return response.content

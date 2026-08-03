@@ -713,6 +713,13 @@ if start_analysis:
                     
             except Exception as e:
                 st.error(f"❌ Error en lote {batch_num}: {str(e)}")
+                partial_summary_path = getattr(e, "summary_path", None)
+                if partial_summary_path:
+                    st.session_state["last_partial_summary_path"] = partial_summary_path
+                    st.caption(
+                        "Resumen parcial sanitizado: "
+                        f"{partial_summary_path}"
+                    )
                 failed_batches.append(batch_num)
                 
             elapsed_total = time.time() - start_time_total

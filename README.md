@@ -21,3 +21,16 @@ El sistema utiliza un orquestador (Agente Central) para enrutar tareas. Los aná
    ```bash
    streamlit run app.py
    ```
+
+## Sublotes del Agente Central
+
+`CENTRAL_BATCH_SIZE` configura cuántas historias procesa secuencialmente cada
+invocación local del Agente Central. El valor predeterminado es `2`; pueden
+probarse valores `2`, `3` o `4` y usar el mayor que resulte estable para el
+hardware y la longitud de las historias.
+
+La división no cambia métricas, prompts ni contratos. Cada sublote recibe el
+mismo contexto general del proyecto, y los resultados se consolidan por
+`issue_iid` restaurando el orden original. Si un sublote falla técnicamente,
+solo ese grupo se subdivide hasta un mínimo de una historia. El procesamiento
+local es siempre secuencial, sin inferencias de Ollama en paralelo.

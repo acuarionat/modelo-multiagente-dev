@@ -76,7 +76,8 @@ class BatchContractTests(unittest.TestCase):
         final = consolidar_lote({11, 22}, self.central, self.quality, self.security, self.evaluation, errors)
         self.assertEqual(final["resultados"][0]["status"], "ok")
         self.assertEqual(final["resultados"][1]["status"], "error")
-        self.assertEqual(final["resumen_global"]["historias_procesadas"], 1)
+        # Ambas historias permanecen trazables; una no pudo completar Seguridad.
+        self.assertEqual(final["resumen_global"]["historias_procesadas"], 2)
         self.assertEqual(final["resumen_global"]["historias_con_error"], 1)
 
     def test_invalid_index_is_explicit(self):

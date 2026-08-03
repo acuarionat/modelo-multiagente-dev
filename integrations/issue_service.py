@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from datetime import datetime
 
 from core.graph import construir_grafo
 from core.config import ALLOW_INCOMPLETE_STORIES, OLLAMA_MODEL
@@ -140,15 +141,34 @@ def procesar_flujo_lote(issues: list, project_name: str, sprint_context: str = "
     }
     logger.info("Iniciando ejecución del grafo multiagente para %s historias válidas.", len(processable_issues))
     started = time.time()
+    execution_id = datetime.now().strftime("pipeline-%Y%m%d-%H%M%S-%f")
     final_state = {}
     if processable_issues:
-        for output in construir_grafo().stream(initial_state):
-            for value in output.values():
-                final_state.update(value)
+        try:
+            for output in construir_grafo().stream(initial_state):
+                for value in output.values():
+                    final_state.update(value)
+        except Exception as exc:
+            from core.execution_summary import (
+                build_sanitized_execution_summary, persist_sanitized_execution_summary,
+            )
+            audit = obtener_contadores()
+            completed = audit.get("resumen_parcial_remoto", {}).get("completed_issue_ids", [])
+            if not completed:
+                completed = audit.get("resumen_parcial_central", {}).get("received", [])
+            summary = build_sanitized_execution_summary(
+                execution_id=execution_id, estado="incompleto",
+                etapa_alcanzada=getattr(exc, "agent", None) or "flujo",
+                auditoria=audit, historias_esperadas=sorted(processable_ids),
+                historias_completas=completed, error=exc, artefactos={},
+                gitlab_usado=False,
+            )
+            path = persist_sanitized_execution_summary(summary)
+            exc.summary_path = str(path)
+            raise
     execution_time = time.time() - started
     final_results = json.loads(final_state["final_report"])["resultados"] if final_state else []
-    if not ALLOW_INCOMPLETE_STORIES:
-        final_results.extend(_resultado_informacion_insuficiente(item) for item in incomplete_data)
+    # Las entradas insuficientes ya atravesaron el grafo y no deben duplicarse.
     final_results.sort(key=lambda item: item["issue_iid"])
     issue_data_by_iid = {int(item["id"]): item for item in issues_data}
     for result in final_results:

@@ -4,11 +4,17 @@ Entrada estructurada del Central: {issues_json_str}
 
 Evalúa independientemente cada historia y devuelve exclusivamente un objeto JSON con agente="calidad" y resultados. Debe existir un resultado por ID obligatorio y no debes sustituir los IDs por 1..N.
 
-Evalúa la especificación escrita, no una implementación. No afirmes que una función está desarrollada, implementada, ejecutada o probada. No solicites pruebas de software. No mezcles objetivos ni funciones entre historias.
+Evalúa exclusivamente la documentación de requerimientos, no una implementación. Una función está incluida cuando existe un RF explícito o funcionalmente equivalente en la misma historia; no uses código, pruebas, despliegue ni disponibilidad de un sistema construido como evidencia. No mezcles objetivos ni funciones entre historias y usa solamente la historia evaluada y el contexto del proyecto.
 
 No calcules valores, porcentajes, indicadores, metas ni estados. Python realizará todos los cálculos. Identifica evidencia y justifica dos métricas:
 1. MC-01 cobertura_funcional: funciones_especificadas, funciones_incluidas y funciones_faltantes.
-2. MC-02 adecuacion_funcional: objetivo_evaluado y funciones_alineadas. Python usará como funciones_evaluables exactamente las funciones_especificadas de MC-01 y calculará las no alineadas.
+2. MC-02 adecuacion_funcional: objetivo_evaluado, funciones_alineadas y funciones_no_alineadas. Python usará como funciones_evaluables exactamente las funciones_especificadas de MC-01.
+
+Clasifica cada función especificada exactamente una vez como incluida o faltante. Clasifica cada función evaluable exactamente una vez como alineada o no alineada. No dejes funciones sin clasificar ni las repitas entre ambos grupos. Si existe una brecha, explica concretamente la ausencia documental o su falta de relación con el objetivo en la justificación, observación o recomendación correspondiente.
+
+Las únicas funciones que debes clasificar en MC-01 y MC-02 son las contenidas en funciones_principales_evaluables. Usa reglas_funcionales_contextuales solamente para comprender condiciones, restricciones y coherencia; una regla puede ser un RF documental, pero no es por ello una función principal. No copies, reformules ni incluyas reglas_funcionales_contextuales en funciones_especificadas, funciones_incluidas, funciones_faltantes, funciones_evaluables, funciones_alineadas ni funciones_no_alineadas. No amplíes ni dividas el universo, aunque identifiques otros RF o criterios: clasifica exactamente funciones_principales_evaluables y registra cualquier observación aparte. Decide mediante razonamiento contextual si cada función principal está incluida y si contribuye al objetivo.
+
+Ejemplo general: si la función principal es "Registrar un pedido" y la regla contextual es "Impedir registrarlo si no existe un cliente", solamente "Registrar un pedido" puede aparecer en las seis listas métricas.
 
 Devuelve únicamente las listas de evidencia indicadas, justificacion y recomendacion. La justificación del agente es evidencia auxiliar: Python generará la justificación final desde las listas. Conserva exactamente issue_iid e historia_id. recomendacion puede estar vacía únicamente cuando no exista ningún problema.
 

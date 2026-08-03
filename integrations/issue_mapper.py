@@ -45,12 +45,12 @@ def validar_entrada_issue(issue_data: dict) -> dict:
 
 
 def separar_entradas_para_analisis(issues_data: list, allow_incomplete: bool = False) -> tuple[list, list]:
+    """Conserva todas las historias identificadas; la insuficiencia es evaluable, no un filtro."""
     insufficient = [
         item for item in issues_data
         if item.get("validacion_entrada", {}).get("estado") == "informacion_insuficiente"
     ]
-    processable = issues_data if allow_incomplete else [item for item in issues_data if item not in insufficient]
-    return processable, insufficient
+    return list(issues_data), insufficient
 
 def mapear_issue_a_json(issue) -> dict:
     """

@@ -1,7 +1,13 @@
 import io
+import csv
+import hashlib
+import os
+import shutil
 from datetime import datetime
+from copy import deepcopy
 import json
 import logging
+from pathlib import Path
 import unicodedata
 import re
 from difflib import SequenceMatcher
@@ -11,6 +17,280 @@ from core.batch_contract import (
 )
 
 logger = logging.getLogger(__name__)
+
+RESTRICTION_TEXT_FIELDS = (
+    "restriccion", "descripcion", "texto", "mensaje", "regla", "condicion",
+    "detalle", "contenido",
+)
+DOCUMENT_TEXT_FIELDS = (
+    "recomendacion", "descripcion", "mensaje", "accion", "detalle", "texto",
+)
+
+
+class DocumentModelValidationError(ValueError):
+    category = "DOCUMENT_MODEL_VALIDATION_ERROR"
+
+    def __init__(self, errors):
+        super().__init__("El modelo documental contiene campos no representables.")
+        self.errors = list(errors)
+        first = self.errors[0] if self.errors else {}
+        self.issue_iid = first.get("issue_iid")
+        self.field = first.get("field")
+        self.artifact_stage = "document_model_validation"
+
+
+class ArtifactGenerationError(RuntimeError):
+    category = "ARTIFACT_GENERATION_ERROR"
+
+    def __init__(self, message, *, execution_id, artifact_type, artifact_stage,
+                 failed_function, exception_type, field=None, issue_iid=None,
+                 partial_files_created=0, partial_files_removed=False,
+                 summary_persisted=False):
+        super().__init__(message)
+        self.execution_id = execution_id
+        self.artifact_type = artifact_type
+        self.artifact_stage = artifact_stage
+        self.failed_function = failed_function
+        self.exception_type = exception_type
+        self.field = field
+        self.issue_iid = issue_iid
+        self.partial_files_created = partial_files_created
+        self.partial_files_removed = partial_files_removed
+        self.documents_generated = False
+        self.summary_persisted = summary_persisted
+
+
+def _hash_elemento_documental(value) -> str:
+    descriptor = f"{type(value).__name__}:"
+    if isinstance(value, dict):
+        descriptor += ",".join(sorted(str(key) for key in value))
+    elif isinstance(value, (list, tuple)):
+        descriptor += str(len(value))
+    return hashlib.sha256(descriptor.encode("utf-8")).hexdigest()[:12]
+
+
+def deduplicar_textos_estables(textos):
+    unique, seen = [], set()
+    for value in textos:
+        if not isinstance(value, str):
+            continue
+        clean = " ".join(value.split()).strip()
+        key = clean.casefold()
+        if clean and key not in seen:
+            unique.append(clean)
+            seen.add(key)
+    return unique
+
+
+def normalizar_restricciones_documentales(valor, contexto=None, auditoria=None):
+    """Extrae solo texto semántico conocido; nunca serializa objetos completos."""
+    context = dict(contexto or {})
+    audit = auditoria if isinstance(auditoria, list) else []
+    output = []
+
+    def record(item, strategy, success):
+        audit.append({
+            "issue_iid": context.get("issue_iid"),
+            "historia_id": context.get("historia_id"),
+            "campo": "central.restricciones",
+            "item_type": type(item).__name__,
+            "object_keys": sorted(str(key) for key in item) if isinstance(item, dict) else [],
+            "extraction_strategy": strategy,
+            "extraction_success": bool(success),
+            "element_hash": _hash_elemento_documental(item),
+            "artifact_stage": context.get("artifact_stage", "document_model_preparation"),
+            "artifact_type": context.get("artifact_type", "shared"),
+        })
+
+    def extract(item):
+        if item is None:
+            return
+        if isinstance(item, str):
+            clean = " ".join(item.split()).strip()
+            if clean:
+                output.append(clean)
+            return
+        if isinstance(item, (list, tuple)):
+            for nested in item:
+                extract(nested)
+            return
+        if isinstance(item, dict):
+            before = len(output)
+            if "restricciones" in item:
+                extract(item.get("restricciones"))
+                record(item, "collection:restricciones", len(output) > before)
+                return
+            for field in RESTRICTION_TEXT_FIELDS:
+                value = item.get(field)
+                if isinstance(value, str) and value.strip():
+                    output.append(" ".join(value.split()).strip())
+                    record(item, f"field:{field}", True)
+                    return
+                if isinstance(value, (list, tuple, dict)):
+                    extract(value)
+                    if len(output) > before:
+                        record(item, f"field:{field}:recursive", True)
+                        return
+            record(item, "unrecognized", False)
+            return
+        record(item, "unsupported_type", False)
+
+    extract(valor)
+    return deduplicar_textos_estables(output)
+
+
+def _normalizar_lista_textual_documental(value, fields=DOCUMENT_TEXT_FIELDS):
+    output = []
+
+    def extract(item):
+        if item is None:
+            return
+        if isinstance(item, str):
+            clean = " ".join(item.split()).strip()
+            if clean:
+                output.append(clean)
+            return
+        if isinstance(item, (list, tuple)):
+            for nested in item:
+                extract(nested)
+            return
+        if isinstance(item, dict):
+            for field in fields:
+                nested = item.get(field)
+                if isinstance(nested, (str, list, tuple, dict)):
+                    before = len(output)
+                    extract(nested)
+                    if len(output) > before:
+                        return
+
+    extract(value)
+    return deduplicar_textos_estables(output)
+
+
+def preparar_modelo_documental(batch_result: dict) -> dict:
+    """Construye una copia compartida y representable para PDF, DOCX y CSV."""
+    model = deepcopy(batch_result)
+    audit = {
+        "document_model_validation": "pending",
+        "document_model_error_count": 0,
+        "restrictions_items_before": 0,
+        "restrictions_items_after": 0,
+        "structured_restrictions_normalized": 0,
+        "malformed_restrictions_removed": 0,
+        "by_issue": [],
+    }
+    diagnostics = []
+    for result in model.get("issues", []):
+        if not isinstance(result, dict):
+            continue
+        central = result.get("central") if isinstance(result.get("central"), dict) else {}
+        raw = central.get("restricciones")
+        before_items = len(raw) if isinstance(raw, (list, tuple)) else (0 if raw in (None, "", {}) else 1)
+        structured = sum(isinstance(item, dict) for item in raw) if isinstance(raw, (list, tuple)) else int(isinstance(raw, dict))
+        local_diagnostics = []
+        normalized = normalizar_restricciones_documentales(raw, {
+            "issue_iid": result.get("issue_iid"),
+            "historia_id": central.get("historia_id"),
+        }, local_diagnostics)
+        central["restricciones"] = normalized
+        result["recommendations"] = _normalizar_lista_textual_documental(result.get("recommendations"))
+        evaluation = result.get("evaluation") if isinstance(result.get("evaluation"), dict) else {}
+        evaluation["riesgos_criticos"] = _normalizar_lista_textual_documental(
+            evaluation.get("riesgos_criticos"),
+            ("riesgo", "descripcion", "mensaje", "detalle", "texto"),
+        )
+        audit["restrictions_items_before"] += before_items
+        audit["restrictions_items_after"] += len(normalized)
+        audit["structured_restrictions_normalized"] += sum(
+            entry["extraction_success"] and entry["item_type"] == "dict"
+            for entry in local_diagnostics
+        )
+        malformed = sum(not entry["extraction_success"] for entry in local_diagnostics)
+        audit["malformed_restrictions_removed"] += malformed
+        audit["by_issue"].append({
+            "issue_iid": result.get("issue_iid"),
+            "restriction_count_before": before_items,
+            "restriction_count_after": len(normalized),
+            "structured_item_count": structured,
+            "unrecognized_item_count": malformed,
+        })
+        diagnostics.extend(local_diagnostics)
+    model["recommendations"] = _normalizar_lista_textual_documental(model.get("recommendations"))
+    model["documentary_audit"] = audit
+    model["documentary_diagnostics"] = diagnostics
+    model["_document_model_prepared"] = True
+    return model
+
+
+def validar_modelo_documental(model: dict, *, expected_issue_ids=None,
+                              expected_rf=None, expected_rnf=None):
+    errors = []
+    issues = model.get("issues") if isinstance(model, dict) else None
+    if not isinstance(issues, list):
+        errors.append({"field": "issues", "category": "invalid_type"})
+        issues = []
+    traceable, codes, rf_count, rnf_count = [], [], 0, 0
+    for result in issues:
+        if not isinstance(result, dict):
+            errors.append({"field": "issues[]", "category": "invalid_type"})
+            continue
+        iid = result.get("issue_iid")
+        traceable.append(iid)
+        central = result.get("central") if isinstance(result.get("central"), dict) else {}
+        for field in ("actor", "objetivo"):
+            if not isinstance(central.get(field, ""), str):
+                errors.append({"issue_iid": iid, "field": f"central.{field}", "category": "invalid_type"})
+        for field, value in (
+            ("central.restricciones", central.get("restricciones", [])),
+            ("recommendations", result.get("recommendations", [])),
+            ("evaluation.riesgos_criticos", (result.get("evaluation") or {}).get("riesgos_criticos", [])),
+        ):
+            if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+                errors.append({"issue_iid": iid, "field": field, "category": "non_textual_item"})
+        requirements = central.get("requerimientos", [])
+        if not isinstance(requirements, list):
+            errors.append({"issue_iid": iid, "field": "central.requerimientos", "category": "invalid_type"})
+            requirements = []
+        for requirement in requirements:
+            if not isinstance(requirement, dict):
+                errors.append({"issue_iid": iid, "field": "central.requerimientos[]", "category": "invalid_type"})
+                continue
+            code = requirement.get("id")
+            kind = normalizar_tipo_requerimiento(requirement)
+            description = requirement.get("descripcion_formal") or requirement.get("descripcion")
+            if not isinstance(code, str) or not code.strip():
+                errors.append({"issue_iid": iid, "field": "requerimiento.id", "category": "empty_code"})
+            else:
+                codes.append(code)
+            if kind not in {"RF", "RNF"}:
+                errors.append({"issue_iid": iid, "field": "requerimiento.tipo", "category": "invalid_type"})
+            elif kind == "RF":
+                rf_count += 1
+            else:
+                rnf_count += 1
+            if not isinstance(description, str) or not description.strip():
+                errors.append({"issue_iid": iid, "field": "requerimiento.descripcion", "category": "invalid_text"})
+        for report_name in ("quality", "security"):
+            report = result.get(report_name)
+            if not isinstance(report, dict):
+                continue
+            index = report.get("indice")
+            if index is not None and not isinstance(index, (int, float)):
+                errors.append({"issue_iid": iid, "field": f"{report_name}.indice", "category": "invalid_metric"})
+    if expected_issue_ids is not None and list(traceable) != list(expected_issue_ids):
+        errors.append({"field": "issues.issue_iid", "category": "identity_mismatch"})
+    if len(codes) != len(set(codes)):
+        errors.append({"field": "requerimiento.id", "category": "duplicate_code"})
+    if expected_rf is not None and rf_count != expected_rf:
+        errors.append({"field": "requirements.RF", "category": "unexpected_count", "actual": rf_count})
+    if expected_rnf is not None and rnf_count != expected_rnf:
+        errors.append({"field": "requirements.RNF", "category": "unexpected_count", "actual": rnf_count})
+    if errors:
+        model.get("documentary_audit", {})["document_model_validation"] = "error"
+        model.get("documentary_audit", {})["document_model_error_count"] = len(errors)
+        raise DocumentModelValidationError(errors)
+    model.get("documentary_audit", {})["document_model_validation"] = "success"
+    return {"issue_ids": traceable, "rf": rf_count, "rnf": rnf_count, "codes": codes}
 
 TRACEABILITY_COLUMNS = (
     "Código", "Nombre", "Descripción", "Tipo", "Historia de origen",
@@ -37,7 +317,7 @@ def limpiar_texto_para_pdf(text: str) -> str:
 def extraer_porcentaje(val) -> str:
     if isinstance(val, (int, float)):
         return f"{round(val * 100)} %"
-    return "N/D" if val is None else str(val)
+    return "No evaluado" if val is None else str(val)
 
 
 def _iterar_textos(value, context: str):
@@ -145,7 +425,11 @@ def construir_filas_trazabilidad(batch_results: list, generation_date: str | Non
 
 
 def calcular_resumen_lote(batch_results: list) -> dict:
-    valid = [x for x in batch_results if isinstance(x, dict) and x.get("status") == "ok"]
+    traceable = [
+        x for x in batch_results if isinstance(x, dict)
+        and x.get("issue_iid") is not None and isinstance(x.get("central"), dict)
+    ]
+    valid = [x for x in traceable if x.get("status") == "ok"]
     quality = [
         x["quality"]["indice"] for x in valid
         if isinstance(x.get("quality"), dict)
@@ -188,8 +472,12 @@ def calcular_resumen_lote(batch_results: list) -> dict:
     )
     return {
         "total": len(batch_results),
-        "procesadas": len(valid),
-        "errores": len(batch_results) - len(valid),
+        "procesadas": len(traceable),
+        "evaluables_calidad": len(quality),
+        "evaluables_seguridad": len(security),
+        "no_evaluables_calidad": len(traceable) - len(quality),
+        "no_evaluables_seguridad": len(traceable) - len(security),
+        "errores": sum(x.get("status") == "error" for x in batch_results if isinstance(x, dict)),
         "veredictos": verdicts,
         "calidad_promedio": sum(quality) / len(quality) if quality else None,
         "seguridad_promedio": sum(security) / len(security) if security else None,
@@ -255,6 +543,8 @@ def construir_resultado_lote(project_name: str, milestone: str, issues: list) ->
 def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     from fpdf import FPDF
     from fpdf.enums import XPos, YPos
+    if not batch_result.get("_document_model_prepared"):
+        batch_result = preparar_modelo_documental(batch_result)
     project_name = batch_result["project"]["name"]
     milestone = batch_result["milestone"]["name"]
     batch_results = batch_result["issues"]
@@ -316,6 +606,7 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         encabezado("Riesgos y recomendaciones", 11)
         evaluator_texts = list(_iterar_textos(e.get("riesgos_criticos"), "evaluador.riesgos_criticos"))
         evaluator_texts += list(_iterar_textos(e.get("correcciones_obligatorias"), "evaluador.correcciones_obligatorias"))
+        evaluator_texts += list(_iterar_textos(result.get("recommendations"), "resultado.recommendations"))
         for text_value in evaluator_texts:
             linea(f"- {text_value}")
         encabezado("Requerimientos sugeridos", 11)
@@ -343,6 +634,8 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
 
 def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     from docx import Document
+    if not batch_result.get("_document_model_prepared"):
+        batch_result = preparar_modelo_documental(batch_result)
     project_name = batch_result["project"]["name"]
     milestone = batch_result["milestone"]["name"]
     batch_results = batch_result["issues"]
@@ -387,8 +680,13 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
             doc.add_paragraph(f"Procedencia: {requirement.get('procedencia', 'inferida')}")
             doc.add_paragraph("Revisión humana: Pendiente")
     doc.add_heading("6. Restricciones consolidadas", 1)
-    restrictions = dict.fromkeys(r for x in valid for r in x["central"].get("restricciones", []))
-    for restriction in restrictions: doc.add_paragraph(restriction, style="List Bullet")
+    restrictions = deduplicar_textos_estables(
+        restriction
+        for result in valid
+        for restriction in result["central"].get("restricciones", [])
+    )
+    for restriction in restrictions:
+        doc.add_paragraph(restriction, style="List Bullet")
     doc.add_heading("7. Recomendaciones generales", 1)
     if batch_result["recommendations"]:
         for recommendation in batch_result["recommendations"]:
@@ -408,6 +706,139 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     doc.save(output)
     output.seek(0)
     return output
+
+
+def generar_artefactos_atomicos(
+    batch_result: dict, output_dir, execution_id: str, summary_base: dict,
+    *, expected_issue_ids=None, expected_rf=None, expected_rnf=None,
+    pdf_generator=None, docx_generator=None, csv_rows_builder=None,
+):
+    """Valida, construye y publica PDF/DOCX/CSV como una sola unidad."""
+    from core.execution_summary import persist_sanitized_execution_summary
+
+    output_dir = Path(output_dir)
+    parent = output_dir.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    building = parent / f".building-{execution_id}"
+    summary = deepcopy(summary_base)
+    summary.update({
+        "execution_id": execution_id,
+        "status": "running",
+        "documents_generated": False,
+        "artefactos": {},
+        "auditoria_documental": {
+            "artifact_build_started": True,
+            "artifact_build_completed": False,
+            "artifact_build_failed": False,
+            "artifact_failed_type": None,
+            "temporary_artifacts_created": 0,
+            "temporary_artifacts_removed": False,
+            "final_artifacts_published": False,
+            "summary_persisted": False,
+        },
+    })
+    summary_path = persist_sanitized_execution_summary(summary, parent)
+    summary["auditoria_documental"]["summary_persisted"] = True
+    persist_sanitized_execution_summary(summary, parent)
+    current_type = "document_model"
+    created = 0
+    try:
+        if building.exists():
+            shutil.rmtree(building)
+        building.mkdir()
+        model = preparar_modelo_documental(batch_result)
+        validation = validar_modelo_documental(
+            model, expected_issue_ids=expected_issue_ids,
+            expected_rf=expected_rf, expected_rnf=expected_rnf,
+        )
+        summary["auditoria_documental"].update(model["documentary_audit"])
+        summary["validacion_documental"] = validation
+        generators = {
+            "pdf": pdf_generator or generar_reporte_lote_pdf,
+            "docx": docx_generator or generar_documento_formal_lote_docx,
+        }
+        for current_type, filename in (("pdf", "reporte.pdf"), ("docx", "requerimientos.docx")):
+            payload = generators[current_type](model)
+            data = payload.getvalue() if hasattr(payload, "getvalue") else bytes(payload)
+            if not data:
+                raise ValueError(f"{current_type} vacío")
+            (building / filename).write_bytes(data)
+            created += 1
+        current_type = "csv"
+        rows = (csv_rows_builder or construir_filas_trazabilidad)(
+            model["issues"], model.get("generated_at")
+        )
+        csv_path = building / "matriz_trazabilidad.csv"
+        with csv_path.open("w", newline="", encoding="utf-8-sig") as handle:
+            writer = csv.DictWriter(handle, fieldnames=TRACEABILITY_COLUMNS)
+            writer.writeheader()
+            writer.writerows(rows)
+        created += 1
+        if len(rows) != len(validation["codes"]):
+            raise ValueError("La matriz no conserva todos los requerimientos validados.")
+        for filename in ("reporte.pdf", "requerimientos.docx", "matriz_trazabilidad.csv"):
+            if not (building / filename).is_file() or (building / filename).stat().st_size == 0:
+                raise ValueError(f"Artefacto incompleto: {filename}")
+        current_type = "publish"
+        if output_dir.exists():
+            raise FileExistsError(f"La carpeta final ya existe: {output_dir.name}")
+        os.replace(building, output_dir)
+        paths = {
+            "pdf": str(output_dir / "reporte.pdf"),
+            "docx": str(output_dir / "requerimientos.docx"),
+            "csv": str(output_dir / "matriz_trazabilidad.csv"),
+        }
+        summary.update({"status": "success", "documents_generated": True, "artefactos": paths})
+        summary["auditoria_documental"].update({
+            "artifact_build_completed": True,
+            "temporary_artifacts_created": created,
+            "final_artifacts_published": True,
+        })
+        summary_path = persist_sanitized_execution_summary(summary, parent)
+        return model, paths, summary_path
+    except Exception as exc:
+        removed = False
+        if building.exists():
+            shutil.rmtree(building)
+            removed = True
+        error = exc if isinstance(exc, ArtifactGenerationError) else ArtifactGenerationError(
+            "Falló la generación atómica de artefactos.",
+            execution_id=execution_id,
+            artifact_type=current_type,
+            artifact_stage="build" if current_type != "publish" else "atomic_publish",
+            failed_function=(
+                "validar_modelo_documental" if current_type == "document_model"
+                else "generar_artefactos_atomicos"
+            ),
+            exception_type=type(exc).__name__,
+            field=getattr(exc, "field", None),
+            issue_iid=getattr(exc, "issue_iid", None),
+            partial_files_created=created,
+            partial_files_removed=removed,
+            summary_persisted=True,
+        )
+        summary.update({
+            "status": "error", "documents_generated": False, "artefactos": {},
+            "error": {
+                "category": error.category,
+                "artifact_type": error.artifact_type,
+                "artifact_stage": error.artifact_stage,
+                "failed_function": error.failed_function,
+                "exception_type": error.exception_type,
+                "field": error.field,
+                "issue_iid": error.issue_iid,
+            },
+        })
+        summary["auditoria_documental"].update({
+            "artifact_build_failed": True,
+            "artifact_failed_type": current_type,
+            "temporary_artifacts_created": created,
+            "temporary_artifacts_removed": removed,
+            "final_artifacts_published": False,
+            "summary_persisted": True,
+        })
+        persist_sanitized_execution_summary(summary, parent)
+        raise error from exc
 
 def generar_documento_formal_docx(project_name: str, issue_iid: int, central_init: dict, quality_json: dict, security_json: dict, eval_json: dict, parsed_cf: dict) -> io.BytesIO:
     """Genera el Documento Formal de Requerimientos en Word."""

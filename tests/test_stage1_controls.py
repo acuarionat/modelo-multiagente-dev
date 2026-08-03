@@ -131,11 +131,11 @@ class InputValidationTests(unittest.TestCase):
         })
         self.assertIn("descripcion", validation["campos_faltantes"])
 
-    def test_insufficient_story_is_excluded_by_default(self):
+    def test_insufficient_story_is_preserved_for_analysis(self):
         complete = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION, iid=1))
         incomplete = mapear_issue_a_json(FakeIssue("", iid=2))
         processable, excluded = separar_entradas_para_analisis([complete, incomplete])
-        self.assertEqual([item["id"] for item in processable], ["1"])
+        self.assertEqual([item["id"] for item in processable], ["1", "2"])
         self.assertEqual([item["id"] for item in excluded], ["2"])
 
 
@@ -216,11 +216,10 @@ class VerdictAndTraceabilityTests(unittest.TestCase):
     def _evaluation(self, verdict="APROBADO", risks=None, corrections=None):
         return {"veredicto": verdict, "riesgos_criticos": risks or [], "correcciones_obligatorias": corrections or [], "conclusion": "Conclusión original."}
 
-    def test_critical_risk_overrides_approved_and_preserves_original(self):
+    def test_evaluator_risk_does_not_override_calculated_compliance(self):
         evaluation = self._evaluation(risks=["Exposición crítica de datos"])
         ajustar_veredicto_determinista({}, quality(), security(), evaluation)
-        self.assertEqual(evaluation["veredicto"], "ALERTA")
-        self.assertEqual(evaluation["veredicto_original"], "APROBADO")
+        self.assertEqual(evaluation["veredicto"], "APROBADO")
         self.assertEqual(evaluation["conclusion"], "Conclusión original.")
 
     def test_low_index_overrides_approved(self):
@@ -228,15 +227,15 @@ class VerdictAndTraceabilityTests(unittest.TestCase):
         ajustar_veredicto_determinista({}, quality(.8), security(), evaluation)
         self.assertEqual(evaluation["veredicto"], "CORREGIR")
 
-    def test_insufficient_input_forces_alert(self):
+    def test_insufficient_input_requires_review(self):
         evaluation = self._evaluation()
         ajustar_veredicto_determinista({}, quality(), security(), evaluation, {"estado": "informacion_insuficiente"})
-        self.assertEqual(evaluation["veredicto"], "ALERTA")
+        self.assertEqual(evaluation["veredicto"], "REVISIÓN REQUERIDA")
 
-    def test_non_evaluable_metric_forces_alert(self):
+    def test_non_evaluable_metric_requires_review(self):
         evaluation = self._evaluation()
         ajustar_veredicto_determinista({}, quality(None), security(), evaluation)
-        self.assertEqual(evaluation["veredicto"], "ALERTA")
+        self.assertEqual(evaluation["veredicto"], "REVISIÓN REQUERIDA")
 
     def test_consistent_approved_is_not_rewritten(self):
         evaluation = self._evaluation()
