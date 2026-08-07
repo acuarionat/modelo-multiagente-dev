@@ -23,6 +23,7 @@ from core.batch_contract import (
     diagnosticar_estructura_seguridad_llm, resumir_seguridad_post_python,
     validar_semantica_calidad_llm, validar_semantica_seguridad_llm,
     obtener_universo_funcional_calidad, normalizar_iid,
+    descartar_grupos_genericos_sin_datos_canonicos,
 )
 
 # Configuración del logger
@@ -249,6 +250,12 @@ def _ejecutar_sublotes_remotos(req_text, agent_name, batch_size, invoke):
             if agent_name in {"Calidad", "Seguridad"}:
                 if agent_name == "Seguridad":
                     llm_raw_diagnostic = diagnosticar_estructura_seguridad_llm(parsed, batch)
+                    normalized_issues = descartar_grupos_genericos_sin_datos_canonicos(parsed, batch)
+                    if normalized_issues:
+                        registrar_evento_grafo(
+                            "security_generic_groups_discarded", "Seguridad",
+                            issue_ids=normalized_issues,
+                        )
                 semantic_diagnostic = (
                     validar_semantica_calidad_llm(parsed, batch)
                     if agent_name == "Calidad" else validar_semantica_seguridad_llm(parsed, batch)
@@ -788,7 +795,7 @@ def construir_grafo():
     
     workflow.set_entry_point("Central_Init")
     
-    # Ejecución secuencial optimizada para no saturar el hardware
+    # Las evaluaciones se ejecutan de forma separada y secuencial.
     workflow.add_edge("Central_Init", "Quality")
     workflow.add_edge("Quality", "Security")
     workflow.add_edge("Security", "Evaluator")

@@ -1,18 +1,32 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+
 # Rutas principales del proyecto
 BASE_DIR = Path(__file__).parent.parent
+
+# Cargar variables desde .env ubicado en la raíz del proyecto
+ENV_PATH = BASE_DIR / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
+
 DB_PATH = os.path.join(BASE_DIR, "trazabilidad.db")
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
 
 # Configuraciones de IA (Ollama Local)
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_BASE_URL = os.getenv(
+    "OLLAMA_BASE_URL",
+    "http://localhost:11434"
+)
 
 # Las historias sin los campos mínimos se conservan para seguimiento, pero no se
 # envían al modelo salvo que el responsable habilite explícitamente esta opción.
-ALLOW_INCOMPLETE_STORIES = os.getenv("ALLOW_INCOMPLETE_STORIES", "false").strip().casefold() in {
+ALLOW_INCOMPLETE_STORIES = os.getenv(
+    "ALLOW_INCOMPLETE_STORIES",
+    "false"
+).strip().casefold() in {
     "1", "true", "yes", "si", "sí",
 }
 

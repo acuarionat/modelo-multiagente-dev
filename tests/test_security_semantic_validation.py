@@ -356,6 +356,27 @@ class SecuritySemanticValidationTests(unittest.TestCase):
         self.assertNotIn("valor", item["metricas"]["clasificacion_datos"])
         self.assertNotIn("Datos personales", obtener_universo_datos_seguridad({}, ev))
 
+    def test_generic_group_is_discarded_only_when_source_has_no_canonical_data(self):
+        from core.batch_contract import descartar_grupos_genericos_sin_datos_canonicos
+
+        ev = evidence([])
+        ev["maneja_datos_sensibles"] = "Sí. Datos personales."
+        ev["tipos_datos_sensibles"] = []
+        item = security_item(
+            10, identified=["Datos personales"], classified=[],
+            unclassified=["Datos personales"], inferred=["Datos personales: PERSONAL"],
+        )
+        parsed = response(item)
+        payload = source((10,), {10: ev})
+
+        self.assertEqual(descartar_grupos_genericos_sin_datos_canonicos(parsed, payload), [10])
+        metric = parsed["resultados"][0]["metricas"]["clasificacion_datos"]
+        self.assertEqual(
+            [metric[field] for field in ("datos_identificados", "datos_clasificados", "datos_sin_clasificacion", "clasificaciones_inferidas")],
+            [[], [], [], []],
+        )
+        self.assertTrue(validar_semantica_seguridad_llm(parsed, payload)["valid"])
+
     def test_concrete_external_data_keeps_original_error(self):
         ev = evidence(["Nombre ficticio", "Documento ficticio"])
         item = security_item(

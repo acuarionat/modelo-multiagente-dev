@@ -290,6 +290,15 @@ class ControlledHybridFlowTests(unittest.TestCase):
         ))
         self.assertNotIn("CONTROLLED_HYBRID_RUN", sources)
 
+    def test_quality_and_security_remain_sequential(self):
+        from core.graph import construir_grafo
+
+        edges = {(edge.source, edge.target) for edge in construir_grafo().get_graph().edges}
+        self.assertIn(("Central_Init", "Quality"), edges)
+        self.assertIn(("Quality", "Security"), edges)
+        self.assertIn(("Security", "Evaluator"), edges)
+        self.assertNotIn(("Central_Init", "Security"), edges)
+
 
 if __name__ == "__main__":
     unittest.main()

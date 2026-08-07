@@ -87,39 +87,271 @@ def crear_llm_groq(
     return ChatGroq(**kwargs)
 
 
-def obtener_llm_para_agente(
-    agent_name: str, json_mode: bool = False, num_predict: int = 500,
-    num_ctx: int = 4096, temperature: float = 0.1, keep_alive: str = "30m",
-) -> LLMSelection:
-    agent = agent_name.strip().casefold()
-    fallback_enabled = _env_bool("ENABLE_LOCAL_FALLBACK", True)
-    remote_enabled = _env_bool("ENABLE_REMOTE_LLM", False)
-    provider = os.getenv(f"LLM_PROVIDER_{agent.upper()}", "ollama").strip().casefold()
-    use_remote = agent in {"quality", "security"} and remote_enabled and provider == "groq"
 
-    if use_remote:
-        model = os.getenv(f"GROQ_MODEL_{agent.upper()}", "").strip()
-        max_completion_tokens = _env_positive_int(
-            f"REMOTE_{agent.upper()}_MAX_COMPLETION_TOKENS", 2048,
+def crear_llm_nvidia(
+    model_name: str,
+    max_completion_tokens: int,
+    json_mode: bool = False,
+):
+    """
+    Crea un cliente LangChain para NVIDIA NIM mediante su API
+    compatible con OpenAI.
+
+    No expone la API key en logs ni excepciones.
+    """
+    api_key = os.getenv("NVIDIA_API_KEY", "").strip()
+
+    if not api_key:
+        raise LLMConfigurationError(
+            "NVIDIA_API_KEY no está configurada."
         )
+
+    if not model_name:
+        raise LLMConfigurationError(
+            "No se configuró el modelo NVIDIA."
+        )
+
+    base_url = os.getenv(
+        "NVIDIA_BASE_URL",
+        "https://integrate.api.nvidia.com/v1",
+    ).strip()
+
+    try:
+        from langchain_openai import ChatOpenAI
+    except ImportError as exc:
+        raise LLMConfigurationError(
+            "langchain-openai no está instalado."
+        ) from exc
+
+    try:
+        timeout = float(
+            os.getenv(
+                "NVIDIA_LLM_TIMEOUT_SECONDS",
+                "180",
+            )
+        )
+    except ValueError:
+        timeout = 180.0
+
+    try:
+        max_retries = int(
+            os.getenv(
+                "NVIDIA_LLM_MAX_RETRIES",
+                "0",
+            )
+        )
+    except ValueError:
+        max_retries = 0
+
+    if max_retries < 0:
+        max_retries = 0
+
+    try:
+        temperature = float(
+            os.getenv(
+                "NVIDIA_CENTRAL_TEMPERATURE",
+                "0.1",
+            )
+        )
+    except ValueError:
+        temperature = 0.1
+
+    try:
+        top_p = float(
+            os.getenv(
+                "NVIDIA_CENTRAL_TOP_P",
+                "1",
+            )
+        )
+    except ValueError:
+        top_p = 1.0
+
+    kwargs = {
+        "api_key": api_key,
+        "base_url": base_url,
+        "model": model_name,
+        "temperature": temperature,
+        "top_p": top_p,
+        "timeout": timeout,
+        "max_retries": max_retries,
+        "max_tokens": max_completion_tokens,
+    }
+
+    if json_mode:
+        kwargs["model_kwargs"] = {
+            "response_format": {
+                "type": "json_object"
+            }
+        }
+
+    return ChatOpenAI(**kwargs)
+
+def obtener_llm_para_agente(
+    agent_name: str,
+    json_mode: bool = False,
+    num_predict: int = 500,
+    num_ctx: int = 4096,
+    temperature: float = 0.1,
+    keep_alive: str = "30m",
+) -> LLMSelection:
+
+    agent = agent_name.strip().casefold()
+
+    fallback_enabled = _env_bool(
+        "ENABLE_LOCAL_FALLBACK",
+        True,
+    )
+
+    remote_enabled = _env_bool(
+        "ENABLE_REMOTE_LLM",
+        False,
+    )
+
+    provider = os.getenv(
+        f"LLM_PROVIDER_{agent.upper()}",
+        "ollama",
+    ).strip().casefold()
+
+    # =====================================================
+    # NVIDIA
+    # =====================================================
+
+    if (
+        agent == "central"
+        and remote_enabled
+        and provider == "nvidia"
+    ):
+        model = os.getenv(
+            "NVIDIA_MODEL_CENTRAL",
+            "z-ai/glm-5.2",
+        ).strip()
+
+        max_completion_tokens = _env_positive_int(
+            "NVIDIA_CENTRAL_MAX_COMPLETION_TOKENS",
+            4096,
+        )
+
         try:
-            llm = crear_llm_groq(model, max_completion_tokens, json_mode)
+            llm = crear_llm_nvidia(
+                model,
+                max_completion_tokens,
+                json_mode,
+            )
+
         except LLMConfigurationError as exc:
             if not fallback_enabled:
                 raise
+
             logger.warning(
-                "REMOTE_CONFIG_ERROR agent=%s fallback=ollama error=%s",
-                agent_name, type(exc).__name__,
+                "REMOTE_CONFIG_ERROR "
+                "agent=%s provider=nvidia "
+                "fallback=ollama error=%s",
+                agent_name,
+                type(exc).__name__,
             )
-            registrar_fallback_local(agent_name, "REMOTE_CONFIG_ERROR", count_local_call=False)
+
+            registrar_fallback_local(
+                agent_name,
+                "REMOTE_CONFIG_ERROR",
+                count_local_call=False,
+            )
+
         else:
             registrar_evento_grafo(
-                "LLM_PROVIDER_SELECTED", agent_name, provider="groq", model=model,
+                "LLM_PROVIDER_SELECTED",
+                agent_name,
+                provider="nvidia",
+                model=model,
             )
-            return LLMSelection(llm, "groq", model, fallback_enabled)
 
-    llm = crear_llm_local(json_mode, num_predict, num_ctx, temperature, keep_alive)
-    registrar_evento_grafo(
-        "LLM_PROVIDER_SELECTED", agent_name, provider="ollama", model=OLLAMA_MODEL,
+            return LLMSelection(
+                llm=llm,
+                provider="nvidia",
+                model=model,
+                fallback_enabled=fallback_enabled,
+            )
+
+    # =====================================================
+    # GROQ
+    # =====================================================
+
+    if (
+        agent in {"quality", "security"}
+        and remote_enabled
+        and provider == "groq"
+    ):
+        model = os.getenv(
+            f"GROQ_MODEL_{agent.upper()}",
+            "",
+        ).strip()
+
+        max_completion_tokens = _env_positive_int(
+            f"REMOTE_{agent.upper()}_MAX_COMPLETION_TOKENS",
+            2048,
+        )
+
+        try:
+            llm = crear_llm_groq(
+                model,
+                max_completion_tokens,
+                json_mode,
+            )
+
+        except LLMConfigurationError as exc:
+            if not fallback_enabled:
+                raise
+
+            logger.warning(
+                "REMOTE_CONFIG_ERROR "
+                "agent=%s provider=groq "
+                "fallback=ollama error=%s",
+                agent_name,
+                type(exc).__name__,
+            )
+
+            registrar_fallback_local(
+                agent_name,
+                "REMOTE_CONFIG_ERROR",
+                count_local_call=False,
+            )
+
+        else:
+            registrar_evento_grafo(
+                "LLM_PROVIDER_SELECTED",
+                agent_name,
+                provider="groq",
+                model=model,
+            )
+
+            return LLMSelection(
+                llm=llm,
+                provider="groq",
+                model=model,
+                fallback_enabled=fallback_enabled,
+            )
+
+    # =====================================================
+    # OLLAMA
+    # =====================================================
+
+    llm = crear_llm_local(
+        json_mode,
+        num_predict,
+        num_ctx,
+        temperature,
+        keep_alive,
     )
-    return LLMSelection(llm, "ollama", OLLAMA_MODEL, fallback_enabled)
+
+    registrar_evento_grafo(
+        "LLM_PROVIDER_SELECTED",
+        agent_name,
+        provider="ollama",
+        model=OLLAMA_MODEL,
+    )
+
+    return LLMSelection(
+        llm=llm,
+        provider="ollama",
+        model=OLLAMA_MODEL,
+        fallback_enabled=fallback_enabled,
+    )

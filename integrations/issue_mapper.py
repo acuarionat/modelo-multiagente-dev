@@ -4,7 +4,10 @@ import re
 
 logger = logging.getLogger(__name__)
 
-VALORES_DESCONOCIDOS = {"", "desconocido", "desconocida", "n/a", "no especificado", "sin información"}
+VALORES_DESCONOCIDOS = {
+    "", "desconocido", "desconocida", "n/a", "no especificado",
+    "sin información", "ninguna", "ninguna.", "ninguno", "ninguno."
+}
 
 
 def _texto_identificado(value) -> bool:
@@ -52,6 +55,63 @@ def separar_entradas_para_analisis(issues_data: list, allow_incomplete: bool = F
     ]
     return list(issues_data), insufficient
 
+def extraer_datos_sensibles(text: str) -> dict:
+    text = str(text or "").strip()
+
+    if not text:
+        return {
+            "maneja_datos_sensibles": None,
+            "tipos_datos_sensibles": [],
+        }
+
+    lines = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip()
+    ]
+
+    maneja = None
+    datos = []
+
+    for line in lines:
+        if re.fullmatch(
+            r"[-*]?\s*\[[xX]\]\s*s[ií]\.?",
+            line,
+            re.IGNORECASE,
+        ):
+            maneja = True
+            continue
+
+        if re.fullmatch(
+            r"[-*]?\s*\[[xX]\]\s*no\.?",
+            line,
+            re.IGNORECASE,
+        ):
+            maneja = False
+            continue
+
+        if re.fullmatch(
+            r"[-*]?\s*\[[ ]\]\s*(s[ií]|no)\.?",
+            line,
+            re.IGNORECASE,
+        ):
+            continue
+
+        if re.fullmatch(r"s[ií]\.?", line, re.IGNORECASE):
+            maneja = True
+            continue
+
+        if re.fullmatch(r"no\.?", line, re.IGNORECASE):
+            maneja = False
+            continue
+
+        datos.append(line.rstrip("."))
+
+    return {
+        "maneja_datos_sensibles": maneja,
+        "tipos_datos_sensibles": datos,
+    }
+
 def mapear_issue_a_json(issue) -> dict:
     """
     Convierte una Historia de Usuario de GitLab en una representación estructurada
@@ -75,17 +135,34 @@ def mapear_issue_a_json(issue) -> dict:
     def extraer_lista(text: str) -> list:
         # La plantilla oficial admite viñetas Markdown o un elemento por línea.
         items = []
-        for line in text.split('\n'):
+        for line in text.splitlines():
             line = line.strip()
             if not line or re.fullmatch(r"---+", line):
                 continue
-            clean_item = re.sub(r"^(?:[-*+]\s+|\d+[.)]\s*)", "", line).strip()
-            if clean_item:
-                items.append(clean_item)
+            clean_item = re.sub(
+                r"^(?:[-*+]\s+|\d+[.)]\s*)",
+                "",
+                line,
+            ).strip()
+            if not clean_item:
+                continue
+            if clean_item.casefold() in VALORES_DESCONOCIDOS:
+                continue
+            items.append(clean_item)
         return items
 
     nombre = extraer_seccion("Nombre")
     titulo = nombre if nombre else issue.title
+    # El IID de GitLab identifica técnicamente el issue. Si el equipo ya asignó
+    # un código HU en el título, lo conservamos como identidad documental para
+    # que el Central no tenga que adivinarlo a partir del IID de GitLab.
+    historia_match = re.search(
+        r"\bHU\s*[-_ ]\s*(\d+)\b", f"{issue.title}\n{titulo}", re.IGNORECASE,
+    )
+    historia_id = (
+        f"HU-{int(historia_match.group(1)):03d}"
+        if historia_match else ""
+    )
     
     desc_raw = extraer_seccion("Descripción")
     
@@ -103,9 +180,22 @@ def mapear_issue_a_json(issue) -> dict:
     
     criterios_raw = extraer_seccion("Criterios de aceptación")
     restricciones_raw = extraer_seccion("Restricciones")
+    datos_seguridad_raw = extraer_seccion(
+        "¿La historia maneja datos sensibles?"
+    )
+
+    datos_seguridad = extraer_datos_sensibles(
+        datos_seguridad_raw
+    )
+
     seguridad = {
         "descripcion": extraer_seccion("Seguridad"),
-        "maneja_datos_sensibles": extraer_seccion("¿La historia maneja datos sensibles?"),
+        "maneja_datos_sensibles": datos_seguridad[
+            "maneja_datos_sensibles"
+        ],
+        "tipos_datos_sensibles": datos_seguridad[
+            "tipos_datos_sensibles"
+        ],
         "autenticacion": extraer_seccion("Autenticación"),
         "autorizacion_roles": extraer_seccion("Autorización / Roles"),
         "auditoria": extraer_seccion("Auditoría"),
@@ -117,13 +207,15 @@ def mapear_issue_a_json(issue) -> dict:
 
     parsed_json = {
         "id": str(issue.iid),
+        "issue_iid": int(issue.iid),
+        "historia_id": historia_id,
         "titulo": titulo,
         "descripcion_original": description_text.strip(),
         "actor": actor,
         "funcionalidad": funcionalidad,
         "objetivo": objetivo,
-        "criterios_aceptacion": extraer_lista(criterios_raw) if extraer_lista(criterios_raw) else [criterios_raw] if criterios_raw else [],
-        "restricciones": extraer_lista(restricciones_raw) if extraer_lista(restricciones_raw) else [restricciones_raw] if restricciones_raw else [],
+        "criterios_aceptacion": extraer_lista(criterios_raw),
+        "restricciones": extraer_lista(restricciones_raw),
         "seguridad": seguridad,
         "prioridad": prioridad,
         "observaciones": extraer_seccion("Observaciones"),
@@ -168,3 +260,23 @@ def mapear_issue_a_json(issue) -> dict:
     )
     
     return parsed_json
+
+def preparar_payload_central(issue_data: dict) -> dict:
+    return {
+        "issue_iid": issue_data["issue_iid"],
+        "historia_id": issue_data.get("historia_id", ""),
+        "titulo": issue_data.get("titulo", ""),
+        "actor": issue_data.get("actor", ""),
+        "funcionalidad": issue_data.get("funcionalidad", ""),
+        "objetivo": issue_data.get("objetivo", ""),
+        "criterios_aceptacion": issue_data.get(
+            "criterios_aceptacion", []
+        ),
+        "restricciones": issue_data.get("restricciones", []),
+        "seguridad": issue_data.get("seguridad", {}),
+        "prioridad": issue_data.get("prioridad", ""),
+        "observaciones": issue_data.get("observaciones", ""),
+        "validacion_entrada": issue_data.get(
+            "validacion_entrada", {}
+        ),
+    }

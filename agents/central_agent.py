@@ -1,5 +1,7 @@
 from langchain_core.prompts import PromptTemplate
-from agents import obtener_llm, cargar_prompt
+from integrations.issue_mapper import preparar_payload_central
+from agents import cargar_prompt
+from core.llm_factory import obtener_llm_para_agente
 from core.performance_audit import (
     auditar_llamada_agente, registrar_evento_grafo, registrar_motivo_reparacion,
     registrar_evento_sublote_central, registrar_sublote_central,
@@ -53,18 +55,35 @@ def crear_cliente_ollama_central(
     """Crea como máximo un cliente por configuración durante una ejecución Central."""
     from core.config import OLLAMA_BASE_URL
 
-    key = (OLLAMA_MODEL, OLLAMA_BASE_URL, num_predict, num_ctx, temperature, json_mode)
+    key = (
+        OLLAMA_MODEL,
+        OLLAMA_BASE_URL,
+        num_predict,
+        num_ctx,
+        temperature,
+        json_mode,
+    )
+
     if key not in cache:
         with _entorno_ssl_local_ollama(OLLAMA_BASE_URL) as ignored:
-            cache[key] = obtener_llm(
-                json_mode=json_mode, num_predict=num_predict,
-                num_ctx=num_ctx, temperature=temperature,
+            selection = obtener_llm_para_agente(
+                "central",
+                json_mode=json_mode,
+                num_predict=num_predict,
+                num_ctx=num_ctx,
+                temperature=temperature,
             )
+            cache[key] = selection.llm
+
         registrar_evento_grafo(
-            "central_ollama_client_created", "Central_Init",
-            model=OLLAMA_MODEL, num_predict=num_predict, num_ctx=num_ctx,
+            "central_ollama_client_created",
+            "Central_Init",
+            model=OLLAMA_MODEL,
+            num_predict=num_predict,
+            num_ctx=num_ctx,
             ssl_variables_ignored=list(ignored),
         )
+
     return cache[key]
 
 def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str, num_predict_override: int | None = None, llm_override: Any = None) -> str:
@@ -72,9 +91,33 @@ def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str
     Agente Central: Orquesta el inicio procesando un lote de historias.
     Analiza el texto de los requerimientos de múltiples historias y confirma la recepción generando un JSON estructurado (Array).
     """
-    expected_issue_ids = [int(item["id"]) for item in json.loads(issues_json_str)]
+    issues = json.loads(issues_json_str)
+    expected_issue_ids = []
+    for item in issues:
+        raw_iid = item.get("issue_iid")
+        if raw_iid is None:
+            raw_iid = item.get("id")
+        iid = normalizar_iid(raw_iid)
+        if iid is None:
+            raise ValueError("CENTRAL_INPUT_WITHOUT_ISSUE_IID")
+        expected_issue_ids.append(iid)
     num_predict = num_predict_override or calcular_num_predict("Central_Init", len(expected_issue_ids))
-    llm = llm_override or obtener_llm(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1)
+    if llm_override is not None:
+        llm = llm_override
+        provider = "ollama"
+        model = OLLAMA_MODEL
+    else:
+        selection = obtener_llm_para_agente(
+            "central",
+            json_mode=True,
+            num_predict=num_predict,
+            num_ctx=8192,
+            temperature=0.1,
+        )
+
+        llm = selection.llm
+        provider = selection.provider
+        model = selection.model
     prompt_template = cargar_prompt("central_prompt.txt")
     
     prompt = PromptTemplate.from_template(prompt_template)
@@ -86,8 +129,14 @@ def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str
         expected_issue_ids=json.dumps(expected_issue_ids),
     )
     
-    from core.performance_audit import parametros_ollama
-    params = parametros_ollama(json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1)
+    params = {
+        "provider": provider,
+        "model": model,
+        "json_mode": True,
+        "num_predict": num_predict,
+        "num_ctx": 8192,
+        "temperature": 0.1,
+    }
     
     with auditar_llamada_agente(
         "Central_Init_Batch",
@@ -108,8 +157,12 @@ def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str
         except (TypeError, json.JSONDecodeError):
             keys, json_valid = [], False
         logger.info(
-            "LOCAL_RESPONSE Central provider=ollama model=%s chars=%s json_valid=%s keys=%s",
-            OLLAMA_MODEL, len(response.content), json_valid, keys,
+            "CENTRAL_RESPONSE provider=%s model=%s chars=%s json_valid=%s keys=%s",
+            provider,
+            model,
+            len(response.content),
+            json_valid,
+            keys,
         )
         audit["response"] = response.content
     return response.content
@@ -120,20 +173,79 @@ class RespuestaCentralNoRecuperable(ValueError):
 
 
 def obtener_tamano_sublote_central(value: Any = None) -> int:
-    raw = os.getenv("CENTRAL_BATCH_SIZE", "2") if value is None else value
+    raw = os.getenv("CENTRAL_BATCH_SIZE", "1") if value is None else value
     try:
         size = int(str(raw).strip())
         if size < 1:
             raise ValueError
         return size
     except (TypeError, ValueError):
-        logger.warning("CENTRAL_BATCH_SIZE_INVALID usando_valor_predeterminado=2")
-        return 2
+        logger.warning("CENTRAL_BATCH_SIZE_INVALID usando_valor_predeterminado=1")
+        return 1
 
 
 def crear_sublotes_central(issues: List[Dict[str, Any]], size: int | None = None) -> List[List[Dict[str, Any]]]:
     batch_size = obtener_tamano_sublote_central(size)
     return [issues[index:index + batch_size] for index in range(0, len(issues), batch_size)]
+
+
+
+def obtener_max_reintentos_tecnicos() -> int:
+    raw = os.getenv("CENTRAL_MAX_TECHNICAL_RETRIES", "0")
+    try:
+        val = int(str(raw).strip())
+        if val < 0:
+            logger.warning("CENTRAL_MAX_TECHNICAL_RETRIES inválido. Usando 0.")
+            return 0
+        return val
+    except (TypeError, ValueError):
+        logger.warning("CENTRAL_MAX_TECHNICAL_RETRIES inválido. Usando 0.")
+        return 0
+
+def _contenido_central_utilizable(item: dict) -> bool:
+    if not isinstance(item, dict):
+        return False
+    for field in ("actor", "funcionalidad", "objetivo"):
+        val = item.get(field)
+        if isinstance(val, str) and val.strip():
+            return True
+    for field in ("requerimientos", "restricciones", "criterios_aceptacion"):
+        val = item.get(field)
+        if isinstance(val, list) and val:
+            for elem in val:
+                if isinstance(elem, str) and elem.strip():
+                    return True
+                if isinstance(elem, dict) and elem:
+                    return True
+        elif isinstance(val, dict) and val:
+            return True
+        elif isinstance(val, str) and val.strip():
+            return True
+    return False
+
+def _resolver_iid_candidato(candidate: dict, expected_iids: list) -> int | None:
+    if not isinstance(candidate, dict):
+        return None
+    raw_iid = candidate.get("issue_iid")
+    iid = normalizar_iid(raw_iid)
+    if iid is None:
+        if len(expected_iids) == 1:
+            return expected_iids[0]
+        return None
+    if iid in expected_iids:
+        return iid
+    return None
+
+def _crear_error_central(iid: int, history_id: str) -> dict:
+    return {
+        "issue_iid": iid,
+        "historia_id": history_id,
+        "status": "error",
+        "motivo_sanitizado": "CENTRAL_LLM_OUTPUT_UNUSABLE",
+        "campos_recuperados": [],
+        "campos_ausentes": [],
+        "evaluacion_posterior_posible": False
+    }
 
 
 def _normalizar_respuesta_central(raw: Any) -> tuple[Dict[str, Any], Dict[str, Any]]:
@@ -157,7 +269,7 @@ def _normalizar_respuesta_central(raw: Any) -> tuple[Dict[str, Any], Dict[str, A
             data = None
             decoder = json.JSONDecoder()
             for position, char in enumerate(text):
-                if char != "{" or position == 0:
+                if char != "{":
                     continue
                 try:
                     candidate, _ = decoder.raw_decode(text[position:])
@@ -193,14 +305,20 @@ def _normalizar_respuesta_central(raw: Any) -> tuple[Dict[str, Any], Dict[str, A
         normalized = {
             "agente": data.get("agente", "central"),
             "milestone": data.get("milestone", ""),
-            "resultados": [],
+            "resultados": [data],
         }
-        category = "JSON_SIN_RESULTADOS"
+        category = "JSON_SIN_RESULTADOS_CON_DATOS"
     return normalized, {
         "json_valid": json_valid, "json_recovered": recovered,
         "response_category": category,
     }
 
+
+def obtener_proveedor_central() -> str:
+    return os.getenv(
+        "LLM_PROVIDER_CENTRAL",
+        "ollama"
+    ).strip().casefold()
 
 def procesar_central_en_sublotes(
     project_name: str,
@@ -211,7 +329,7 @@ def procesar_central_en_sublotes(
     invoke: Callable[[str, str, str], Any] = procesar_ticket,
 ) -> tuple[Dict[str, Any], Dict[str, Any]]:
     """Procesa secuencialmente y consolida exclusivamente mediante issue_iid."""
-    if invoke is procesar_ticket:
+    if invoke is procesar_ticket and obtener_proveedor_central() == "ollama":
         client_cache: Dict[tuple, Any] = {}
 
         def invoke_with_scoped_client(project: str, payload: str, context: str) -> Any:
@@ -225,9 +343,9 @@ def procesar_central_en_sublotes(
 
         invoke = invoke_with_scoped_client
     initial_batches = crear_sublotes_central(issues, batch_size)
-    original_order = [int(issue["id"]) for issue in issues]
+    original_order = [normalizar_iid(issue.get("issue_iid") or issue.get("id")) for issue in issues]
     expected_history_by_iid = {
-        int(issue["id"]): str(issue.get("historia_id") or f"HU-{int(issue['id']):03d}")
+        normalizar_iid(issue.get("issue_iid") or issue.get("id")): str(issue.get("historia_id") or "").strip()
         for issue in issues
     }
     results_by_iid: Dict[int, Dict[str, Any]] = {}
@@ -240,7 +358,7 @@ def procesar_central_en_sublotes(
         nonlocal sequence, milestone
         sequence += 1
         sub_batch = sequence
-        issue_ids = [int(issue["id"]) for issue in group]
+        issue_ids = [normalizar_iid(issue.get("issue_iid") or issue.get("id")) for issue in group]
         num_predict = calcular_num_predict("Central_Init", len(group))
         started_at = datetime.now().isoformat(timespec="milliseconds")
         started = time.perf_counter()
@@ -257,7 +375,8 @@ def procesar_central_en_sublotes(
             received=list(results_by_iid), missing=issue_ids,
         )
         try:
-            for attempt in range(2):
+            max_retries = obtener_max_reintentos_tecnicos()
+            for attempt in range(max_retries + 1):
                 call_type = "technical_retry" if attempt else ("selective_repair" if repair else "initial")
                 call_started = time.perf_counter()
                 registrar_evento_sublote_central(
@@ -267,18 +386,14 @@ def procesar_central_en_sublotes(
                     received=list(results_by_iid), missing=issue_ids,
                 )
                 try:
-                    raw = invoke(project_name, json.dumps(group, ensure_ascii=False), sprint_context)
+                    payload_group = [preparar_payload_central(item) for item in group]
+                    raw = invoke(project_name, json.dumps(payload_group, ensure_ascii=False), sprint_context)
                     parsed, metadata = _normalizar_respuesta_central(raw)
                     call_received = []
                     for candidate in parsed.get("resultados", []):
-                        if isinstance(candidate, dict):
-                            iid = normalizar_iid(candidate.get("issue_iid"))
-                            history_id = str(candidate.get("historia_id") or "").strip()
-                            if (
-                                iid in issue_ids
-                                and (not history_id or history_id == expected_history_by_iid[iid])
-                            ):
-                                call_received.append(iid)
+                        iid = _resolver_iid_candidato(candidate, issue_ids)
+                        if iid and iid not in call_received:
+                            call_received.append(iid)
                     registrar_evento_sublote_central(
                         "central_sub_batch_call_end", sub_batch=sub_batch,
                         split_level=split_level, issue_ids=issue_ids, call_type=call_type,
@@ -298,7 +413,7 @@ def procesar_central_en_sublotes(
                         status="failed", error_category="CENTRAL_RESPONSE_UNRECOVERABLE",
                         received=list(results_by_iid), missing=issue_ids,
                     )
-                    if attempt == 0:
+                    if attempt < max_retries:
                         technical_retry = True
                         registrar_evento_grafo(
                             "agent_retry", "Central", reason=reason,
@@ -319,82 +434,85 @@ def procesar_central_en_sublotes(
                     raise
             elapsed = round(time.perf_counter() - started, 4)
             if parsed is None:
-                subdivided = len(group) > 1
-                status = "partial" if subdivided else "failed"
+                for iid in issue_ids:
+                    results_by_iid[iid] = _crear_error_central(iid, expected_history_by_iid.get(iid, ""))
+                    received.append(iid)
+                
+                status = "failed"
                 record = {
+                    "sub_batch": sub_batch, "split_level": split_level,
+                    "issue_ids": issue_ids, "issue_count": len(group),
+                    "num_predict": num_predict, "started_at": started_at,
+                    "elapsed_seconds": elapsed, **metadata,
+                    "expected": issue_ids, "received": issue_ids, "missing": [],
+                    "technical_retry": technical_retry, "selective_repair": repair,
+                    "selective_repair_requested": False,
+                    "subdivision_applied": False, "reason": reason,
+                    "status": "error",
+                }
+                records.append(record)
+                registrar_sublote_central(record)
+                for iid in issue_ids:
+                    failed[iid] = reason
+                return
+
+            milestone = milestone or str(parsed.get("milestone") or "")
+            for item in parsed.get("resultados", []):
+                iid = _resolver_iid_candidato(item, issue_ids)
+                if not iid or iid in received:
+                    continue
+                
+                history_id_llm = str(item.get("historia_id") or "").strip()
+                expected_history = expected_history_by_iid.get(iid, "")
+                if history_id_llm and expected_history and history_id_llm != expected_history:
+                    logger.warning(f"Contradicción de historia_id para {iid}: LLM envió {history_id_llm}, se esperaba {expected_history}")
+                
+                item["issue_iid"] = iid
+                item["historia_id"] = expected_history
+                
+                if _contenido_central_utilizable(item):
+                    source_validation = next(
+                        (x.get("validacion_entrada", {}).get("estado") for x in group if normalizar_iid(x.get("issue_iid") or x.get("id")) == iid),
+                        ""
+                    )
+                    if source_validation == "informacion_insuficiente":
+                        item["status"] = "informacion_insuficiente"
+                        item["evaluacion_posterior_posible"] = True
+                    else:
+                        item["status"] = "ok"
+                else:
+                    registrar_evento_grafo(
+                        "central_llm_output_unusable", "Central_Init_Batch",
+                        issue_iid=iid, historia_id=expected_history,
+                        response_category=metadata.get("response_category", "UNKNOWN")
+                    )
+                    item = _crear_error_central(iid, expected_history)
+                    
+                results_by_iid[iid] = item
+                received.append(iid)
+                
+            missing = [iid for iid in issue_ids if iid not in received]
+            for iid in missing:
+                results_by_iid[iid] = _crear_error_central(iid, expected_history_by_iid.get(iid, ""))
+                received.append(iid)
+            missing = []
+            
+            status = "success"
+            record = {
                 "sub_batch": sub_batch, "split_level": split_level,
                 "issue_ids": issue_ids, "issue_count": len(group),
                 "num_predict": num_predict, "started_at": started_at,
                 "elapsed_seconds": elapsed, **metadata,
-                "expected": issue_ids, "received": [], "missing": issue_ids,
+                "expected": issue_ids, "received": received, "missing": missing,
                 "technical_retry": technical_retry, "selective_repair": repair,
                 "selective_repair_requested": False,
-                "subdivision_applied": subdivided, "reason": reason,
-                    "status": "subdivided" if subdivided else "error",
-                }
-                records.append(record)
-                registrar_sublote_central(record)
-                if subdivided:
-                    middle = (len(group) + 1) // 2
-                    execute(group[:middle], split_level + 1)
-                    execute(group[middle:], split_level + 1)
-                else:
-                    failed[issue_ids[0]] = reason
-                return
-
-            milestone = milestone or str(parsed.get("milestone") or "")
-            expected = set(issue_ids)
-            for item in parsed.get("resultados", []):
-                if not isinstance(item, dict):
-                    continue
-                iid = normalizar_iid(item.get("issue_iid"))
-                if iid not in expected or iid in received:
-                    continue
-                history_id = str(item.get("historia_id") or "").strip()
-                if history_id and history_id != expected_history_by_iid[iid]:
-                    continue
-                item["issue_iid"] = iid
-                item.setdefault("historia_id", expected_history_by_iid[iid])
-                results_by_iid[iid] = item
-                received.append(iid)
-            missing = [iid for iid in issue_ids if iid not in received]
-            selective_repair = bool(missing)
-            status = "partial" if missing else "success"
-            if selective_repair and not repair:
-                registrar_motivo_reparacion(
-                    "Central_Init_Batch", missing, "HISTORIA_AUSENTE_EN_RESULTADOS",
-                )
-                registrar_evento_grafo(
-                    "selective_repair_requested", "Central_Init_Batch",
-                    issue_ids=missing, reason="HISTORIA_AUSENTE_EN_RESULTADOS",
-                )
-            record = {
-            "sub_batch": sub_batch, "split_level": split_level,
-            "issue_ids": issue_ids, "issue_count": len(group),
-            "num_predict": num_predict, "started_at": started_at,
-            "elapsed_seconds": elapsed, **metadata,
-            "expected": issue_ids, "received": received, "missing": missing,
-            "technical_retry": technical_retry, "selective_repair": repair,
-            "selective_repair_requested": selective_repair,
-            "subdivision_applied": False,
-            "reason": "HISTORIA_AUSENTE_EN_RESULTADOS" if missing else "",
-            "status": "partial" if missing else "success",
+                "subdivision_applied": False,
+                "reason": "",
+                "status": "success",
             }
             records.append(record)
             registrar_sublote_central(record)
-            if missing:
-                issue_by_id = {int(issue["id"]): issue for issue in group}
-                if repair:
-                    for iid in missing:
-                        failed[iid] = "HISTORIA_AUSENTE_EN_RESULTADOS"
-                    registrar_evento_grafo(
-                        "selective_repair_failed", "Central_Init_Batch",
-                        issue_ids=missing, reason="HISTORIA_AUSENTE_EN_RESULTADOS",
-                    )
-                else:
-                    for iid in missing:
-                        execute([issue_by_id[iid]], split_level, repair=True)
-            elif repair:
+            if repair:
                 registrar_evento_grafo(
                     "selective_repair_completed", "Central_Init_Batch",
                     issue_ids=received,
@@ -414,6 +532,12 @@ def procesar_central_en_sublotes(
     ordered_results = [results_by_iid[iid] for iid in original_order if iid in results_by_iid]
     for item in ordered_results:
         normalizar_presentacion_requerimientos(item.get("requerimientos"))
+    traceable = [iid for iid in original_order if iid in results_by_iid]
+    successful = [iid for iid in traceable if results_by_iid[iid].get("status") == "ok"]
+    insufficient = [iid for iid in traceable if results_by_iid[iid].get("status") == "informacion_insuficiente"]
+    error = [iid for iid in traceable if results_by_iid[iid].get("status") == "error"]
+    missing = [iid for iid in original_order if iid not in results_by_iid]
+
     summary = {
         "initial_sub_batches": len(initial_batches),
         "generated_sub_batches": len(records),
@@ -424,8 +548,14 @@ def procesar_central_en_sublotes(
         "selective_repairs": sum(bool(record["selective_repair"]) for record in records),
         "technical_retries": sum(bool(record["technical_retry"]) for record in records),
         "elapsed_seconds": round(sum(record["elapsed_seconds"] for record in records), 4),
-        "complete_issue_ids": [iid for iid in original_order if iid in results_by_iid],
-        "incomplete_issue_ids": [iid for iid in original_order if iid not in results_by_iid],
+        "expected_issue_ids": original_order,
+        "traceable_issue_ids": traceable,
+        "successful_issue_ids": successful,
+        "insufficient_issue_ids": insufficient,
+        "error_issue_ids": error,
+        "missing_issue_ids": missing,
+        "complete_issue_ids": traceable,
+        "incomplete_issue_ids": missing,
     }
     failed_sub_batches = [
         int(record["sub_batch"]) for record in records

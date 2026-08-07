@@ -111,6 +111,16 @@ class CentralIntegrityTests(unittest.TestCase):
         self.assertEqual(partial["missing"], [])
         self.assertEqual(partial["status"], "success")
 
+    def test_accepts_documentary_hu_id_that_is_canonical_for_the_gitlab_issue(self):
+        documented_issue = issue(6)
+        documented_issue["historia_id"] = "HU-001"
+        response = central_result(6, "HU-001")
+        parsed, audit = procesar_central_en_sublotes(
+            "P", [documented_issue], "C", invoke=lambda *_: json.dumps({"resultados": [response]}),
+        )
+        self.assertEqual(parsed["resultados"][0]["historia_id"], "HU-001")
+        self.assertEqual(audit["summary"]["incomplete_issue_ids"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -583,7 +583,8 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         s = result.get("security") if isinstance(result.get("security"), dict) else {}
         e = result.get("evaluation") if isinstance(result.get("evaluation"), dict) else {}
         pdf.add_page()
-        encabezado(f"{c['historia_id']} — {c['titulo']}", 13)
+        fallback_id = f"HU-{result.get('issue_iid', '???')}"
+        encabezado(f"{c.get('historia_id', fallback_id)} — {c.get('titulo', 'Sin título')}", 13)
         linea(f"Estado de evaluación: {e.get('veredicto', 'No evaluado')} | Índice de Calidad de Requerimientos: {extraer_porcentaje(q.get('indice'))} | Índice de Seguridad en Requerimientos: {extraer_porcentaje(s.get('indice'))} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
         linea(f"Actor: {c.get('actor', '')}")
         linea(f"Objetivo: {c.get('objetivo', '')}")
@@ -668,7 +669,8 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
         if objective: doc.add_paragraph(objective, style="List Bullet")
     doc.add_heading("5. Requerimientos formales consolidados", 1)
     for result in valid:
-        origin = f"{result['central']['historia_id']} — {result['central']['titulo']}"
+        fallback_id = f"HU-{result.get('issue_iid', '???')}"
+        origin = f"{result['central'].get('historia_id', fallback_id)} — {result['central'].get('titulo', 'Sin título')}"
         for requirement in result["central"]["requerimientos"]:
             doc.add_heading(f"{requirement['id']} — {requirement.get('nombre', '')}", 3)
             doc.add_paragraph(requirement.get("descripcion_formal", ""))

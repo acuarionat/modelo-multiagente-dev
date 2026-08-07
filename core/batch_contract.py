@@ -960,6 +960,56 @@ def obtener_universo_datos_seguridad(
     return universe
 
 
+def descartar_grupos_genericos_sin_datos_canonicos(
+    response: Dict[str, Any], prepared_input: Dict[str, Any],
+) -> List[int]:
+    """Descarta agrupaciones del LLM cuando la evidencia no aporta datos concretos.
+
+    No flexibiliza la validación para historias que sí tienen datos canónicos:
+    en esos casos las agrupaciones genéricas siguen siendo un error semántico.
+    """
+    sources = {
+        normalizar_iid(item.get("issue_iid")): item
+        for item in prepared_input.get("resultados", [])
+        if isinstance(item, dict) and normalizar_iid(item.get("issue_iid")) is not None
+    }
+    generic_groups = {
+        _clave_texto(value) for value in (
+            "datos personales", "información sensible", "datos identificativos", "datos sensibles",
+        )
+    }
+    normalized_issues = []
+    for item in response.get("resultados", []):
+        if not isinstance(item, dict):
+            continue
+        iid = normalizar_iid(item.get("issue_iid"))
+        source = sources.get(iid, {})
+        evidence = source.get("evidencia_seguridad", {}) if isinstance(source, dict) else {}
+        if obtener_universo_datos_seguridad(source, evidence):
+            continue
+        metrics = item.get("metricas", {})
+        ms02 = metrics.get("clasificacion_datos", {}) if isinstance(metrics, dict) else {}
+        if not isinstance(ms02, dict):
+            continue
+        removed = False
+        for field in (
+            "datos_identificados", "datos_clasificados", "datos_sin_clasificacion", "clasificaciones_inferidas",
+        ):
+            values = ms02.get(field)
+            if not isinstance(values, list):
+                continue
+            filtered = [
+                value for value in values
+                if extraer_identidad_dato(value).get("signature") not in generic_groups
+            ]
+            if len(filtered) != len(values):
+                ms02[field] = filtered
+                removed = True
+        if removed and iid is not None:
+            normalized_issues.append(iid)
+    return normalized_issues
+
+
 def _evidencia_seguridad_contexto(context: Dict[str, Any]) -> tuple[List[str], List[str], List[str], List[str]]:
     security = context.get("seguridad") if isinstance(context.get("seguridad"), dict) else {}
     applicable = ["Autenticación", "Autorización", "Auditoría"]

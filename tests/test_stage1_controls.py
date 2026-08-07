@@ -98,6 +98,11 @@ class InputValidationTests(unittest.TestCase):
         self.assertIn("Registrar usuario", data["seguridad"]["auditoria"])
         self.assertNotEqual(data["validacion_entrada"]["estado"], "informacion_insuficiente")
 
+    def test_documentary_hu_id_is_preserved_when_it_differs_from_gitlab_iid(self):
+        data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION, title="HU-001 - Registrar usuario", iid=6))
+        self.assertEqual(data["id"], "6")
+        self.assertEqual(data["historia_id"], "HU-001")
+
     def test_missing_actor(self):
         data = mapear_issue_a_json(FakeIssue(COMPLETE_DESCRIPTION.replace("**Como** administrador\n", "")))
         self.assertNotEqual(data["validacion_entrada"]["estado"], "informacion_insuficiente")

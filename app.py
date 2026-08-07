@@ -795,7 +795,8 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             continue
         central, quality = result["central"], result["quality"]
         security, evaluation = result["security"], result["evaluation"]
-        title = f"{central['historia_id']} — {central['titulo']}"
+        fallback_id = f"HU-{result.get('issue_iid', '???')}"
+        title = f"{central.get('historia_id', fallback_id)} — {central.get('titulo', 'Sin título')}"
         with st.expander(title):
             quality_value = f"{quality['indice'] * 100:.0f} %" if quality.get("indice") is not None else "N/D"
             security_value = f"{security['indice'] * 100:.0f} %" if security.get("indice") is not None else "N/D"
