@@ -473,6 +473,69 @@ def _descripcion_requerimiento_explicito(text: str, actor: str = "") -> str:
     return f"El sistema deberá {clean[:1].lower() + clean[1:]}."
 
 
+def _es_restriccion_control_acceso(value: Any) -> bool:
+    """
+    Identifica restricciones cuyo propósito principal es expresar
+    autenticación, autorización o control de acceso.
+
+    Es independiente del dominio: no depende de actores como
+    Paciente, Médico, Estudiante, Cliente, Administrador, etc.
+    """
+    key = _clave_texto(value)
+
+    if not key:
+        return False
+
+    security_markers = (
+        "autenticado",
+        "autenticada",
+        "autenticados",
+        "autenticadas",
+        "autenticacion",
+        "autorizado",
+        "autorizada",
+        "autorizados",
+        "autorizadas",
+        "autorizacion",
+        "credencial",
+        "credenciales",
+        "control de acceso",
+        "permiso",
+        "permisos",
+    )
+
+    access_markers = (
+        "puede acceder",
+        "pueden acceder",
+        "acceso",
+        "solo ",
+        "unicamente ",
+    )
+
+    has_security_marker = any(
+        marker in key
+        for marker in security_markers
+    )
+
+    has_access_marker = any(
+        marker in key
+        for marker in access_markers
+    )
+
+    return has_security_marker or (
+        has_access_marker
+        and any(
+            marker in key
+            for marker in (
+                "rol",
+                "roles",
+                "usuario",
+                "usuarios",
+            )
+        )
+    )
+
+
 def completar_requerimientos_explicitos_faltantes(
     requerimientos_central: Any, issue_original: Dict[str, Any],
     diagnostico: List[Dict[str, Any]] | None = None,
@@ -500,8 +563,27 @@ def completar_requerimientos_explicitos_faltantes(
         add_candidate(functionality, "funcionalidad")
     for text in normalizar_lista_textos(issue_original.get("criterios_aceptacion")):
         add_candidate(text, "criterio de aceptación")
-    for text in normalizar_lista_textos(issue_original.get("restricciones")):
-        add_candidate(text, "restricción")
+    for text in normalizar_lista_textos(
+        issue_original.get("restricciones")
+    ):
+        # Las restricciones de autenticación/autorización
+        # se conservan como evidencia de Seguridad, pero no
+        # crean automáticamente una nueva función RF.
+        if _es_restriccion_control_acceso(text):
+            if diagnostico is not None:
+                diagnostico.append({
+                    "event": "security_access_restriction_not_formalized_as_requirement",
+                    "source_id": hashlib.sha256(
+                        text.encode("utf-8")
+                    ).hexdigest()[:12],
+                    "source_kind": "restricción",
+                })
+            continue
+
+        add_candidate(
+            text,
+            "restricción",
+        )
     observations = normalizar_lista_textos(issue_original.get("observaciones"))
     for observation in observations:
         for text in (part.strip(" -*•") for part in re.split(r"[\r\n]+", observation)):
@@ -1010,6 +1092,71 @@ def descartar_grupos_genericos_sin_datos_canonicos(
     return normalized_issues
 
 
+def _hay_control_proteccion_datos_explicito(
+    context: Dict[str, Any],
+    security: Dict[str, Any],
+) -> bool:
+    """
+    Determina si existe evidencia explícita de un control de
+    protección de datos.
+
+    No clasifica el tipo de dato ni depende del dominio.
+    Solamente busca controles documentados.
+    """
+
+    explicit_values: List[str] = []
+
+    # Campo futuro/actual si la plantilla llega a incorporarlo.
+    for field in (
+        "proteccion_datos",
+        "proteccion",
+        "confidencialidad",
+    ):
+        value = security.get(field)
+        if isinstance(value, str) and not _es_no_definido(value):
+            explicit_values.append(value)
+
+    # Evidencia textual existente de la HU.
+    explicit_values.extend(
+        normalizar_lista_textos(
+            context.get("restricciones")
+        )
+    )
+
+    explicit_values.extend(
+        normalizar_lista_textos(
+            context.get("observaciones")
+        )
+    )
+
+    if not explicit_values:
+        return False
+
+    protection_markers = (
+        "cifrar",
+        "cifrado",
+        "cifrada",
+        "cifrados",
+        "encript",
+        "anonimiz",
+        "seudonimiz",
+        "mascar",
+        "proteger",
+        "proteccion",
+        "confidencial",
+        "acceso restringido",
+        "control de acceso",
+    )
+
+    return any(
+        any(
+            marker in _clave_texto(value)
+            for marker in protection_markers
+        )
+        for value in explicit_values
+    )
+
+
 def _evidencia_seguridad_contexto(context: Dict[str, Any]) -> tuple[List[str], List[str], List[str], List[str]]:
     security = context.get("seguridad") if isinstance(context.get("seguridad"), dict) else {}
     applicable = ["Autenticación", "Autorización", "Auditoría"]
@@ -1027,7 +1174,12 @@ def _evidencia_seguridad_contexto(context: Dict[str, Any]) -> tuple[List[str], L
     has_sensitive_data = bool(normalized_sensitive and not normalized_sensitive.startswith("no"))
     if has_sensitive_data:
         applicable.append("Protección de datos")
-        documented.append("Protección de datos")
+
+        if _hay_control_proteccion_datos_explicito(
+            context,
+            security,
+        ):
+            documented.append("Protección de datos")
 
     def clean_datum(value: Any) -> str:
         clean = re.sub(
@@ -1055,15 +1207,79 @@ def _evidencia_seguridad_contexto(context: Dict[str, Any]) -> tuple[List[str], L
     return applicable, documented, data, classified
 
 
-def _determinar_lot(context: Dict[str, Any] | None) -> tuple[str, str]:
-    context_text = _clave_texto(str(context or {}))
-    high_impact = any(marker in context_text for marker in (
-        "datos clinicos", "historial clinico", "diagnostico", "datos de salud",
-        "biometrico", "alto impacto", "riesgo critico",
-    ))
-    if high_impact:
-        return "LoT-3", "LoT-3 asignado por evidencia explícita de alto impacto o datos altamente sensibles."
-    return "LoT-2", "LoT-2 asignado por defecto al no existir una regla explícita de alto impacto."
+def _determinar_lot(
+    context: Dict[str, Any] | None,
+) -> tuple[str, str]:
+    """
+    Determina el LoT únicamente a partir de evidencia estructurada
+    o declaraciones explícitas de impacto.
+
+    No depende del dominio del proyecto ni de tipos concretos
+    de información.
+    """
+    context = context if isinstance(context, dict) else {}
+
+    explicit_values: List[str] = []
+
+    for field in (
+        "impacto",
+        "criticidad",
+        "nivel_impacto",
+        "riesgo",
+    ):
+        value = context.get(field)
+
+        if isinstance(value, str):
+            explicit_values.append(value)
+
+    security = (
+        context.get("seguridad")
+        if isinstance(context.get("seguridad"), dict)
+        else {}
+    )
+
+    for field in (
+        "impacto",
+        "criticidad",
+        "nivel_impacto",
+    ):
+        value = security.get(field)
+
+        if isinstance(value, str):
+            explicit_values.append(value)
+
+    explicit_text = _clave_texto(
+        " ".join(explicit_values)
+    )
+
+    high_impact_markers = (
+        "alto impacto",
+        "impacto alto",
+        "criticidad alta",
+        "riesgo critico",
+        "riesgo alto",
+    )
+
+    if any(
+        marker in explicit_text
+        for marker in high_impact_markers
+    ):
+        return (
+            "LoT-3",
+            (
+                "LoT-3 asignado por evidencia explícita "
+                "de alto impacto o criticidad."
+            ),
+        )
+
+    return (
+        "LoT-2",
+        (
+            "LoT-2 asignado al no existir evidencia "
+            "estructurada suficiente que justifique "
+            "un nivel superior."
+        ),
+    )
 
 
 def completar_resultado_seguridad(
