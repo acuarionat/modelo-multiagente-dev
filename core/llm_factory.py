@@ -177,13 +177,6 @@ def crear_llm_nvidia(
         "max_tokens": max_completion_tokens,
     }
 
-    if json_mode:
-        kwargs["model_kwargs"] = {
-            "response_format": {
-                "type": "json_object"
-            }
-        }
-
     return ChatOpenAI(**kwargs)
 
 def obtener_llm_para_agente(

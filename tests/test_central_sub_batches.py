@@ -1,6 +1,8 @@
 import json
 import os
 
+from integrations.gitlab_adapter import GitLabAdapter
+from integrations.issue_mapper import mapear_issue_a_json
 from agents.central_agent import procesar_central_en_sublotes
 
 
@@ -13,80 +15,58 @@ os.environ["CENTRAL_MAX_TECHNICAL_RETRIES"] = "0"
 
 
 # ---------------------------------------------------------
-# HU-001 ya estructurada como la entrega IssueMapper
+# Conexión real a GitLab
 # ---------------------------------------------------------
 
-issues = [
-    {
-        "id": "6",                 # compatibilidad legacy
-        "issue_iid": 6,            # identidad técnica GitLab
-        "historia_id": "HU-001",   # identidad documental
-        "titulo": "HU-001 - Consultar horarios disponibles",
-        "descripcion_original": """
-# Historia de Usuario
+adapter = GitLabAdapter()
 
-## Descripción
-El paciente necesita consultar los horarios disponibles de los médicos antes de solicitar una cita.
 
-## Como
-Paciente
+# ---------------------------------------------------------
+# Issues que queremos probar
+# ---------------------------------------------------------
 
-## Quiero
-Consultar los horarios disponibles de los médicos.
+issue_iids = [6, 7, 8]
 
-## Para
-Programar una cita médica sin conflictos de horario.
-""".strip(),
+issues_mapeadas = []
 
-        "actor": "Paciente",
 
-        "funcionalidad": (
-            "Consultar los horarios disponibles de los médicos."
-        ),
+for iid in issue_iids:
+    issue = adapter.obtener_issue(iid)
 
-        "objetivo": (
-            "Programar una cita médica sin conflictos de horario."
-        ),
+    mapped = mapear_issue_a_json(issue)
 
-        "criterios_aceptacion": [
-            "Mostrar únicamente horarios disponibles.",
-            "Mostrar el nombre y especialidad del médico.",
-            "Actualizar la disponibilidad inmediatamente después de registrar una cita.",
-        ],
+    issues_mapeadas.append(mapped)
 
-        "restricciones": [
-            "Solo pacientes autenticados pueden acceder.",
-            "La información debe mostrarse en tiempo real.",
-        ],
 
-        "seguridad": {
-            "descripcion": "",
-            "maneja_datos_sensibles": True,
-            "tipos_datos_sensibles": [
-                "Datos personales"
-            ],
-            "autenticacion": "Usuario y contraseña.",
-            "autorizacion_roles": "Paciente.",
-            "auditoria": "Sí. Registrar las consultas realizadas.",
-        },
+# ---------------------------------------------------------
+# Mostrar lo que realmente entregó IssueMapper
+# ---------------------------------------------------------
 
-        "prioridad": "Desconocida",
+print("\n" + "=" * 70)
+print("ISSUES RECIBIDAS DESDE GITLAB")
+print("=" * 70)
 
-        "observaciones": (
-            "La consulta debe responder en menos de tres segundos."
-        ),
-
-        "labels": ["Pendiente"],
-
-        "validacion_entrada": {
-            "estado": "entrada_con_advertencias",
-            "campos_faltantes": [],
-            "advertencias": [
-                "prioridad no especificada"
-            ],
-        },
-    }
-]
+for issue in issues_mapeadas:
+    print(
+        json.dumps(
+            {
+                "issue_iid": issue.get("issue_iid"),
+                "historia_id": issue.get("historia_id"),
+                "titulo": issue.get("titulo"),
+                "actor": issue.get("actor"),
+                "funcionalidad": issue.get("funcionalidad"),
+                "objetivo": issue.get("objetivo"),
+                "criterios_aceptacion": issue.get("criterios_aceptacion"),
+                "restricciones": issue.get("restricciones"),
+                "seguridad": issue.get("seguridad"),
+                "prioridad": issue.get("prioridad"),
+                "observaciones": issue.get("observaciones"),
+                "validacion_entrada": issue.get("validacion_entrada"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 # ---------------------------------------------------------
@@ -95,14 +75,14 @@ Programar una cita médica sin conflictos de horario.
 
 resultado, diagnostico = procesar_central_en_sublotes(
     project_name="modelo-multiagente-dev",
-    issues=issues,
+    issues=issues_mapeadas,
     sprint_context="Recepción de Requerimientos",
     batch_size=1,
 )
 
 
 # ---------------------------------------------------------
-# Mostrar resultado
+# Mostrar resultado Central
 # ---------------------------------------------------------
 
 print("\n" + "=" * 70)
@@ -118,11 +98,15 @@ print(
 )
 
 
+# ---------------------------------------------------------
+# Mostrar diagnóstico
+# ---------------------------------------------------------
+
+summary = diagnostico.get("summary", {})
+
 print("\n" + "=" * 70)
 print("RESUMEN DE EJECUCIÓN")
 print("=" * 70)
-
-summary = diagnostico.get("summary", {})
 
 print(
     json.dumps(

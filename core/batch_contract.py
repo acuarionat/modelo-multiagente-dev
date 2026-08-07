@@ -2078,21 +2078,16 @@ def diagnosticar_estructura_seguridad_llm(
         for entry in identified_diag + classified_identity + unclassified_diag:
             raw_representations.setdefault(entry["signature"], set()).add(entry["identity"].casefold())
         collisions = sum(len(values) > 1 for signature, values in raw_representations.items() if signature)
-        own_data = {
-            _firma_seguridad(value)
-            for value in (
-                evidence.get("tipos_datos_sensibles", {}).keys()
-                if isinstance(evidence.get("tipos_datos_sensibles"), dict)
-                else evidence.get("tipos_datos_sensibles", [])
-                if isinstance(evidence.get("tipos_datos_sensibles"), list)
-                else []
-            )
-        }
         generic_signatures = {
             _clave_texto(value) for value in (
                 "datos personales", "información sensible", "datos identificativos", "datos sensibles",
             )
         }
+        
+        generic_returned = identified_signatures & generic_signatures
+        canonical_generic = canonical_signatures & generic_signatures
+        invalid_generic_returned = generic_returned - canonical_signatures
+        
         diagnostics.append({
             "contract_stage": "llm_raw", "issue_iid": iid,
             "canonical_data_count": len(canonical_signatures),
@@ -2100,7 +2095,8 @@ def diagnosticar_estructura_seguridad_llm(
             "canonical_data_classified": len(classified_signatures & canonical_signatures),
             "canonical_data_unclassified": len(unclassified_signatures & canonical_signatures),
             "missing_canonical_data_count": len(canonical_signatures - identified_signatures),
-            "generic_group_count": len(identified_signatures & generic_signatures),
+            "generic_group_count": len(invalid_generic_returned),
+            "canonical_generic_data_count": len(canonical_generic),
             "identified_items": {
                 "count": len(identified), "types": type_counts(identified),
                 "identity_extraction_success": sum(entry["data_identity_extracted"] for entry in identified_diag),
@@ -2120,7 +2116,7 @@ def diagnosticar_estructura_seguridad_llm(
                 "identity_extraction_success": sum(entry["data_identity_extracted"] for entry in unclassified_diag),
             },
             "external_data_count": len((classified_signatures | unclassified_signatures) - identified_signatures),
-            "invented_data_count": sum(signature not in own_data for signature in identified_signatures),
+            "invented_data_count": len(identified_signatures - canonical_signatures),
             "normalization_collision_count": collisions,
             "contradictions": len(classified_signatures & unclassified_signatures),
         })
@@ -2333,9 +2329,11 @@ def validar_semantica_seguridad_llm(
             sig = next(iter(identified - (explicit | unclassified)))
             issue_failure = failure(iid, "SECURITY_DATA_UNCLASSIFIED", "datos", "datos_identificados", sig)
 
-        generic_returned = identified & generic_groups
-        external = identified - canonical - generic_groups
+        external = identified - canonical
         missing_canonical = canonical - identified
+        generic_returned = identified & generic_groups
+        canonical_generic = canonical & generic_groups
+        invalid_generic_returned = generic_returned - canonical
         other_evidence = {
             other_iid: other.get("evidencia_seguridad", {})
             for other_iid, other in sources.items()
@@ -2348,10 +2346,11 @@ def validar_semantica_seguridad_llm(
             "canonical_data_unclassified": len(unclassified & canonical),
             "missing_canonical_data_count": len(missing_canonical),
             "external_data_count": len(external),
-            "generic_group_count": len(generic_returned),
+            "generic_group_count": len(invalid_generic_returned),
+            "canonical_generic_data_count": len(canonical_generic),
         }
-        if not issue_failure and generic_returned:
-            sig = next(iter(generic_returned))
+        if not issue_failure and invalid_generic_returned and missing_canonical:
+            sig = next(iter(invalid_generic_returned))
             issue_failure = failure(
                 iid, "SECURITY_GENERIC_DATA_GROUP_RETURNED", "datos", "datos_identificados", sig,
                 structure=canonical_structure,

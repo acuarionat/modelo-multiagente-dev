@@ -15,7 +15,56 @@ Menciona expresamente datos, restricciones y controles de la historia. Una infer
 Cada aspecto aplicable debe aparecer exactamente una vez entre documentados, parciales o faltantes. Cada dato identificado debe aparecer exactamente una vez entre clasificados explicitamente o sin clasificacion. Una clasificacion es explicita solo cuando la evidencia original asocia directamente el dato con su categoria; si la categoria es propuesta por ti, colocala unicamente en clasificaciones_inferidas y no en datos_clasificados.
 En datos_clasificados conserva exactamente la identidad usada en datos_identificados y asocia la categoria mediante el formato previsto; todo dato clasificado debe aparecer tambien en datos_identificados. No reformules la identidad del dato entre listas ni incorpores la categoria dentro de su nombre cuando uses un objeto estructurado.
 
-Conserva exactamente las identidades incluidas en datos_canonicos_identificados. No agrupes varios datos concretos bajo categorías como datos personales, información sensible o datos identificativos. Clasifica individualmente cada dato canónico. Las categorías generales pueden aparecer en observaciones o inferencias, pero no sustituyen datos_identificados. No añadas nuevos datos ni reformules sus identidades.
+Conserva exactamente las identidades incluidas en datos_canonicos_identificados.
+
+datos_canonicos_identificados constituye el universo autorizado de datos para
+esta historia. No añadas, elimines, dividas, agrupes ni reformules esas identidades.
+
+Si la evidencia original contiene datos concretos, conserva cada dato concreto
+de manera individual.
+
+Ejemplo:
+datos_canonicos_identificados:
+["Nombre", "Documento de identidad"]
+
+Debes conservar:
+["Nombre", "Documento de identidad"]
+
+No debes sustituirlos por:
+["Datos personales"]
+
+
+Si la propia evidencia original contiene una identidad general, conserva
+exactamente esa identidad.
+
+Ejemplo:
+datos_canonicos_identificados:
+["Datos personales"]
+
+Debes conservar:
+["Datos personales"]
+
+No debes inventar elementos más específicos como:
+["Nombre", "Documento", "Dirección"]
+
+
+La validez de una identidad no depende de que sea general o específica.
+Depende de que exista exactamente en datos_canonicos_identificados.
+
+No uses conocimiento del dominio para inferir nuevos datos.
+
+No reemplaces varios datos canónicos por una categoría general.
+
+No descompongas una categoría canónica general en datos más específicos.
+
+No reformules las identidades.
+
+Cada dato identificado debe aparecer exactamente una vez entre:
+- datos_clasificados
+- datos_sin_clasificacion
+
+Una clasificación propuesta por ti debe registrarse exclusivamente en
+clasificaciones_inferidas y nunca debe convertirse en clasificación explícita.
 
 Forma requerida:
 {{"agente":"seguridad","resultados":[{{"issue_iid":999,"historia_id":"HU-999","lot_recomendado":"LoT-2","metricas":{{"cobertura_seguridad":{{"codigo":"MS-01","aspectos_aplicables":["Autenticación"],"aspectos_documentados":["Autenticación"],"aspectos_parciales":[],"aspectos_faltantes":[],"aspectos_inferidos":[],"justificacion":"Evidencia concreta del aspecto documentado.","recomendacion":""}},"clasificacion_datos":{{"codigo":"MS-02","datos_identificados":["Documento de identidad"],"datos_clasificados":["Documento de identidad: PERSONAL"],"datos_sin_clasificacion":[],"clasificaciones_inferidas":[],"justificacion":"Evidencia concreta de clasificación.","recomendacion":""}}}},"observaciones":"Conclusión específica de seguridad.","recomendaciones":[]}}]}}
