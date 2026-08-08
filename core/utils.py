@@ -12,7 +12,7 @@ import unicodedata
 import re
 from difflib import SequenceMatcher
 from core.batch_contract import (
-    normalizar_tipo_requerimiento, recopilar_recomendaciones,
+    normalizar_tipo_requerimiento,
     renumerar_requerimientos,
 )
 
@@ -193,6 +193,37 @@ def preparar_modelo_documental(batch_result: dict) -> dict:
             "historia_id": central.get("historia_id"),
         }, local_diagnostics)
         central["restricciones"] = normalized
+        result["correcciones_necesarias"] = (
+            _normalizar_lista_textual_documental(
+                result.get("correcciones_necesarias")
+            )
+        )
+        result["mejoras_sugeridas"] = (
+            _normalizar_lista_textual_documental(
+                result.get("mejoras_sugeridas")
+            )
+        )
+        brechas = (
+            result.get("para_alcanzar_100")
+            if isinstance(
+                result.get("para_alcanzar_100"),
+                dict,
+            )
+            else {}
+        )
+        result["para_alcanzar_100"] = {
+            "calidad": _normalizar_lista_textual_documental(
+                brechas.get("calidad")
+            ),
+            "seguridad": _normalizar_lista_textual_documental(
+                brechas.get("seguridad")
+            ),
+        }
+        estado_orientativo = str(
+            result.get("estado_orientativo") or ""
+        ).strip()
+        if estado_orientativo:
+            result["estado_orientativo"] = estado_orientativo
         result["recommendations"] = _normalizar_lista_textual_documental(result.get("recommendations"))
         evaluation = result.get("evaluation") if isinstance(result.get("evaluation"), dict) else {}
         evaluation["riesgos_criticos"] = _normalizar_lista_textual_documental(
@@ -244,9 +275,50 @@ def validar_modelo_documental(model: dict, *, expected_issue_ids=None,
             ("central.restricciones", central.get("restricciones", [])),
             ("recommendations", result.get("recommendations", [])),
             ("evaluation.riesgos_criticos", (result.get("evaluation") or {}).get("riesgos_criticos", [])),
+            (
+                "correcciones_necesarias",
+                result.get(
+                    "correcciones_necesarias",
+                    [],
+                ),
+            ),
+            (
+                "mejoras_sugeridas",
+                result.get(
+                    "mejoras_sugeridas",
+                    [],
+                ),
+            ),
         ):
             if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
                 errors.append({"issue_iid": iid, "field": field, "category": "non_textual_item"})
+        brechas = result.get(
+            "para_alcanzar_100",
+            {},
+        )
+        if not isinstance(brechas, dict):
+            errors.append({
+                "issue_iid": iid,
+                "field": "para_alcanzar_100",
+                "category": "invalid_type",
+            })
+        else:
+            for campo in ("calidad", "seguridad"):
+                values = brechas.get(campo, [])
+                if (
+                    not isinstance(values, list)
+                    or any(
+                        not isinstance(item, str)
+                        for item in values
+                    )
+                ):
+                    errors.append({
+                        "issue_iid": iid,
+                        "field": (
+                            f"para_alcanzar_100.{campo}"
+                        ),
+                        "category": "non_textual_item",
+                    })
         requirements = central.get("requerimientos", [])
         if not isinstance(requirements, list):
             errors.append({"issue_iid": iid, "field": "central.requerimientos", "category": "invalid_type"})
@@ -470,6 +542,21 @@ def calcular_resumen_lote(batch_results: list) -> dict:
         )
         for x in valid
     )
+    estados_orientativos = {}
+    for item in valid:
+        estado = str(
+            item.get(
+                "estado_orientativo",
+                "REVISIÓN HUMANA",
+            )
+        ).strip()
+        estados_orientativos[estado] = (
+            estados_orientativos.get(
+                estado,
+                0,
+            )
+            + 1
+        )
     return {
         "total": len(batch_results),
         "procesadas": len(traceable),
@@ -494,6 +581,19 @@ def calcular_resumen_lote(batch_results: list) -> dict:
         "seguridad_minima": min(security) if security else None,
         "historias_bajo_meta": below_target,
         "riesgos_criticos": critical_risks,
+        "estados_orientativos": estados_orientativos,
+        "conformes": estados_orientativos.get(
+            "CONFORME",
+            0,
+        ),
+        "conformes_con_mejoras": estados_orientativos.get(
+            "CONFORME CON MEJORAS",
+            0,
+        ),
+        "revision_humana": estados_orientativos.get(
+            "REVISIÓN HUMANA",
+            0,
+        ),
     }
 
 
@@ -517,11 +617,27 @@ def construir_resultado_lote(project_name: str, milestone: str, issues: list) ->
         requirement for item in valid
         for requirement in item["central"].get("requerimientos", [])
     ]
-    recommendations = _eliminar_recomendaciones_duplicadas([
-        recommendation for item in valid for recommendation in recopilar_recomendaciones(item)
-    ])
-    for item in valid:
-        item["recommendations"] = recopilar_recomendaciones(item)
+    correcciones_necesarias = deduplicar_textos_estables(
+        correction
+        for item in valid
+        for correction in item.get(
+            "correcciones_necesarias",
+            [],
+        )
+    )
+    mejoras_sugeridas = deduplicar_textos_estables(
+        improvement
+        for item in valid
+        for improvement in item.get(
+            "mejoras_sugeridas",
+            [],
+        )
+    )
+    # Se conserva únicamente por compatibilidad con consumidores legacy.
+    recommendations = deduplicar_textos_estables(
+        correcciones_necesarias
+        + mejoras_sugeridas
+    )
     try:
         traceability_rows = construir_filas_trazabilidad(issues, generated_at)
     except ValueError:
@@ -532,6 +648,8 @@ def construir_resultado_lote(project_name: str, milestone: str, issues: list) ->
         "summary": calcular_resumen_lote(issues),
         "issues": issues,
         "requirements": requirements,
+        "correcciones_necesarias": correcciones_necesarias,
+        "mejoras_sugeridas": mejoras_sugeridas,
         "recommendations": recommendations,
         "traceability_rows": traceability_rows,
         "generated_at": generated_at,
@@ -585,7 +703,20 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         pdf.add_page()
         fallback_id = f"HU-{result.get('issue_iid', '???')}"
         encabezado(f"{c.get('historia_id', fallback_id)} — {c.get('titulo', 'Sin título')}", 13)
-        linea(f"Estado de evaluación: {e.get('veredicto', 'No evaluado')} | Índice de Calidad de Requerimientos: {extraer_porcentaje(q.get('indice'))} | Índice de Seguridad en Requerimientos: {extraer_porcentaje(s.get('indice'))} | Nivel de aseguramiento recomendado - LoT: {s.get('lot_recomendado', 'No informado')}")
+        estado_visible = (
+            result.get("estado_orientativo")
+            or e.get("veredicto")
+            or "REVISIÓN HUMANA"
+        )
+        linea(
+            f"Estado orientativo: {estado_visible} | "
+            f"Índice de Calidad de Requerimientos: "
+            f"{extraer_porcentaje(q.get('indice'))} | "
+            f"Índice de Seguridad en Requerimientos: "
+            f"{extraer_porcentaje(s.get('indice'))} | "
+            f"Nivel de aseguramiento recomendado - LoT: "
+            f"{s.get('lot_recomendado', 'No informado')}"
+        )
         linea(f"Actor: {c.get('actor', '')}")
         linea(f"Objetivo: {c.get('objetivo', '')}")
         encabezado("Métricas de calidad", 11)
@@ -604,13 +735,75 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
         for label in ("observaciones", "recomendaciones"):
             for text_value in _iterar_textos(s.get(label), f"seguridad.{label}"):
                 linea(f"{label.capitalize()}: {text_value}")
-        encabezado("Riesgos y recomendaciones", 11)
-        evaluator_texts = list(_iterar_textos(e.get("riesgos_criticos"), "evaluador.riesgos_criticos"))
-        evaluator_texts += list(_iterar_textos(e.get("correcciones_obligatorias"), "evaluador.correcciones_obligatorias"))
-        evaluator_texts += list(_iterar_textos(result.get("recommendations"), "resultado.recommendations"))
-        for text_value in evaluator_texts:
-            linea(f"- {text_value}")
-        encabezado("Requerimientos sugeridos", 11)
+        encabezado(
+            "Correcciones necesarias",
+            11,
+        )
+        correcciones = result.get(
+            "correcciones_necesarias",
+            [],
+        )
+        if correcciones:
+            for correction in correcciones:
+                linea(f"- {correction}")
+        else:
+            linea(
+                "No se identificaron correcciones "
+                "necesarias para las métricas evaluadas."
+            )
+        encabezado(
+            "Para alcanzar el máximo de las métricas",
+            11,
+        )
+        brechas = (
+            result.get("para_alcanzar_100")
+            if isinstance(
+                result.get("para_alcanzar_100"),
+                dict,
+            )
+            else {}
+        )
+        calidad_brechas = brechas.get(
+            "calidad",
+            [],
+        )
+        seguridad_brechas = brechas.get(
+            "seguridad",
+            [],
+        )
+        linea("Calidad:")
+        if calidad_brechas:
+            for gap in calidad_brechas:
+                linea(f"- {gap}")
+        else:
+            linea(
+                "Las métricas de Calidad evaluadas "
+                "ya alcanzan el 100 %."
+            )
+        linea("Seguridad:")
+        if seguridad_brechas:
+            for gap in seguridad_brechas:
+                linea(f"- {gap}")
+        else:
+            linea(
+                "Las métricas de Seguridad evaluadas "
+                "ya alcanzan el 100 %."
+            )
+        mejoras = result.get(
+            "mejoras_sugeridas",
+            [],
+        )
+        if mejoras:
+            encabezado(
+                "Oportunidades de mejora",
+                11,
+            )
+            for improvement in mejoras:
+                linea(f"- {improvement}")
+        encabezado(
+            "Formalización propuesta",
+            11,
+        )
         for requirement in c.get("requerimientos", []):
             if not isinstance(requirement, dict):
                 logger.warning("Requerimiento no válido omitido del PDF: %r.", requirement)
@@ -633,6 +826,114 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     return io.BytesIO(bytes(pdf.output()))
 
 
+def agregar_requerimiento_docx(
+    doc,
+    requirement: dict,
+    origin: str,
+) -> None:
+    code = str(
+        requirement.get("id") or ""
+    ).strip()
+
+    name = str(
+        requirement.get("nombre") or ""
+    ).strip()
+
+    doc.add_heading(
+        f"{code} — {name}",
+        3,
+    )
+
+    doc.add_paragraph(
+        str(
+            requirement.get(
+                "descripcion_formal",
+                "",
+            )
+        )
+    )
+
+    kind = normalizar_tipo_requerimiento(
+        requirement
+    )
+
+    doc.add_paragraph(
+        "Tipo: "
+        + (
+            "Funcional"
+            if kind == "RF"
+            else "No funcional"
+        )
+    )
+
+    doc.add_paragraph(
+        "Prioridad: "
+        + str(
+            requirement.get(
+                "prioridad",
+                "Desconocida",
+            )
+        )
+    )
+
+    doc.add_paragraph(
+        f"Origen: {origin}"
+    )
+
+    justification = str(
+        requirement.get(
+            "justificacion",
+            "",
+        )
+    ).strip()
+
+    if justification:
+        doc.add_paragraph(
+            f"Justificación: {justification}"
+        )
+
+    doc.add_paragraph(
+        "Procedencia: "
+        + str(
+            requirement.get(
+                "procedencia",
+                "inferida",
+            )
+        )
+    )
+
+    doc.add_paragraph(
+        "Revisión humana: Pendiente"
+    )
+
+    pending = (
+        requirement.get(
+            "pendientes_definicion"
+        )
+        or requirement.get(
+            "observaciones_revision"
+        )
+        or []
+    )
+
+    pending = (
+        _normalizar_lista_textual_documental(
+            pending
+        )
+    )
+
+    if pending:
+        doc.add_paragraph(
+            "Aspectos pendientes de definición:"
+        )
+
+        for value in pending:
+            doc.add_paragraph(
+                value,
+                style="List Bullet",
+            )
+
+
 def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     from docx import Document
     if not batch_result.get("_document_model_prepared"):
@@ -650,6 +951,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     doc = Document()
     doc.add_heading("Documento Formal Consolidado de Requerimientos", 0)
     doc.add_paragraph(DECISION_SUPPORT_NOTICE)
+    doc.add_heading("Información general", 1)
     doc.add_paragraph(f"Proyecto: {project_name}")
     doc.add_paragraph(f"Milestone: {milestone}")
     doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
@@ -657,45 +959,331 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     doc.add_paragraph(f"Historias analizadas: {len(valid)}")
     doc.add_page_break()
     doc.add_heading("1. Introducción", 1)
-    doc.add_paragraph("Este documento consolida los requerimientos formalizados del lote de Historias de Usuario analizado mediante el sistema multiagente.")
+    doc.add_paragraph(
+        (
+            "El presente documento constituye el "
+            "artefacto formal consolidado de la etapa "
+            "de Recepción de Requerimientos. Integra "
+            "los requerimientos funcionales y no "
+            "funcionales identificados, las restricciones, "
+            "las consideraciones de seguridad y los "
+            "aspectos pendientes de definición derivados "
+            "de las Historias de Usuario analizadas."
+        )
+    )
     doc.add_heading("2. Alcance", 1)
     for objective in dict.fromkeys(x["central"].get("objetivo", "") for x in valid):
-        if objective: doc.add_paragraph(objective, style="List Bullet")
+        if objective:
+            doc.add_paragraph(objective, style="List Bullet")
     doc.add_heading("3. Actores identificados", 1)
     for actor in dict.fromkeys(x["central"].get("actor", "") for x in valid):
-        if actor: doc.add_paragraph(actor, style="List Bullet")
+        if actor:
+            doc.add_paragraph(actor, style="List Bullet")
     doc.add_heading("4. Objetivos identificados", 1)
     for objective in dict.fromkeys(x["central"].get("objetivo", "") for x in valid):
-        if objective: doc.add_paragraph(objective, style="List Bullet")
-    doc.add_heading("5. Requerimientos formales consolidados", 1)
+        if objective:
+            doc.add_paragraph(objective, style="List Bullet")
+    doc.add_heading(
+        "5. Requerimientos funcionales formalizados",
+        1,
+    )
+    rf_encontrados = False
     for result in valid:
-        fallback_id = f"HU-{result.get('issue_iid', '???')}"
-        origin = f"{result['central'].get('historia_id', fallback_id)} — {result['central'].get('titulo', 'Sin título')}"
-        for requirement in result["central"]["requerimientos"]:
-            doc.add_heading(f"{requirement['id']} — {requirement.get('nombre', '')}", 3)
-            doc.add_paragraph(requirement.get("descripcion_formal", ""))
-            type_names = {"RF": "Funcional", "RNF": "No funcional"}
-            doc.add_paragraph(f"Tipo: {type_names.get(requirement['tipo'], 'No funcional')}")
-            doc.add_paragraph(f"Prioridad: {requirement.get('prioridad', '')}")
-            doc.add_paragraph(f"Origen: {origin}")
-            doc.add_paragraph(f"Justificación: {requirement.get('justificacion', '')}")
-            doc.add_paragraph(f"Procedencia: {requirement.get('procedencia', 'inferida')}")
-            doc.add_paragraph("Revisión humana: Pendiente")
-    doc.add_heading("6. Restricciones consolidadas", 1)
+        central = result["central"]
+        fallback_id = (
+            f"HU-{result.get('issue_iid', '???')}"
+        )
+        origin = (
+            f"{central.get('historia_id', fallback_id)} "
+            f"— {central.get('titulo', 'Sin título')}"
+        )
+        for requirement in central.get(
+            "requerimientos",
+            [],
+        ):
+            if not isinstance(
+                requirement,
+                dict,
+            ):
+                continue
+            if normalizar_tipo_requerimiento(
+                requirement
+            ) != "RF":
+                continue
+            rf_encontrados = True
+            agregar_requerimiento_docx(
+                doc,
+                requirement,
+                origin,
+            )
+    if not rf_encontrados:
+        doc.add_paragraph(
+            "No se identificaron requerimientos "
+            "funcionales formalizados."
+        )
+    doc.add_heading(
+        "6. Requerimientos no funcionales formalizados",
+        1,
+    )
+    rnf_encontrados = False
+    for result in valid:
+        central = result["central"]
+        fallback_id = (
+            f"HU-{result.get('issue_iid', '???')}"
+        )
+        origin = (
+            f"{central.get('historia_id', fallback_id)} "
+            f"— {central.get('titulo', 'Sin título')}"
+        )
+        for requirement in central.get(
+            "requerimientos",
+            [],
+        ):
+            if not isinstance(
+                requirement,
+                dict,
+            ):
+                continue
+            if normalizar_tipo_requerimiento(
+                requirement
+            ) != "RNF":
+                continue
+            rnf_encontrados = True
+            agregar_requerimiento_docx(
+                doc,
+                requirement,
+                origin,
+            )
+    if not rnf_encontrados:
+        doc.add_paragraph(
+            "No se identificaron requerimientos "
+            "no funcionales formalizados."
+        )
+    doc.add_heading(
+        "7. Restricciones consolidadas",
+        1,
+    )
     restrictions = deduplicar_textos_estables(
         restriction
         for result in valid
         for restriction in result["central"].get("restricciones", [])
     )
-    for restriction in restrictions:
-        doc.add_paragraph(restriction, style="List Bullet")
-    doc.add_heading("7. Recomendaciones generales", 1)
-    if batch_result["recommendations"]:
-        for recommendation in batch_result["recommendations"]:
-            doc.add_paragraph(recommendation, style="List Bullet")
+    if restrictions:
+        for restriction in restrictions:
+            doc.add_paragraph(restriction, style="List Bullet")
     else:
-        doc.add_paragraph("No se identificaron correcciones adicionales para el lote analizado.")
-    doc.add_heading("8. Matriz de trazabilidad", 1)
+        doc.add_paragraph(
+            "No se identificaron restricciones consolidadas."
+        )
+    doc.add_heading(
+        "8. Consideraciones de seguridad identificadas",
+        1,
+    )
+    for result in valid:
+        central = (
+            result.get("central", {})
+            if isinstance(
+                result.get("central"),
+                dict,
+            )
+            else {}
+        )
+        security = (
+            result.get("security", {})
+            if isinstance(
+                result.get("security"),
+                dict,
+            )
+            else {}
+        )
+        history_id = (
+            central.get("historia_id")
+            or f"HU-{result.get('issue_iid', '???')}"
+        )
+        title = central.get(
+            "titulo",
+            "Sin título",
+        )
+        doc.add_heading(
+            f"{history_id} — {title}",
+            3,
+        )
+        metrics = (
+            security.get("metricas", {})
+            if isinstance(
+                security.get("metricas"),
+                dict,
+            )
+            else {}
+        )
+        ms01 = (
+            metrics.get(
+                "cobertura_seguridad",
+                {},
+            )
+            if isinstance(
+                metrics.get(
+                    "cobertura_seguridad",
+                    {},
+                ),
+                dict,
+            )
+            else {}
+        )
+        ms02 = (
+            metrics.get(
+                "clasificacion_datos",
+                {},
+            )
+            if isinstance(
+                metrics.get(
+                    "clasificacion_datos",
+                    {},
+                ),
+                dict,
+            )
+            else {}
+        )
+        documentados = (
+            _normalizar_lista_textual_documental(
+                ms01.get(
+                    "aspectos_documentados",
+                    [],
+                )
+            )
+        )
+        faltantes = (
+            _normalizar_lista_textual_documental(
+                ms01.get(
+                    "aspectos_faltantes",
+                    [],
+                )
+            )
+        )
+        datos = (
+            _normalizar_lista_textual_documental(
+                ms02.get(
+                    "datos_identificados",
+                    [],
+                )
+            )
+        )
+        clasificados = (
+            _normalizar_lista_textual_documental(
+                ms02.get(
+                    "datos_clasificados",
+                    [],
+                )
+            )
+        )
+        sin_clasificacion = (
+            _normalizar_lista_textual_documental(
+                ms02.get(
+                    "datos_sin_clasificacion",
+                    [],
+                )
+            )
+        )
+        if datos:
+            doc.add_paragraph(
+                "Datos identificados:"
+            )
+            for value in datos:
+                doc.add_paragraph(
+                    value,
+                    style="List Bullet",
+                )
+        if documentados:
+            doc.add_paragraph(
+                "Aspectos de seguridad documentados:"
+            )
+            for value in documentados:
+                doc.add_paragraph(
+                    value,
+                    style="List Bullet",
+                )
+        if faltantes:
+            doc.add_paragraph(
+                "Aspectos de seguridad pendientes de definición:"
+            )
+            for value in faltantes:
+                doc.add_paragraph(
+                    value,
+                    style="List Bullet",
+                )
+        if clasificados:
+            doc.add_paragraph(
+                "Datos con clasificación explícita:"
+            )
+            for value in clasificados:
+                doc.add_paragraph(
+                    value,
+                    style="List Bullet",
+                )
+        if sin_clasificacion:
+            doc.add_paragraph(
+                "Datos pendientes de clasificación:"
+            )
+            for value in sin_clasificacion:
+                doc.add_paragraph(
+                    value,
+                    style="List Bullet",
+                )
+    doc.add_heading(
+        "9. Aspectos pendientes de definición y revisión",
+        1,
+    )
+    hay_pendientes = False
+    for result in valid:
+        corrections = (
+            result.get(
+                "correcciones_necesarias",
+                [],
+            )
+        )
+        improvements = (
+            result.get(
+                "mejoras_sugeridas",
+                [],
+            )
+        )
+        pending = deduplicar_textos_estables(
+            list(corrections)
+            + list(improvements)
+        )
+        if not pending:
+            continue
+        hay_pendientes = True
+        central = result.get(
+            "central",
+            {},
+        )
+        history_id = (
+            central.get("historia_id")
+            or f"HU-{result.get('issue_iid', '???')}"
+        )
+        title = central.get(
+            "titulo",
+            "Sin título",
+        )
+        doc.add_heading(
+            f"{history_id} — {title}",
+            3,
+        )
+        for value in pending:
+            doc.add_paragraph(
+                value,
+                style="List Bullet",
+            )
+    if not hay_pendientes:
+        doc.add_paragraph(
+            "No se identificaron aspectos "
+            "pendientes de definición o revisión."
+        )
+    doc.add_heading(
+        "10. Matriz de trazabilidad",
+        1,
+    )
     matrix_keys = list(TRACEABILITY_COLUMNS)
     table = doc.add_table(rows=1, cols=len(matrix_keys))
     table.style = "Table Grid"
@@ -704,6 +1292,33 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     for row in rows:
         for cell, key in zip(table.add_row().cells, matrix_keys):
             cell.text = str(row.get(key, ""))
+    doc.add_heading(
+        "11. Control de revisión",
+        1,
+    )
+    doc.add_paragraph(
+        "Versión del documento: 1.0"
+    )
+    doc.add_paragraph(
+        (
+            "Fecha de generación: "
+            f"{datetime.now().strftime('%Y-%m-%d')}"
+        )
+    )
+    doc.add_paragraph(
+        "Estado del documento: Pendiente de revisión"
+    )
+    doc.add_paragraph(
+        (
+            "Los requerimientos contenidos en este "
+            "documento corresponden a una formalización "
+            "asistida de la evidencia recibida durante "
+            "la etapa de Recepción de Requerimientos. "
+            "Los elementos señalados como pendientes "
+            "requieren revisión y decisión del "
+            "responsable del proyecto."
+        )
+    )
     output = io.BytesIO()
     doc.save(output)
     output.seek(0)
