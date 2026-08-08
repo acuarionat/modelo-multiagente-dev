@@ -58124,3 +58124,955 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-08-07 19:19:49,718 - [INFO] - GitLab Issue #8 completado en 0.96s.
 2026-08-07 19:19:50,557 - [INFO] - Flujo de lote terminado en 850.49s: recibidas=3, correctas=3, con_error=0, comentarios_publicados=3, pendientes=0.
 2026-08-07 19:19:50,557 - [INFO] - Ollama lote: llamadas=4, reintentos=0, por_agente={'Central_Init_Batch': 3, 'Quality_Batch': 2, 'Security_Batch': 2, 'Evaluator_Batch': 1}.
+2026-08-07 20:54:04,823 - [INFO] - Modelo Ollama efectivo para la ejecución: phi4-mini
+2026-08-07 20:54:04,830 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "8",
+  "titulo": "HU-003 - Consultar agenda médica",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nEl médico necesita visualizar sus citas programadas.\n\n### Como\n\nMédico\n\n### Quiero\n\nConsultar mi agenda.\n\n### Para\n\nOrganizar la atención de pacientes.\n\n---\n\n## Criterios de aceptación\n\n* Mostrar las citas del día.\n* Mostrar el nombre del paciente.\n\n---\n\n## Restricciones\n\nNinguna.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nSí\n\nDatos médicos.\n\n---\n\n### Autenticación\n\nUsuario y contraseña.\n\n---\n\n### Autorización / Roles\n\nMédico.\n\n---\n\n### Auditoría\n\nNo definido.\n\n---\n\n## Observaciones\n\nNinguna.",
+  "actor": "Médico",
+  "funcionalidad": "Consultar mi agenda.",
+  "objetivo": "Organizar la atención de pacientes.",
+  "criterios_aceptacion": [
+    "Mostrar las citas del día.",
+    "Mostrar el nombre del paciente."
+  ],
+  "restricciones": [],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos médicos"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Médico.",
+    "auditoria": "No definido."
+  },
+  "observaciones": "Ninguna.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-07 20:54:04,831 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "8",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-07 20:54:04,833 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "7",
+  "titulo": "HU-002 - Registrar pacientes",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nLa recepcionista necesita registrar nuevos pacientes.\n\n---\n\n## Como\n\nRecepcionista\n\n## Quiero\n\nRegistrar pacientes nuevos\n\n## Para\n\nPermitir la programación de citas\n\n---\n\n# Criterios de aceptación\n\nValidar documento de identidad\n\nRegistrar información obligatoria\n\nEvitar registros duplicados\n\n---\n\n# Restricciones\n\nSolo recepcionistas autorizadas\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales\n\n---\n\n## Autenticación\n\nUsuario y contraseña\n\n---\n\n## Autorización / Roles\n\nRecepcionista\n\n---\n\n## Auditoría\n\nSí\n\nRegistrar usuario, fecha y hora del registro\n\n---\n\n# Observaciones\n\nDebe permitir editar posteriormente la información",
+  "actor": "Recepcionista",
+  "funcionalidad": "Registrar pacientes nuevos",
+  "objetivo": "Permitir la programación de citas",
+  "criterios_aceptacion": [
+    "Validar documento de identidad",
+    "Registrar información obligatoria",
+    "Evitar registros duplicados"
+  ],
+  "restricciones": [
+    "Solo recepcionistas autorizadas"
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña",
+    "autorizacion_roles": "Recepcionista",
+    "auditoria": "Sí\n\nRegistrar usuario, fecha y hora del registro"
+  },
+  "observaciones": "Debe permitir editar posteriormente la información",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 20:54:04,834 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "7",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 20:54:04,835 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "6",
+  "titulo": "HU-001 - Consultar horarios disponibles",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nEl paciente necesita consultar los horarios disponibles de los médicos antes de solicitar una cita.\n\n---\n\n## Como\n\nPaciente\n\n## Quiero\n\nConsultar los horarios disponibles de los médicos.\n\n## Para\n\nProgramar una cita médica sin conflictos de horario.\n\n---\n\n# Criterios de aceptación\n\n* Mostrar únicamente horarios disponibles.\n* Mostrar el nombre y especialidad del médico.\n* Actualizar la disponibilidad inmediatamente después de registrar una cita.\n\n---\n\n# Restricciones\n\n* Solo pacientes autenticados pueden acceder.\n* La información debe mostrarse en tiempo real.\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales.\n\n---\n\n## Autenticación\n\nUsuario y contraseña.\n\n---\n\n## Autorización / Roles\n\nPaciente.\n\n---\n\n## Auditoría\n\nSí.\n\nRegistrar las consultas realizadas.\n\n---\n\n# Observaciones\n\nLa consulta debe responder en menos de tres segundos.",
+  "actor": "Paciente",
+  "funcionalidad": "Consultar los horarios disponibles de los médicos.",
+  "objetivo": "Programar una cita médica sin conflictos de horario.",
+  "criterios_aceptacion": [
+    "Mostrar únicamente horarios disponibles.",
+    "Mostrar el nombre y especialidad del médico.",
+    "Actualizar la disponibilidad inmediatamente después de registrar una cita."
+  ],
+  "restricciones": [
+    "Solo pacientes autenticados pueden acceder.",
+    "La información debe mostrarse en tiempo real."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Paciente.",
+    "auditoria": "Sí.\n\nRegistrar las consultas realizadas."
+  },
+  "observaciones": "La consulta debe responder en menos de tres segundos.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 20:54:04,836 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "6",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 20:54:04,836 - [INFO] - Iniciando ejecución del grafo multiagente para 3 historias válidas.
+2026-08-07 20:54:04,875 - [INFO] - ▶ Iniciando Agente Central (Init) para el lote...
+2026-08-07 20:54:04,875 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Init", "timestamp": "2026-08-07T20:54:04.875"}
+2026-08-07 20:54:04,877 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-07T20:54:04.877", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-07T20:54:04.877", "status": "started", "received": [], "missing": [8]}
+2026-08-07 20:54:04,878 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-07T20:54:04.878", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [], "missing": [8]}
+2026-08-07 20:54:08,074 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-07T20:54:08.074", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-07 20:54:08,078 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T20:54:08.078", "started_at": "2026-08-07T20:54:08.078", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12163, "bytes_utf8": 12338, "tokens_aprox": 3041}, "context_size": {"chars": 784, "bytes_utf8": 791, "tokens_aprox": 196}, "input_json_size": {"json_chars": 784, "json_bytes_utf8": 791}}
+2026-08-07 20:55:09,137 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 20:55:09,148 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=1986 json_valid=False keys=[]
+2026-08-07 20:55:09,150 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T20:55:09.150", "started_at": "2026-08-07T20:54:08.078", "finished_at": "2026-08-07T20:55:09.150", "elapsed_seconds": 61.0694, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12163, "bytes_utf8": 12338, "tokens_aprox": 3041}, "context_size": {"chars": 784, "bytes_utf8": 791, "tokens_aprox": 196}, "input_json_size": {"json_chars": 784, "json_bytes_utf8": 791}, "response_size": {"chars": 1986, "bytes_utf8": 2008, "tokens_aprox": 496}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-07 20:55:09,151 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-07T20:55:09.151", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 64.2708, "status": "success", "received": [8], "missing": []}
+2026-08-07 20:55:09,151 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-07T20:55:09.151", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 64.2722, "status": "success", "received": [8], "missing": []}
+2026-08-07 20:55:09,152 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-07T20:55:09.152", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-07T20:55:09.152", "status": "started", "received": [8], "missing": [7]}
+2026-08-07 20:55:09,152 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-07T20:55:09.152", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [8], "missing": [7]}
+2026-08-07 20:55:09,153 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-07T20:55:09.153", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-07 20:55:09,154 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T20:55:09.154", "started_at": "2026-08-07T20:55:09.154", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12260, "bytes_utf8": 12433, "tokens_aprox": 3065}, "context_size": {"chars": 881, "bytes_utf8": 886, "tokens_aprox": 220}, "input_json_size": {"json_chars": 881, "json_bytes_utf8": 886}}
+2026-08-07 20:56:09,747 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 20:56:09,748 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=3220 json_valid=False keys=[]
+2026-08-07 20:56:09,749 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T20:56:09.749", "started_at": "2026-08-07T20:55:09.154", "finished_at": "2026-08-07T20:56:09.749", "elapsed_seconds": 60.5922, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12260, "bytes_utf8": 12433, "tokens_aprox": 3065}, "context_size": {"chars": 881, "bytes_utf8": 886, "tokens_aprox": 220}, "input_json_size": {"json_chars": 881, "json_bytes_utf8": 886}, "response_size": {"chars": 3220, "bytes_utf8": 3250, "tokens_aprox": 805}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-07 20:56:09,749 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-07T20:56:09.749", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 60.5954, "status": "success", "received": [7], "missing": []}
+2026-08-07 20:56:09,749 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-07T20:56:09.749", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 60.596, "status": "success", "received": [7], "missing": []}
+2026-08-07 20:56:09,749 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-07T20:56:09.749", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-07T20:56:09.749", "status": "started", "received": [8, 7], "missing": [6]}
+2026-08-07 20:56:09,750 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-07T20:56:09.750", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [8, 7], "missing": [6]}
+2026-08-07 20:56:09,750 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-07T20:56:09.750", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-07 20:56:09,751 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T20:56:09.751", "started_at": "2026-08-07T20:56:09.751", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12430, "bytes_utf8": 12606, "tokens_aprox": 3108}, "context_size": {"chars": 1051, "bytes_utf8": 1059, "tokens_aprox": 263}, "input_json_size": {"json_chars": 1051, "json_bytes_utf8": 1059}}
+2026-08-07 20:57:01,418 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 20:57:01,419 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=3352 json_valid=False keys=[]
+2026-08-07 20:57:01,419 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T20:57:01.419", "started_at": "2026-08-07T20:56:09.751", "finished_at": "2026-08-07T20:57:01.419", "elapsed_seconds": 51.6671, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12430, "bytes_utf8": 12606, "tokens_aprox": 3108}, "context_size": {"chars": 1051, "bytes_utf8": 1059, "tokens_aprox": 263}, "input_json_size": {"json_chars": 1051, "json_bytes_utf8": 1059}, "response_size": {"chars": 3352, "bytes_utf8": 3386, "tokens_aprox": 838}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-07 20:57:01,420 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-07T20:57:01.420", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 51.669, "status": "success", "received": [6], "missing": []}
+2026-08-07 20:57:01,420 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-07T20:57:01.420", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 51.6694, "status": "success", "received": [6], "missing": []}
+2026-08-07 20:57:01,421 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_summary", "agent": "Central_Init", "timestamp": "2026-08-07T20:57:01.420", "initial_sub_batches": 3, "generated_sub_batches": 3, "subdivision_generated_sub_batches": 0, "completed_sub_batches": 3, "failed_sub_batches": 0, "total_calls": 3, "selective_repairs": 0, "technical_retries": 0, "elapsed_seconds": 176.5376, "expected_issue_ids": [8, 7, 6], "traceable_issue_ids": [8, 7, 6], "successful_issue_ids": [8, 7, 6], "insufficient_issue_ids": [], "error_issue_ids": [], "missing_issue_ids": [], "complete_issue_ids": [8, 7, 6], "incomplete_issue_ids": []}
+2026-08-07 20:57:01,421 - [INFO] - ✔ Agente Central (Init) completado en 176.54 segundos.
+2026-08-07 20:57:01,421 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Init", "timestamp": "2026-08-07T20:57:01.421", "elapsed_seconds": 176.5443}
+2026-08-07 20:57:01,422 - [INFO] - ▶ Iniciando Agente de Calidad (Lote)...
+2026-08-07 20:57:01,422 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Quality", "timestamp": "2026-08-07T20:57:01.422"}
+2026-08-07 20:57:01,423 - [INFO] - PERF_AUDIT {"event": "quality_input_prepared", "agent": "Quality", "timestamp": "2026-08-07T20:57:01.423", "expected_stories": 3, "found_stories": 3, "processed_issue_iids": [8, 7, 6], "mc01_functional_universe": 11, "mc02_evaluable_universe": 11, "by_issue": [{"issue_iid": 8, "main_function_count": 3, "contextual_rule_count": 1, "source": "historia_usuario_original"}, {"issue_iid": 7, "main_function_count": 5, "contextual_rule_count": 1, "source": "historia_usuario_original"}, {"issue_iid": 6, "main_function_count": 3, "contextual_rule_count": 3, "source": "historia_usuario_original"}], "source": "historia_usuario_original", "central_formalization_included": false}
+2026-08-07 20:57:01,427 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Calidad", "timestamp": "2026-08-07T20:57:01.427", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150621.4275923, "status": "started"}
+2026-08-07 20:57:01,428 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Calidad", "timestamp": "2026-08-07T20:57:01.428", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150621.4275923, "status": "started"}
+2026-08-07 20:57:01,667 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "quality", "timestamp": "2026-08-07T20:57:01.667", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 20:57:01,669 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-08-07T20:57:01.669", "started_at": "2026-08-07T20:57:01.669", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 10773, "bytes_utf8": 10908, "tokens_aprox": 2693}, "context_size": {"chars": 1318, "bytes_utf8": 1328, "tokens_aprox": 330}, "input_json_size": {"json_chars": 1318, "json_bytes_utf8": 1328}}
+2026-08-07 20:57:04,463 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 20:57:04,475 - [INFO] - LLM_RESPONSE_METADATA agent=Quality provider=groq model=openai/gpt-oss-120b fallback=False chars=4204 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 20:57:04,475 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-08-07T20:57:04.475", "started_at": "2026-08-07T20:57:01.669", "finished_at": "2026-08-07T20:57:04.475", "elapsed_seconds": 2.807, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 10773, "bytes_utf8": 10908, "tokens_aprox": 2693}, "context_size": {"chars": 1318, "bytes_utf8": 1328, "tokens_aprox": 330}, "input_json_size": {"json_chars": 1318, "json_bytes_utf8": 1328}, "response_size": {"chars": 4204, "bytes_utf8": 4234, "tokens_aprox": 1051}, "response_json_size": {"json_chars": 3274, "json_bytes_utf8": 3304}}
+2026-08-07 20:57:04,481 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Calidad", "timestamp": "2026-08-07T20:57:04.481", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150621.4275923, "elapsed_seconds": 3.0539, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 20:57:04,481 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Calidad", "timestamp": "2026-08-07T20:57:04.481", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150621.4275923, "elapsed_seconds": 3.0539, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [8, 7], "received_issue_ids": [8, 7], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": ["indice", "porcentaje", "estado", "meta", "A", "B", "metricas.cobertura_funcional.valor", "metricas.adecuacion_funcional.valor"], "empty_but_valid_fields": ["resultados[0].recomendaciones", "resultados[0].metricas.cobertura_funcional.funciones_faltantes", "resultados[0].metricas.cobertura_funcional.recomendacion", "resultados[0].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[0].metricas.adecuacion_funcional.recomendacion", "resultados[1].recomendaciones", "resultados[1].metricas.cobertura_funcional.funciones_faltantes", "resultados[1].metricas.cobertura_funcional.recomendacion", "resultados[1].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[1].metricas.adecuacion_funcional.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 8, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 1, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}, {"issue_iid": 7, "evaluation_source": "historia_usuario_original", "main_function_count": 5, "conditional_rule_count": 1, "expected_functions": 5, "classified_included": 5, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 5, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": null, "security_llm_raw_diagnostic": [], "security_normalized_summary": [{"issue_iid": 8, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 1, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}, {"issue_iid": 7, "evaluation_source": "historia_usuario_original", "main_function_count": 5, "conditional_rule_count": 1, "expected_functions": 5, "classified_included": 5, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 5, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}]}
+2026-08-07 20:57:04,489 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Calidad", "timestamp": "2026-08-07T20:57:04.489", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150624.489762, "status": "started"}
+2026-08-07 20:57:04,489 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Calidad", "timestamp": "2026-08-07T20:57:04.489", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150624.489762, "status": "started"}
+2026-08-07 20:57:04,527 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "quality", "timestamp": "2026-08-07T20:57:04.527", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 20:57:04,528 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-08-07T20:57:04.528", "started_at": "2026-08-07T20:57:04.528", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 10546, "bytes_utf8": 10681, "tokens_aprox": 2636}, "context_size": {"chars": 1094, "bytes_utf8": 1104, "tokens_aprox": 274}, "input_json_size": {"json_chars": 1094, "json_bytes_utf8": 1104}}
+2026-08-07 20:57:04,528 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Quality", "timestamp": "2026-08-07T20:57:04.528", "provider": "groq", "previous_agent": "Quality", "next_agent": "Quality", "configured_seconds": 60.0, "elapsed_seconds": 0.063, "waited_seconds": 59.937, "reason": "remote_rate_pacing"}
+2026-08-07 20:58:06,214 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 20:58:06,215 - [INFO] - LLM_RESPONSE_METADATA agent=Quality provider=groq model=openai/gpt-oss-120b fallback=False chars=2430 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 20:58:06,215 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-08-07T20:58:06.215", "started_at": "2026-08-07T20:57:04.528", "finished_at": "2026-08-07T20:58:06.215", "elapsed_seconds": 61.6865, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 10546, "bytes_utf8": 10681, "tokens_aprox": 2636}, "context_size": {"chars": 1094, "bytes_utf8": 1104, "tokens_aprox": 274}, "input_json_size": {"json_chars": 1094, "json_bytes_utf8": 1104}, "response_size": {"chars": 2430, "bytes_utf8": 2449, "tokens_aprox": 608}, "response_json_size": {"json_chars": 2008, "json_bytes_utf8": 2027}}
+2026-08-07 20:58:06,219 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Calidad", "timestamp": "2026-08-07T20:58:06.219", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150624.489762, "elapsed_seconds": 61.7298, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 20:58:06,219 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Calidad", "timestamp": "2026-08-07T20:58:06.219", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150624.489762, "elapsed_seconds": 61.7298, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [6], "received_issue_ids": [6], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": ["indice", "porcentaje", "estado", "meta", "A", "B", "metricas.cobertura_funcional.valor", "metricas.adecuacion_funcional.valor"], "empty_but_valid_fields": ["resultados[0].recomendaciones", "resultados[0].metricas.cobertura_funcional.funciones_faltantes", "resultados[0].metricas.cobertura_funcional.recomendacion", "resultados[0].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[0].metricas.adecuacion_funcional.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 6, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 3, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": null, "security_llm_raw_diagnostic": [], "security_normalized_summary": [{"issue_iid": 6, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 3, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}]}
+2026-08-07 20:58:06,226 - [INFO] - ✔ Agente de Calidad completado en 64.80 segundos.
+2026-08-07 20:58:06,226 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Quality", "timestamp": "2026-08-07T20:58:06.226", "elapsed_seconds": 64.8034}
+2026-08-07 20:58:06,227 - [INFO] - ▶ Iniciando Agente de Seguridad (Lote)...
+2026-08-07 20:58:06,228 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Security", "timestamp": "2026-08-07T20:58:06.228"}
+2026-08-07 20:58:06,229 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Seguridad", "timestamp": "2026-08-07T20:58:06.229", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150686.2295861, "status": "started"}
+2026-08-07 20:58:06,229 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Seguridad", "timestamp": "2026-08-07T20:58:06.229", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150686.2295861, "status": "started"}
+2026-08-07 20:58:06,264 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "security", "timestamp": "2026-08-07T20:58:06.264", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 20:58:06,265 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Security_Batch", "timestamp": "2026-08-07T20:58:06.265", "started_at": "2026-08-07T20:58:06.265", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 9486, "bytes_utf8": 9578, "tokens_aprox": 2372}, "context_size": {"chars": 4980, "bytes_utf8": 5036, "tokens_aprox": 1245}, "input_json_size": {"json_chars": 4980, "json_bytes_utf8": 5036}}
+2026-08-07 20:58:06,266 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Security", "timestamp": "2026-08-07T20:58:06.266", "provider": "groq", "previous_agent": "Quality", "next_agent": "Security", "configured_seconds": 60.0, "elapsed_seconds": 0.047, "waited_seconds": 59.953, "reason": "remote_rate_pacing"}
+2026-08-07 20:59:08,903 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 20:59:08,905 - [INFO] - LLM_RESPONSE_METADATA agent=Security provider=groq model=openai/gpt-oss-120b fallback=False chars=3072 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 20:59:08,907 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Security_Batch", "timestamp": "2026-08-07T20:59:08.907", "started_at": "2026-08-07T20:58:06.265", "finished_at": "2026-08-07T20:59:08.907", "elapsed_seconds": 62.6395, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 9486, "bytes_utf8": 9578, "tokens_aprox": 2372}, "context_size": {"chars": 4980, "bytes_utf8": 5036, "tokens_aprox": 1245}, "input_json_size": {"json_chars": 4980, "json_bytes_utf8": 5036}, "response_size": {"chars": 3072, "bytes_utf8": 3107, "tokens_aprox": 768}, "response_json_size": {"json_chars": 2282, "json_bytes_utf8": 2317}}
+2026-08-07 20:59:08,908 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Seguridad", "timestamp": "2026-08-07T20:59:08.908", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150686.2295861, "elapsed_seconds": 62.6793, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 20:59:08,909 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Seguridad", "timestamp": "2026-08-07T20:59:08.909", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786150686.2295861, "elapsed_seconds": 62.6798, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [8, 7], "received_issue_ids": [8, 7], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": [], "empty_but_valid_fields": ["resultados[0].observaciones", "resultados[0].recomendaciones", "resultados[0].metricas.cobertura_seguridad.aspectos_parciales", "resultados[0].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[0].metricas.clasificacion_datos.datos_clasificados", "resultados[0].metricas.clasificacion_datos.clasificaciones_inferidas", "resultados[1].observaciones", "resultados[1].recomendaciones", "resultados[1].metricas.cobertura_seguridad.aspectos_parciales", "resultados[1].metricas.cobertura_seguridad.aspectos_faltantes", "resultados[1].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[1].metricas.cobertura_seguridad.recomendacion", "resultados[1].metricas.clasificacion_datos.datos_clasificados", "resultados[1].metricas.clasificacion_datos.clasificaciones_inferidas"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 8, "applicable_aspects": 3, "documented_aspects": 2, "partial_aspects": 0, "missing_aspects": 1, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 2, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0}, {"issue_iid": 7, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": "semantic_validation_complete", "security_llm_raw_diagnostic": [{"contract_stage": "llm_raw", "issue_iid": 8, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}, {"contract_stage": "llm_raw", "issue_iid": 7, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}], "security_normalized_summary": [{"issue_iid": 8, "applicable_aspects": 3, "documented_aspects": 2, "partial_aspects": 0, "missing_aspects": 1, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 2, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0}, {"issue_iid": 7, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}]}
+2026-08-07 20:59:08,909 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Seguridad", "timestamp": "2026-08-07T20:59:08.909", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150748.9093635, "status": "started"}
+2026-08-07 20:59:08,910 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Seguridad", "timestamp": "2026-08-07T20:59:08.910", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150748.9093635, "status": "started"}
+2026-08-07 20:59:08,948 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "security", "timestamp": "2026-08-07T20:59:08.948", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 20:59:08,949 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Security_Batch", "timestamp": "2026-08-07T20:59:08.949", "started_at": "2026-08-07T20:59:08.949", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 7712, "bytes_utf8": 7784, "tokens_aprox": 1928}, "context_size": {"chars": 3209, "bytes_utf8": 3245, "tokens_aprox": 802}, "input_json_size": {"json_chars": 3209, "json_bytes_utf8": 3245}}
+2026-08-07 20:59:08,949 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Security", "timestamp": "2026-08-07T20:59:08.949", "provider": "groq", "previous_agent": "Security", "next_agent": "Security", "configured_seconds": 60.0, "elapsed_seconds": 0.046, "waited_seconds": 59.954, "reason": "remote_rate_pacing"}
+2026-08-07 21:00:10,360 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 21:00:10,361 - [INFO] - LLM_RESPONSE_METADATA agent=Security provider=groq model=openai/gpt-oss-120b fallback=False chars=894 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 21:00:10,362 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Security_Batch", "timestamp": "2026-08-07T21:00:10.362", "started_at": "2026-08-07T20:59:08.949", "finished_at": "2026-08-07T21:00:10.361", "elapsed_seconds": 61.4109, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 7712, "bytes_utf8": 7784, "tokens_aprox": 1928}, "context_size": {"chars": 3209, "bytes_utf8": 3245, "tokens_aprox": 802}, "input_json_size": {"json_chars": 3209, "json_bytes_utf8": 3245}, "response_size": {"chars": 894, "bytes_utf8": 907, "tokens_aprox": 224}, "response_json_size": {"json_chars": 943, "json_bytes_utf8": 956}}
+2026-08-07 21:00:10,362 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Seguridad", "timestamp": "2026-08-07T21:00:10.362", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150748.9093635, "elapsed_seconds": 61.4528, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 21:00:10,362 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Seguridad", "timestamp": "2026-08-07T21:00:10.362", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786150748.9093635, "elapsed_seconds": 61.4528, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [6], "received_issue_ids": [6], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": [], "empty_but_valid_fields": ["resultados[0].observaciones", "resultados[0].recomendaciones", "resultados[0].metricas.cobertura_seguridad.aspectos_parciales", "resultados[0].metricas.cobertura_seguridad.aspectos_faltantes", "resultados[0].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[0].metricas.cobertura_seguridad.recomendacion", "resultados[0].metricas.clasificacion_datos.datos_clasificados", "resultados[0].metricas.clasificacion_datos.clasificaciones_inferidas", "resultados[0].metricas.clasificacion_datos.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 6, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": "semantic_validation_complete", "security_llm_raw_diagnostic": [{"contract_stage": "llm_raw", "issue_iid": 6, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}], "security_normalized_summary": [{"issue_iid": 6, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}]}
+2026-08-07 21:00:10,365 - [INFO] - PERF_AUDIT {"event": "security_post_python_summary", "agent": "Seguridad", "timestamp": "2026-08-07T21:00:10.365", "contract_stage": "post_python", "by_issue": [{"contract_stage": "post_python", "issue_iid": 8, "applicable_aspects": 4, "documented_aspects": 2, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.5, "ms02": 0.0, "security_index": 0.25, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}, {"contract_stage": "post_python", "issue_iid": 7, "applicable_aspects": 4, "documented_aspects": 3, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.75, "ms02": 0.0, "security_index": 0.375, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}, {"contract_stage": "post_python", "issue_iid": 6, "applicable_aspects": 4, "documented_aspects": 3, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.75, "ms02": 0.0, "security_index": 0.375, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}]}
+2026-08-07 21:00:10,365 - [INFO] - ✔ Agente de Seguridad completado en 124.14 segundos.
+2026-08-07 21:00:10,365 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Security", "timestamp": "2026-08-07T21:00:10.365", "elapsed_seconds": 124.1364}
+2026-08-07 21:00:10,366 - [INFO] - ▶ Iniciando Agente Evaluador (Lote)...
+2026-08-07 21:00:10,366 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Evaluator", "timestamp": "2026-08-07T21:00:10.366"}
+2026-08-07 21:00:10,415 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Evaluator_Batch", "timestamp": "2026-08-07T21:00:10.415", "started_at": "2026-08-07T21:00:10.414", "model": "phi4-mini", "provider": "ollama", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 530, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 17218, "bytes_utf8": 17376, "tokens_aprox": 4304}, "context_size": {"chars": 16080, "bytes_utf8": 16226, "tokens_aprox": 4020}, "input_json_size": {"json_chars": 16080, "json_bytes_utf8": 16226}}
+2026-08-07 21:03:51,949 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-08-07 21:06:50,820 - [INFO] - LOCAL_RESPONSE Evaluator provider=ollama chars=1673 json_valid=True keys=['agente', 'resultados']
+2026-08-07 21:06:51,088 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Evaluator_Batch", "timestamp": "2026-08-07T21:06:51.088", "started_at": "2026-08-07T21:00:10.414", "finished_at": "2026-08-07T21:06:50.908", "elapsed_seconds": 400.4424, "model": "phi4-mini", "provider": "ollama", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 530, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 17218, "bytes_utf8": 17376, "tokens_aprox": 4304}, "context_size": {"chars": 16080, "bytes_utf8": 16226, "tokens_aprox": 4020}, "input_json_size": {"json_chars": 16080, "json_bytes_utf8": 16226}, "response_size": {"chars": 1673, "bytes_utf8": 1690, "tokens_aprox": 418}, "response_json_size": {"json_chars": 1525, "json_bytes_utf8": 1542}}
+2026-08-07 21:06:52,795 - [INFO] - ✔ Agente Evaluador completado en 402.43 segundos.
+2026-08-07 21:06:52,812 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Evaluator", "timestamp": "2026-08-07T21:06:52.812", "elapsed_seconds": 402.4291}
+2026-08-07 21:06:53,878 - [INFO] - ▶ Iniciando Nodo de Consolidación Central (Final, solo Python)...
+2026-08-07 21:06:53,879 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Final", "timestamp": "2026-08-07T21:06:53.879"}
+2026-08-07 21:06:54,522 - [INFO] - ✔ Consolidación Central completada en 0.64 segundos.
+2026-08-07 21:06:54,522 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Final", "timestamp": "2026-08-07T21:06:54.522", "elapsed_seconds": 0.6351}
+2026-08-07 21:06:58,843 - [INFO] - GitLab Issue #6 completado en 3.22s.
+2026-08-07 21:07:01,256 - [INFO] - GitLab Issue #7 completado en 0.94s.
+2026-08-07 21:07:03,287 - [INFO] - GitLab Issue #8 completado en 1.22s.
+2026-08-07 21:07:03,973 - [INFO] - Flujo de lote terminado en 770.30s: recibidas=3, correctas=3, con_error=0, comentarios_publicados=3, pendientes=0.
+2026-08-07 21:07:03,974 - [INFO] - Ollama lote: llamadas=4, reintentos=0, por_agente={'Central_Init_Batch': 3, 'Quality_Batch': 2, 'Security_Batch': 2, 'Evaluator_Batch': 1}.
+2026-08-07 22:52:08,658 - [INFO] - Modelo Ollama efectivo para la ejecución: phi4-mini
+2026-08-07 22:52:08,668 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "8",
+  "titulo": "HU-003 - Consultar agenda médica",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nEl médico necesita visualizar sus citas programadas.\n\n### Como\n\nMédico\n\n### Quiero\n\nConsultar mi agenda.\n\n### Para\n\nOrganizar la atención de pacientes.\n\n---\n\n## Criterios de aceptación\n\n* Mostrar las citas del día.\n* Mostrar el nombre del paciente.\n\n---\n\n## Restricciones\n\nNinguna.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nSí\n\nDatos médicos.\n\n---\n\n### Autenticación\n\nUsuario y contraseña.\n\n---\n\n### Autorización / Roles\n\nMédico.\n\n---\n\n### Auditoría\n\nNo definido.\n\n---\n\n## Observaciones\n\nNinguna.",
+  "actor": "Médico",
+  "funcionalidad": "Consultar mi agenda.",
+  "objetivo": "Organizar la atención de pacientes.",
+  "criterios_aceptacion": [
+    "Mostrar las citas del día.",
+    "Mostrar el nombre del paciente."
+  ],
+  "restricciones": [],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos médicos"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Médico.",
+    "auditoria": "No definido."
+  },
+  "observaciones": "Ninguna.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-07 22:52:08,670 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "8",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-07 22:52:08,671 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "7",
+  "titulo": "HU-002 - Registrar pacientes",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nLa recepcionista necesita registrar nuevos pacientes.\n\n---\n\n## Como\n\nRecepcionista\n\n## Quiero\n\nRegistrar pacientes nuevos\n\n## Para\n\nPermitir la programación de citas\n\n---\n\n# Criterios de aceptación\n\nValidar documento de identidad\n\nRegistrar información obligatoria\n\nEvitar registros duplicados\n\n---\n\n# Restricciones\n\nSolo recepcionistas autorizadas\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales\n\n---\n\n## Autenticación\n\nUsuario y contraseña\n\n---\n\n## Autorización / Roles\n\nRecepcionista\n\n---\n\n## Auditoría\n\nSí\n\nRegistrar usuario, fecha y hora del registro\n\n---\n\n# Observaciones\n\nDebe permitir editar posteriormente la información",
+  "actor": "Recepcionista",
+  "funcionalidad": "Registrar pacientes nuevos",
+  "objetivo": "Permitir la programación de citas",
+  "criterios_aceptacion": [
+    "Validar documento de identidad",
+    "Registrar información obligatoria",
+    "Evitar registros duplicados"
+  ],
+  "restricciones": [
+    "Solo recepcionistas autorizadas"
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña",
+    "autorizacion_roles": "Recepcionista",
+    "auditoria": "Sí\n\nRegistrar usuario, fecha y hora del registro"
+  },
+  "observaciones": "Debe permitir editar posteriormente la información",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 22:52:08,672 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "7",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 22:52:08,673 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "6",
+  "titulo": "HU-001 - Consultar horarios disponibles",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nEl paciente necesita consultar los horarios disponibles de los médicos antes de solicitar una cita.\n\n---\n\n## Como\n\nPaciente\n\n## Quiero\n\nConsultar los horarios disponibles de los médicos.\n\n## Para\n\nProgramar una cita médica sin conflictos de horario.\n\n---\n\n# Criterios de aceptación\n\n* Mostrar únicamente horarios disponibles.\n* Mostrar el nombre y especialidad del médico.\n* Actualizar la disponibilidad inmediatamente después de registrar una cita.\n\n---\n\n# Restricciones\n\n* Solo pacientes autenticados pueden acceder.\n* La información debe mostrarse en tiempo real.\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales.\n\n---\n\n## Autenticación\n\nUsuario y contraseña.\n\n---\n\n## Autorización / Roles\n\nPaciente.\n\n---\n\n## Auditoría\n\nSí.\n\nRegistrar las consultas realizadas.\n\n---\n\n# Observaciones\n\nLa consulta debe responder en menos de tres segundos.",
+  "actor": "Paciente",
+  "funcionalidad": "Consultar los horarios disponibles de los médicos.",
+  "objetivo": "Programar una cita médica sin conflictos de horario.",
+  "criterios_aceptacion": [
+    "Mostrar únicamente horarios disponibles.",
+    "Mostrar el nombre y especialidad del médico.",
+    "Actualizar la disponibilidad inmediatamente después de registrar una cita."
+  ],
+  "restricciones": [
+    "Solo pacientes autenticados pueden acceder.",
+    "La información debe mostrarse en tiempo real."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Paciente.",
+    "auditoria": "Sí.\n\nRegistrar las consultas realizadas."
+  },
+  "observaciones": "La consulta debe responder en menos de tres segundos.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 22:52:08,674 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "6",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-07 22:52:08,675 - [INFO] - Iniciando ejecución del grafo multiagente para 3 historias válidas.
+2026-08-07 22:52:08,712 - [INFO] - ▶ Iniciando Agente Central (Init) para el lote...
+2026-08-07 22:52:08,713 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Init", "timestamp": "2026-08-07T22:52:08.713"}
+2026-08-07 22:52:08,715 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-07T22:52:08.715", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-07T22:52:08.715", "status": "started", "received": [], "missing": [8]}
+2026-08-07 22:52:08,715 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-07T22:52:08.715", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [], "missing": [8]}
+2026-08-07 22:52:11,750 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-07T22:52:11.750", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-07 22:52:11,754 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T22:52:11.754", "started_at": "2026-08-07T22:52:11.754", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12163, "bytes_utf8": 12338, "tokens_aprox": 3041}, "context_size": {"chars": 784, "bytes_utf8": 791, "tokens_aprox": 196}, "input_json_size": {"json_chars": 784, "json_bytes_utf8": 791}}
+2026-08-07 22:53:40,771 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 22:53:40,797 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=1661 json_valid=False keys=[]
+2026-08-07 22:53:40,797 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T22:53:40.797", "started_at": "2026-08-07T22:52:11.754", "finished_at": "2026-08-07T22:53:40.797", "elapsed_seconds": 89.0426, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12163, "bytes_utf8": 12338, "tokens_aprox": 3041}, "context_size": {"chars": 784, "bytes_utf8": 791, "tokens_aprox": 196}, "input_json_size": {"json_chars": 784, "json_bytes_utf8": 791}, "response_size": {"chars": 1661, "bytes_utf8": 1680, "tokens_aprox": 415}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-07 22:53:40,798 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-07T22:53:40.798", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 92.082, "status": "success", "received": [8], "missing": []}
+2026-08-07 22:53:40,798 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-07T22:53:40.798", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 92.083, "status": "success", "received": [8], "missing": []}
+2026-08-07 22:53:40,799 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-07T22:53:40.799", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-07T22:53:40.799", "status": "started", "received": [8], "missing": [7]}
+2026-08-07 22:53:40,799 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-07T22:53:40.799", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [8], "missing": [7]}
+2026-08-07 22:53:40,800 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-07T22:53:40.800", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-07 22:53:40,801 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T22:53:40.801", "started_at": "2026-08-07T22:53:40.801", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12260, "bytes_utf8": 12433, "tokens_aprox": 3065}, "context_size": {"chars": 881, "bytes_utf8": 886, "tokens_aprox": 220}, "input_json_size": {"json_chars": 881, "json_bytes_utf8": 886}}
+2026-08-07 22:55:04,403 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 22:55:04,404 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=2851 json_valid=False keys=[]
+2026-08-07 22:55:04,405 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T22:55:04.405", "started_at": "2026-08-07T22:53:40.801", "finished_at": "2026-08-07T22:55:04.405", "elapsed_seconds": 83.603, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12260, "bytes_utf8": 12433, "tokens_aprox": 3065}, "context_size": {"chars": 881, "bytes_utf8": 886, "tokens_aprox": 220}, "input_json_size": {"json_chars": 881, "json_bytes_utf8": 886}, "response_size": {"chars": 2851, "bytes_utf8": 2878, "tokens_aprox": 713}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-07 22:55:04,405 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-07T22:55:04.405", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 83.6057, "status": "success", "received": [7], "missing": []}
+2026-08-07 22:55:04,405 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-07T22:55:04.405", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 83.6064, "status": "success", "received": [7], "missing": []}
+2026-08-07 22:55:04,405 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-07T22:55:04.405", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-07T22:55:04.405", "status": "started", "received": [8, 7], "missing": [6]}
+2026-08-07 22:55:04,406 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-07T22:55:04.406", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [8, 7], "missing": [6]}
+2026-08-07 22:55:04,407 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-07T22:55:04.407", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-07 22:55:04,407 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T22:55:04.407", "started_at": "2026-08-07T22:55:04.407", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12430, "bytes_utf8": 12606, "tokens_aprox": 3108}, "context_size": {"chars": 1051, "bytes_utf8": 1059, "tokens_aprox": 263}, "input_json_size": {"json_chars": 1051, "json_bytes_utf8": 1059}}
+2026-08-07 22:56:44,711 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 22:56:44,724 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=3515 json_valid=False keys=[]
+2026-08-07 22:56:44,724 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-07T22:56:44.724", "started_at": "2026-08-07T22:55:04.407", "finished_at": "2026-08-07T22:56:44.724", "elapsed_seconds": 100.3166, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12430, "bytes_utf8": 12606, "tokens_aprox": 3108}, "context_size": {"chars": 1051, "bytes_utf8": 1059, "tokens_aprox": 263}, "input_json_size": {"json_chars": 1051, "json_bytes_utf8": 1059}, "response_size": {"chars": 3515, "bytes_utf8": 3555, "tokens_aprox": 879}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-07 22:56:44,724 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-07T22:56:44.724", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 100.3186, "status": "success", "received": [6], "missing": []}
+2026-08-07 22:56:44,724 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-07T22:56:44.724", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 100.319, "status": "success", "received": [6], "missing": []}
+2026-08-07 22:56:44,726 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_summary", "agent": "Central_Init", "timestamp": "2026-08-07T22:56:44.726", "initial_sub_batches": 3, "generated_sub_batches": 3, "subdivision_generated_sub_batches": 0, "completed_sub_batches": 3, "failed_sub_batches": 0, "total_calls": 3, "selective_repairs": 0, "technical_retries": 0, "elapsed_seconds": 276.0084, "expected_issue_ids": [8, 7, 6], "traceable_issue_ids": [8, 7, 6], "successful_issue_ids": [8, 7, 6], "insufficient_issue_ids": [], "error_issue_ids": [], "missing_issue_ids": [], "complete_issue_ids": [8, 7, 6], "incomplete_issue_ids": []}
+2026-08-07 22:56:44,727 - [INFO] - ✔ Agente Central (Init) completado en 276.01 segundos.
+2026-08-07 22:56:44,727 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Init", "timestamp": "2026-08-07T22:56:44.727", "elapsed_seconds": 276.0122}
+2026-08-07 22:56:44,728 - [INFO] - ▶ Iniciando Agente de Calidad (Lote)...
+2026-08-07 22:56:44,728 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Quality", "timestamp": "2026-08-07T22:56:44.728"}
+2026-08-07 22:56:44,731 - [INFO] - PERF_AUDIT {"event": "quality_input_prepared", "agent": "Quality", "timestamp": "2026-08-07T22:56:44.731", "expected_stories": 3, "found_stories": 3, "processed_issue_iids": [8, 7, 6], "mc01_functional_universe": 11, "mc02_evaluable_universe": 11, "by_issue": [{"issue_iid": 8, "main_function_count": 3, "contextual_rule_count": 1, "source": "historia_usuario_original"}, {"issue_iid": 7, "main_function_count": 5, "contextual_rule_count": 1, "source": "historia_usuario_original"}, {"issue_iid": 6, "main_function_count": 3, "contextual_rule_count": 3, "source": "historia_usuario_original"}], "source": "historia_usuario_original", "central_formalization_included": false}
+2026-08-07 22:56:44,733 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Calidad", "timestamp": "2026-08-07T22:56:44.733", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157804.7339473, "status": "started"}
+2026-08-07 22:56:44,734 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Calidad", "timestamp": "2026-08-07T22:56:44.734", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157804.7339473, "status": "started"}
+2026-08-07 22:56:44,978 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "quality", "timestamp": "2026-08-07T22:56:44.978", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 22:56:44,980 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-08-07T22:56:44.980", "started_at": "2026-08-07T22:56:44.980", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11932, "bytes_utf8": 12081, "tokens_aprox": 2983}, "context_size": {"chars": 1318, "bytes_utf8": 1328, "tokens_aprox": 330}, "input_json_size": {"json_chars": 1318, "json_bytes_utf8": 1328}}
+2026-08-07 22:56:48,367 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 22:56:48,379 - [INFO] - LLM_RESPONSE_METADATA agent=Quality provider=groq model=openai/gpt-oss-120b fallback=False chars=5185 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 22:56:48,380 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-08-07T22:56:48.380", "started_at": "2026-08-07T22:56:44.980", "finished_at": "2026-08-07T22:56:48.379", "elapsed_seconds": 3.3988, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11932, "bytes_utf8": 12081, "tokens_aprox": 2983}, "context_size": {"chars": 1318, "bytes_utf8": 1328, "tokens_aprox": 330}, "input_json_size": {"json_chars": 1318, "json_bytes_utf8": 1328}, "response_size": {"chars": 5185, "bytes_utf8": 5222, "tokens_aprox": 1296}, "response_json_size": {"json_chars": 4131, "json_bytes_utf8": 4168}}
+2026-08-07 22:56:48,384 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Calidad", "timestamp": "2026-08-07T22:56:48.384", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157804.7339473, "elapsed_seconds": 3.6508, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 22:56:48,385 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Calidad", "timestamp": "2026-08-07T22:56:48.385", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157804.7339473, "elapsed_seconds": 3.6518, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [8, 7], "received_issue_ids": [8, 7], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": ["indice", "porcentaje", "estado", "meta", "A", "B", "metricas.cobertura_funcional.valor", "metricas.adecuacion_funcional.valor"], "empty_but_valid_fields": ["resultados[0].recomendaciones", "resultados[0].metricas.cobertura_funcional.funciones_faltantes", "resultados[0].metricas.cobertura_funcional.recomendacion", "resultados[0].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[0].metricas.adecuacion_funcional.recomendacion", "resultados[1].recomendaciones", "resultados[1].metricas.cobertura_funcional.funciones_faltantes", "resultados[1].metricas.cobertura_funcional.recomendacion", "resultados[1].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[1].metricas.adecuacion_funcional.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 8, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 1, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}, {"issue_iid": 7, "evaluation_source": "historia_usuario_original", "main_function_count": 5, "conditional_rule_count": 1, "expected_functions": 5, "classified_included": 5, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 5, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": null, "security_llm_raw_diagnostic": [], "security_normalized_summary": [{"issue_iid": 8, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 1, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}, {"issue_iid": 7, "evaluation_source": "historia_usuario_original", "main_function_count": 5, "conditional_rule_count": 1, "expected_functions": 5, "classified_included": 5, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 5, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}]}
+2026-08-07 22:56:48,386 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Calidad", "timestamp": "2026-08-07T22:56:48.386", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157808.3867078, "status": "started"}
+2026-08-07 22:56:48,387 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Calidad", "timestamp": "2026-08-07T22:56:48.387", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157808.3867078, "status": "started"}
+2026-08-07 22:56:48,426 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "quality", "timestamp": "2026-08-07T22:56:48.426", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 22:56:48,428 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-08-07T22:56:48.428", "started_at": "2026-08-07T22:56:48.428", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11705, "bytes_utf8": 11854, "tokens_aprox": 2926}, "context_size": {"chars": 1094, "bytes_utf8": 1104, "tokens_aprox": 274}, "input_json_size": {"json_chars": 1094, "json_bytes_utf8": 1104}}
+2026-08-07 22:56:48,429 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Quality", "timestamp": "2026-08-07T22:56:48.429", "provider": "groq", "previous_agent": "Quality", "next_agent": "Quality", "configured_seconds": 60.0, "elapsed_seconds": 0.047, "waited_seconds": 59.953, "reason": "remote_rate_pacing"}
+2026-08-07 22:57:50,370 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 22:57:50,372 - [INFO] - LLM_RESPONSE_METADATA agent=Quality provider=groq model=openai/gpt-oss-120b fallback=False chars=2866 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 22:57:50,373 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-08-07T22:57:50.373", "started_at": "2026-08-07T22:56:48.428", "finished_at": "2026-08-07T22:57:50.373", "elapsed_seconds": 61.9448, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11705, "bytes_utf8": 11854, "tokens_aprox": 2926}, "context_size": {"chars": 1094, "bytes_utf8": 1104, "tokens_aprox": 274}, "input_json_size": {"json_chars": 1094, "json_bytes_utf8": 1104}, "response_size": {"chars": 2866, "bytes_utf8": 2895, "tokens_aprox": 716}, "response_json_size": {"json_chars": 2382, "json_bytes_utf8": 2411}}
+2026-08-07 22:57:50,376 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Calidad", "timestamp": "2026-08-07T22:57:50.376", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157808.3867078, "elapsed_seconds": 61.9883, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 22:57:50,376 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Calidad", "timestamp": "2026-08-07T22:57:50.376", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157808.3867078, "elapsed_seconds": 61.9898, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [6], "received_issue_ids": [6], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": ["indice", "porcentaje", "estado", "meta", "A", "B", "metricas.cobertura_funcional.valor", "metricas.adecuacion_funcional.valor"], "empty_but_valid_fields": ["resultados[0].recomendaciones", "resultados[0].metricas.cobertura_funcional.funciones_faltantes", "resultados[0].metricas.cobertura_funcional.recomendacion", "resultados[0].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[0].metricas.adecuacion_funcional.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 6, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 3, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": null, "security_llm_raw_diagnostic": [], "security_normalized_summary": [{"issue_iid": 6, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 3, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}]}
+2026-08-07 22:57:50,384 - [INFO] - ✔ Agente de Calidad completado en 65.66 segundos.
+2026-08-07 22:57:50,385 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Quality", "timestamp": "2026-08-07T22:57:50.385", "elapsed_seconds": 65.656}
+2026-08-07 22:57:50,387 - [INFO] - ▶ Iniciando Agente de Seguridad (Lote)...
+2026-08-07 22:57:50,387 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Security", "timestamp": "2026-08-07T22:57:50.387"}
+2026-08-07 22:57:50,388 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Seguridad", "timestamp": "2026-08-07T22:57:50.388", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157870.3889446, "status": "started"}
+2026-08-07 22:57:50,388 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Seguridad", "timestamp": "2026-08-07T22:57:50.388", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157870.3889446, "status": "started"}
+2026-08-07 22:57:50,424 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "security", "timestamp": "2026-08-07T22:57:50.424", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 22:57:50,426 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Security_Batch", "timestamp": "2026-08-07T22:57:50.426", "started_at": "2026-08-07T22:57:50.426", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 8880, "bytes_utf8": 8966, "tokens_aprox": 2220}, "context_size": {"chars": 4374, "bytes_utf8": 4424, "tokens_aprox": 1094}, "input_json_size": {"json_chars": 4374, "json_bytes_utf8": 4424}}
+2026-08-07 22:57:50,446 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Security", "timestamp": "2026-08-07T22:57:50.446", "provider": "groq", "previous_agent": "Quality", "next_agent": "Security", "configured_seconds": 60.0, "elapsed_seconds": 0.078, "waited_seconds": 59.922, "reason": "remote_rate_pacing"}
+2026-08-07 22:58:53,092 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 22:58:53,093 - [INFO] - LLM_RESPONSE_METADATA agent=Security provider=groq model=openai/gpt-oss-120b fallback=False chars=3060 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 22:58:53,093 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Security_Batch", "timestamp": "2026-08-07T22:58:53.093", "started_at": "2026-08-07T22:57:50.426", "finished_at": "2026-08-07T22:58:53.093", "elapsed_seconds": 62.6662, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 8880, "bytes_utf8": 8966, "tokens_aprox": 2220}, "context_size": {"chars": 4374, "bytes_utf8": 4424, "tokens_aprox": 1094}, "input_json_size": {"json_chars": 4374, "json_bytes_utf8": 4424}, "response_size": {"chars": 3060, "bytes_utf8": 3096, "tokens_aprox": 765}, "response_json_size": {"json_chars": 2282, "json_bytes_utf8": 2318}}
+2026-08-07 22:58:53,094 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Seguridad", "timestamp": "2026-08-07T22:58:53.094", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157870.3889446, "elapsed_seconds": 62.7059, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 22:58:53,094 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Seguridad", "timestamp": "2026-08-07T22:58:53.094", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786157870.3889446, "elapsed_seconds": 62.7059, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [8, 7], "received_issue_ids": [8, 7], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": [], "empty_but_valid_fields": ["resultados[0].observaciones", "resultados[0].recomendaciones", "resultados[0].metricas.cobertura_seguridad.aspectos_parciales", "resultados[0].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[0].metricas.clasificacion_datos.datos_clasificados", "resultados[0].metricas.clasificacion_datos.clasificaciones_inferidas", "resultados[1].observaciones", "resultados[1].recomendaciones", "resultados[1].metricas.cobertura_seguridad.aspectos_parciales", "resultados[1].metricas.cobertura_seguridad.aspectos_faltantes", "resultados[1].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[1].metricas.cobertura_seguridad.recomendacion", "resultados[1].metricas.clasificacion_datos.datos_clasificados", "resultados[1].metricas.clasificacion_datos.clasificaciones_inferidas"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 8, "applicable_aspects": 3, "documented_aspects": 2, "partial_aspects": 0, "missing_aspects": 1, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 2, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0}, {"issue_iid": 7, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": "semantic_validation_complete", "security_llm_raw_diagnostic": [{"contract_stage": "llm_raw", "issue_iid": 8, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}, {"contract_stage": "llm_raw", "issue_iid": 7, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}], "security_normalized_summary": [{"issue_iid": 8, "applicable_aspects": 3, "documented_aspects": 2, "partial_aspects": 0, "missing_aspects": 1, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 2, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0}, {"issue_iid": 7, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}]}
+2026-08-07 22:58:53,095 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Seguridad", "timestamp": "2026-08-07T22:58:53.095", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157933.0958116, "status": "started"}
+2026-08-07 22:58:53,095 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Seguridad", "timestamp": "2026-08-07T22:58:53.095", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157933.0958116, "status": "started"}
+2026-08-07 22:58:53,131 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "security", "timestamp": "2026-08-07T22:58:53.131", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-07 22:58:53,132 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Security_Batch", "timestamp": "2026-08-07T22:58:53.132", "started_at": "2026-08-07T22:58:53.132", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 7875, "bytes_utf8": 7953, "tokens_aprox": 1969}, "context_size": {"chars": 3372, "bytes_utf8": 3414, "tokens_aprox": 843}, "input_json_size": {"json_chars": 3372, "json_bytes_utf8": 3414}}
+2026-08-07 22:58:53,132 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Security", "timestamp": "2026-08-07T22:58:53.132", "provider": "groq", "previous_agent": "Security", "next_agent": "Security", "configured_seconds": 60.0, "elapsed_seconds": 0.031, "waited_seconds": 59.969, "reason": "remote_rate_pacing"}
+2026-08-07 22:59:54,877 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-07 22:59:54,879 - [INFO] - LLM_RESPONSE_METADATA agent=Security provider=groq model=openai/gpt-oss-120b fallback=False chars=1745 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-07 22:59:54,879 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Security_Batch", "timestamp": "2026-08-07T22:59:54.879", "started_at": "2026-08-07T22:58:53.132", "finished_at": "2026-08-07T22:59:54.879", "elapsed_seconds": 61.7474, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 7875, "bytes_utf8": 7953, "tokens_aprox": 1969}, "context_size": {"chars": 3372, "bytes_utf8": 3414, "tokens_aprox": 843}, "input_json_size": {"json_chars": 3372, "json_bytes_utf8": 3414}, "response_size": {"chars": 1745, "bytes_utf8": 1761, "tokens_aprox": 436}, "response_json_size": {"json_chars": 1311, "json_bytes_utf8": 1327}}
+2026-08-07 22:59:54,880 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Seguridad", "timestamp": "2026-08-07T22:59:54.880", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157933.0958116, "elapsed_seconds": 61.7845, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-07 22:59:54,881 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Seguridad", "timestamp": "2026-08-07T22:59:54.881", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786157933.0958116, "elapsed_seconds": 61.7845, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [6], "received_issue_ids": [6], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": [], "empty_but_valid_fields": ["resultados[0].observaciones", "resultados[0].metricas.cobertura_seguridad.aspectos_parciales", "resultados[0].metricas.cobertura_seguridad.aspectos_faltantes", "resultados[0].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[0].metricas.cobertura_seguridad.recomendacion", "resultados[0].metricas.clasificacion_datos.datos_clasificados", "resultados[0].metricas.clasificacion_datos.clasificaciones_inferidas"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 6, "applicable_aspects": 4, "documented_aspects": 4, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": "semantic_validation_complete", "security_llm_raw_diagnostic": [{"contract_stage": "llm_raw", "issue_iid": 6, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}], "security_normalized_summary": [{"issue_iid": 6, "applicable_aspects": 4, "documented_aspects": 4, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}]}
+2026-08-07 22:59:54,882 - [INFO] - PERF_AUDIT {"event": "security_post_python_summary", "agent": "Seguridad", "timestamp": "2026-08-07T22:59:54.882", "contract_stage": "post_python", "by_issue": [{"contract_stage": "post_python", "issue_iid": 8, "applicable_aspects": 4, "documented_aspects": 2, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.5, "ms02": 0.0, "security_index": 0.25, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}, {"contract_stage": "post_python", "issue_iid": 7, "applicable_aspects": 4, "documented_aspects": 3, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.75, "ms02": 0.0, "security_index": 0.375, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}, {"contract_stage": "post_python", "issue_iid": 6, "applicable_aspects": 4, "documented_aspects": 3, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.75, "ms02": 0.0, "security_index": 0.375, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}]}
+2026-08-07 22:59:54,882 - [INFO] - ✔ Agente de Seguridad completado en 124.49 segundos.
+2026-08-07 22:59:54,882 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Security", "timestamp": "2026-08-07T22:59:54.882", "elapsed_seconds": 124.4949}
+2026-08-07 22:59:54,884 - [INFO] - ▶ Iniciando Agente Evaluador (Lote)...
+2026-08-07 22:59:54,885 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Evaluator", "timestamp": "2026-08-07T22:59:54.885"}
+2026-08-07 22:59:54,923 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Evaluator_Batch", "timestamp": "2026-08-07T22:59:54.923", "started_at": "2026-08-07T22:59:54.923", "model": "phi4-mini", "provider": "ollama", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 530, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 18606, "bytes_utf8": 18788, "tokens_aprox": 4652}, "context_size": {"chars": 17468, "bytes_utf8": 17638, "tokens_aprox": 4367}, "input_json_size": {"json_chars": 17468, "json_bytes_utf8": 17638}}
+2026-08-07 23:03:52,460 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-08-07 23:06:51,657 - [INFO] - LOCAL_RESPONSE Evaluator provider=ollama chars=1627 json_valid=True keys=['agente', 'resultados']
+2026-08-07 23:06:51,677 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Evaluator_Batch", "timestamp": "2026-08-07T23:06:51.676", "started_at": "2026-08-07T22:59:54.923", "finished_at": "2026-08-07T23:06:51.669", "elapsed_seconds": 416.7433, "model": "phi4-mini", "provider": "ollama", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 530, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 18606, "bytes_utf8": 18788, "tokens_aprox": 4652}, "context_size": {"chars": 17468, "bytes_utf8": 17638, "tokens_aprox": 4367}, "input_json_size": {"json_chars": 17468, "json_bytes_utf8": 17638}, "response_size": {"chars": 1627, "bytes_utf8": 1645, "tokens_aprox": 407}, "response_json_size": {"json_chars": 1479, "json_bytes_utf8": 1497}}
+2026-08-07 23:06:51,758 - [INFO] - ✔ Agente Evaluador completado en 416.87 segundos.
+2026-08-07 23:06:51,759 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Evaluator", "timestamp": "2026-08-07T23:06:51.759", "elapsed_seconds": 416.8723}
+2026-08-07 23:06:51,838 - [INFO] - ▶ Iniciando Nodo de Consolidación Central (Final, solo Python)...
+2026-08-07 23:06:51,839 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Final", "timestamp": "2026-08-07T23:06:51.839"}
+2026-08-07 23:06:51,903 - [INFO] - ✔ Consolidación Central completada en 0.06 segundos.
+2026-08-07 23:06:51,904 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Final", "timestamp": "2026-08-07T23:06:51.904", "elapsed_seconds": 0.0616}
+2026-08-07 23:06:53,096 - [INFO] - GitLab Issue #6 completado en 1.12s.
+2026-08-07 23:06:55,321 - [INFO] - GitLab Issue #7 completado en 0.81s.
+2026-08-07 23:06:56,832 - [INFO] - GitLab Issue #8 completado en 0.80s.
+2026-08-07 23:06:57,529 - [INFO] - Flujo de lote terminado en 883.27s: recibidas=3, correctas=3, con_error=0, comentarios_publicados=3, pendientes=0.
+2026-08-07 23:06:57,531 - [INFO] - Ollama lote: llamadas=4, reintentos=0, por_agente={'Central_Init_Batch': 3, 'Quality_Batch': 2, 'Security_Batch': 2, 'Evaluator_Batch': 1}.
+2026-08-08 10:54:21,364 - [INFO] - Modelo Ollama efectivo para la ejecución: phi4-mini
+2026-08-08 10:54:21,378 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "8",
+  "titulo": "HU-003 - Consultar agenda médica",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nEl médico necesita visualizar sus citas programadas.\n\n### Como\n\nMédico\n\n### Quiero\n\nConsultar mi agenda.\n\n### Para\n\nOrganizar la atención de pacientes.\n\n---\n\n## Criterios de aceptación\n\n* Mostrar las citas del día.\n* Mostrar el nombre del paciente.\n\n---\n\n## Restricciones\n\nNinguna.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nSí\n\nDatos médicos.\n\n---\n\n### Autenticación\n\nUsuario y contraseña.\n\n---\n\n### Autorización / Roles\n\nMédico.\n\n---\n\n### Auditoría\n\nNo definido.\n\n---\n\n## Observaciones\n\nNinguna.",
+  "actor": "Médico",
+  "funcionalidad": "Consultar mi agenda.",
+  "objetivo": "Organizar la atención de pacientes.",
+  "criterios_aceptacion": [
+    "Mostrar las citas del día.",
+    "Mostrar el nombre del paciente."
+  ],
+  "restricciones": [],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos médicos"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Médico.",
+    "auditoria": "No definido."
+  },
+  "observaciones": "Ninguna.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-08 10:54:21,378 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "8",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-08 10:54:21,384 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "7",
+  "titulo": "HU-002 - Registrar pacientes",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nLa recepcionista necesita registrar nuevos pacientes.\n\n---\n\n## Como\n\nRecepcionista\n\n## Quiero\n\nRegistrar pacientes nuevos\n\n## Para\n\nPermitir la programación de citas\n\n---\n\n# Criterios de aceptación\n\nValidar documento de identidad\n\nRegistrar información obligatoria\n\nEvitar registros duplicados\n\n---\n\n# Restricciones\n\nSolo recepcionistas autorizadas\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales\n\n---\n\n## Autenticación\n\nUsuario y contraseña\n\n---\n\n## Autorización / Roles\n\nRecepcionista\n\n---\n\n## Auditoría\n\nSí\n\nRegistrar usuario, fecha y hora del registro\n\n---\n\n# Observaciones\n\nDebe permitir editar posteriormente la información",
+  "actor": "Recepcionista",
+  "funcionalidad": "Registrar pacientes nuevos",
+  "objetivo": "Permitir la programación de citas",
+  "criterios_aceptacion": [
+    "Validar documento de identidad",
+    "Registrar información obligatoria",
+    "Evitar registros duplicados"
+  ],
+  "restricciones": [
+    "Solo recepcionistas autorizadas"
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña",
+    "autorizacion_roles": "Recepcionista",
+    "auditoria": "Sí\n\nRegistrar usuario, fecha y hora del registro"
+  },
+  "observaciones": "Debe permitir editar posteriormente la información",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:54:21,396 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "7",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:54:21,399 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "6",
+  "titulo": "HU-001 - Consultar horarios disponibles",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nEl paciente necesita consultar los horarios disponibles de los médicos antes de solicitar una cita.\n\n---\n\n## Como\n\nPaciente\n\n## Quiero\n\nConsultar los horarios disponibles de los médicos.\n\n## Para\n\nProgramar una cita médica sin conflictos de horario.\n\n---\n\n# Criterios de aceptación\n\n* Mostrar únicamente horarios disponibles.\n* Mostrar el nombre y especialidad del médico.\n* Actualizar la disponibilidad inmediatamente después de registrar una cita.\n\n---\n\n# Restricciones\n\n* Solo pacientes autenticados pueden acceder.\n* La información debe mostrarse en tiempo real.\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales.\n\n---\n\n## Autenticación\n\nUsuario y contraseña.\n\n---\n\n## Autorización / Roles\n\nPaciente.\n\n---\n\n## Auditoría\n\nSí.\n\nRegistrar las consultas realizadas.\n\n---\n\n# Observaciones\n\nLa consulta debe responder en menos de tres segundos.",
+  "actor": "Paciente",
+  "funcionalidad": "Consultar los horarios disponibles de los médicos.",
+  "objetivo": "Programar una cita médica sin conflictos de horario.",
+  "criterios_aceptacion": [
+    "Mostrar únicamente horarios disponibles.",
+    "Mostrar el nombre y especialidad del médico.",
+    "Actualizar la disponibilidad inmediatamente después de registrar una cita."
+  ],
+  "restricciones": [
+    "Solo pacientes autenticados pueden acceder.",
+    "La información debe mostrarse en tiempo real."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Paciente.",
+    "auditoria": "Sí.\n\nRegistrar las consultas realizadas."
+  },
+  "observaciones": "La consulta debe responder en menos de tres segundos.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:54:21,405 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "6",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:54:21,407 - [INFO] - Iniciando ejecución del grafo multiagente para 3 historias válidas.
+2026-08-08 10:54:21,493 - [INFO] - ▶ Iniciando Agente Central (Init) para el lote...
+2026-08-08 10:54:21,494 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:54:21.494"}
+2026-08-08 10:54:21,494 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:54:21.494", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-08T10:54:21.494", "status": "started", "received": [], "missing": [8]}
+2026-08-08 10:54:21,495 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:54:21.495", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [], "missing": [8]}
+2026-08-08 10:54:21,496 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_error", "agent": "Central_Init", "timestamp": "2026-08-08T10:54:21.496", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 0.0012, "status": "failed", "error_category": "LLMConfigurationError", "received": [], "missing": [8]}
+2026-08-08 10:54:21,499 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:54:21.499", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 0.0042, "status": "failed", "received": [], "missing": [8]}
+2026-08-08 10:56:21,658 - [INFO] - Modelo Ollama efectivo para la ejecución: phi4-mini
+2026-08-08 10:56:21,665 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "8",
+  "titulo": "HU-003 - Consultar agenda médica",
+  "descripcion_original": "## Historia de Usuario\n\n### Descripción\n\nEl médico necesita visualizar sus citas programadas.\n\n### Como\n\nMédico\n\n### Quiero\n\nConsultar mi agenda.\n\n### Para\n\nOrganizar la atención de pacientes.\n\n---\n\n## Criterios de aceptación\n\n* Mostrar las citas del día.\n* Mostrar el nombre del paciente.\n\n---\n\n## Restricciones\n\nNinguna.\n\n---\n\n## Seguridad\n\n### ¿La historia maneja datos sensibles?\n\nSí\n\nDatos médicos.\n\n---\n\n### Autenticación\n\nUsuario y contraseña.\n\n---\n\n### Autorización / Roles\n\nMédico.\n\n---\n\n### Auditoría\n\nNo definido.\n\n---\n\n## Observaciones\n\nNinguna.",
+  "actor": "Médico",
+  "funcionalidad": "Consultar mi agenda.",
+  "objetivo": "Organizar la atención de pacientes.",
+  "criterios_aceptacion": [
+    "Mostrar las citas del día.",
+    "Mostrar el nombre del paciente."
+  ],
+  "restricciones": [],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos médicos"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Médico.",
+    "auditoria": "No definido."
+  },
+  "observaciones": "Ninguna.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-08 10:56:21,667 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "8",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada",
+      "restricciones no especificadas",
+      "observaciones no especificadas"
+    ]
+  }
+}
+2026-08-08 10:56:21,673 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "7",
+  "titulo": "HU-002 - Registrar pacientes",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nLa recepcionista necesita registrar nuevos pacientes.\n\n---\n\n## Como\n\nRecepcionista\n\n## Quiero\n\nRegistrar pacientes nuevos\n\n## Para\n\nPermitir la programación de citas\n\n---\n\n# Criterios de aceptación\n\nValidar documento de identidad\n\nRegistrar información obligatoria\n\nEvitar registros duplicados\n\n---\n\n# Restricciones\n\nSolo recepcionistas autorizadas\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales\n\n---\n\n## Autenticación\n\nUsuario y contraseña\n\n---\n\n## Autorización / Roles\n\nRecepcionista\n\n---\n\n## Auditoría\n\nSí\n\nRegistrar usuario, fecha y hora del registro\n\n---\n\n# Observaciones\n\nDebe permitir editar posteriormente la información",
+  "actor": "Recepcionista",
+  "funcionalidad": "Registrar pacientes nuevos",
+  "objetivo": "Permitir la programación de citas",
+  "criterios_aceptacion": [
+    "Validar documento de identidad",
+    "Registrar información obligatoria",
+    "Evitar registros duplicados"
+  ],
+  "restricciones": [
+    "Solo recepcionistas autorizadas"
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña",
+    "autorizacion_roles": "Recepcionista",
+    "auditoria": "Sí\n\nRegistrar usuario, fecha y hora del registro"
+  },
+  "observaciones": "Debe permitir editar posteriormente la información",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:56:21,685 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "7",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:56:21,695 - [INFO] - MAPPER_DIAGNOSTICO
+{
+  "issue_iid": "6",
+  "titulo": "HU-001 - Consultar horarios disponibles",
+  "descripcion_original": "# Historia de Usuario\n\n## Descripción\n\nEl paciente necesita consultar los horarios disponibles de los médicos antes de solicitar una cita.\n\n---\n\n## Como\n\nPaciente\n\n## Quiero\n\nConsultar los horarios disponibles de los médicos.\n\n## Para\n\nProgramar una cita médica sin conflictos de horario.\n\n---\n\n# Criterios de aceptación\n\n* Mostrar únicamente horarios disponibles.\n* Mostrar el nombre y especialidad del médico.\n* Actualizar la disponibilidad inmediatamente después de registrar una cita.\n\n---\n\n# Restricciones\n\n* Solo pacientes autenticados pueden acceder.\n* La información debe mostrarse en tiempo real.\n\n---\n\n# Seguridad\n\n## ¿La historia maneja datos sensibles?\n\n- [x] Sí\n- [ ] No\n\nDatos personales.\n\n---\n\n## Autenticación\n\nUsuario y contraseña.\n\n---\n\n## Autorización / Roles\n\nPaciente.\n\n---\n\n## Auditoría\n\nSí.\n\nRegistrar las consultas realizadas.\n\n---\n\n# Observaciones\n\nLa consulta debe responder en menos de tres segundos.",
+  "actor": "Paciente",
+  "funcionalidad": "Consultar los horarios disponibles de los médicos.",
+  "objetivo": "Programar una cita médica sin conflictos de horario.",
+  "criterios_aceptacion": [
+    "Mostrar únicamente horarios disponibles.",
+    "Mostrar el nombre y especialidad del médico.",
+    "Actualizar la disponibilidad inmediatamente después de registrar una cita."
+  ],
+  "restricciones": [
+    "Solo pacientes autenticados pueden acceder.",
+    "La información debe mostrarse en tiempo real."
+  ],
+  "seguridad": {
+    "descripcion": "",
+    "maneja_datos_sensibles": true,
+    "tipos_datos_sensibles": [
+      "Datos personales"
+    ],
+    "autenticacion": "Usuario y contraseña.",
+    "autorizacion_roles": "Paciente.",
+    "auditoria": "Sí.\n\nRegistrar las consultas realizadas."
+  },
+  "observaciones": "La consulta debe responder en menos de tres segundos.",
+  "prioridad": "Desconocida",
+  "validacion_entrada": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:56:21,713 - [INFO] - VALIDACION_ENTRADA
+{
+  "issue_iid": "6",
+  "campos_actor_accion_objetivo_identificados": {
+    "actor": true,
+    "funcionalidad": true,
+    "objetivo": true
+  },
+  "condicion_sin_actor_accion_objetivo": false,
+  "resultado": {
+    "estado": "entrada_con_advertencias",
+    "campos_faltantes": [],
+    "advertencias": [
+      "prioridad no especificada"
+    ]
+  }
+}
+2026-08-08 10:56:21,722 - [INFO] - Iniciando ejecución del grafo multiagente para 3 historias válidas.
+2026-08-08 10:56:21,811 - [INFO] - ▶ Iniciando Agente Central (Init) para el lote...
+2026-08-08 10:56:21,811 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:56:21.811"}
+2026-08-08 10:56:21,812 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:56:21.812", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-08T10:56:21.812", "status": "started", "received": [], "missing": [8]}
+2026-08-08 10:56:21,812 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:56:21.812", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [], "missing": [8]}
+2026-08-08 10:56:26,154 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-08T10:56:26.154", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-08 10:56:26,159 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-08T10:56:26.159", "started_at": "2026-08-08T10:56:26.158", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12163, "bytes_utf8": 12338, "tokens_aprox": 3041}, "context_size": {"chars": 784, "bytes_utf8": 791, "tokens_aprox": 196}, "input_json_size": {"json_chars": 784, "json_bytes_utf8": 791}}
+2026-08-08 10:57:20,592 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-08 10:57:20,605 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=1983 json_valid=False keys=[]
+2026-08-08 10:57:20,607 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-08T10:57:20.606", "started_at": "2026-08-08T10:56:26.158", "finished_at": "2026-08-08T10:57:20.606", "elapsed_seconds": 54.4471, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12163, "bytes_utf8": 12338, "tokens_aprox": 3041}, "context_size": {"chars": 784, "bytes_utf8": 791, "tokens_aprox": 196}, "input_json_size": {"json_chars": 784, "json_bytes_utf8": 791}, "response_size": {"chars": 1983, "bytes_utf8": 2005, "tokens_aprox": 496}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-08 10:57:20,609 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:57:20.609", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 58.7963, "status": "success", "received": [8], "missing": []}
+2026-08-08 10:57:20,609 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:57:20.609", "sub_batch": 1, "split_level": 0, "issue_ids": [8], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 58.7973, "status": "success", "received": [8], "missing": []}
+2026-08-08 10:57:20,610 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:57:20.610", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-08T10:57:20.610", "status": "started", "received": [8], "missing": [7]}
+2026-08-08 10:57:20,610 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:57:20.610", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [8], "missing": [7]}
+2026-08-08 10:57:20,611 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-08T10:57:20.611", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-08 10:57:20,613 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-08T10:57:20.613", "started_at": "2026-08-08T10:57:20.613", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12260, "bytes_utf8": 12433, "tokens_aprox": 3065}, "context_size": {"chars": 881, "bytes_utf8": 886, "tokens_aprox": 220}, "input_json_size": {"json_chars": 881, "json_bytes_utf8": 886}}
+2026-08-08 10:58:19,468 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-08 10:58:19,470 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=2982 json_valid=False keys=[]
+2026-08-08 10:58:19,471 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-08T10:58:19.470", "started_at": "2026-08-08T10:57:20.613", "finished_at": "2026-08-08T10:58:19.470", "elapsed_seconds": 58.8578, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12260, "bytes_utf8": 12433, "tokens_aprox": 3065}, "context_size": {"chars": 881, "bytes_utf8": 886, "tokens_aprox": 220}, "input_json_size": {"json_chars": 881, "json_bytes_utf8": 886}, "response_size": {"chars": 2982, "bytes_utf8": 3007, "tokens_aprox": 746}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-08 10:58:19,471 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:58:19.471", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 58.8608, "status": "success", "received": [7], "missing": []}
+2026-08-08 10:58:19,471 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:58:19.471", "sub_batch": 2, "split_level": 0, "issue_ids": [7], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 58.8616, "status": "success", "received": [7], "missing": []}
+2026-08-08 10:58:19,472 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:58:19.472", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "num_predict": 780, "started_at": "2026-08-08T10:58:19.472", "status": "started", "received": [8, 7], "missing": [6]}
+2026-08-08 10:58:19,472 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_start", "agent": "Central_Init", "timestamp": "2026-08-08T10:58:19.472", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "attempt": 1, "num_predict": 780, "status": "started", "received": [8, 7], "missing": [6]}
+2026-08-08 10:58:19,473 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "central", "timestamp": "2026-08-08T10:58:19.473", "provider": "nvidia", "model": "z-ai/glm-5.2"}
+2026-08-08 10:58:19,474 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Central_Init_Batch", "timestamp": "2026-08-08T10:58:19.474", "started_at": "2026-08-08T10:58:19.474", "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12430, "bytes_utf8": 12606, "tokens_aprox": 3108}, "context_size": {"chars": 1051, "bytes_utf8": 1059, "tokens_aprox": 263}, "input_json_size": {"json_chars": 1051, "json_bytes_utf8": 1059}}
+2026-08-08 10:59:06,902 - [INFO] - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-08 10:59:06,903 - [INFO] - CENTRAL_RESPONSE provider=nvidia model=z-ai/glm-5.2 chars=3283 json_valid=False keys=[]
+2026-08-08 10:59:06,904 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Central_Init_Batch", "timestamp": "2026-08-08T10:59:06.904", "started_at": "2026-08-08T10:58:19.474", "finished_at": "2026-08-08T10:59:06.904", "elapsed_seconds": 47.4297, "model": "z-ai/glm-5.2", "provider": "ollama", "model_params": {"provider": "nvidia", "model": "z-ai/glm-5.2", "json_mode": true, "num_predict": 780, "num_ctx": 8192, "temperature": 0.1}, "prompt_size": {"chars": 12430, "bytes_utf8": 12606, "tokens_aprox": 3108}, "context_size": {"chars": 1051, "bytes_utf8": 1059, "tokens_aprox": 263}, "input_json_size": {"json_chars": 1051, "json_bytes_utf8": 1059}, "response_size": {"chars": 3283, "bytes_utf8": 3318, "tokens_aprox": 821}, "response_json_size": {"json_chars": null, "json_bytes_utf8": null}}
+2026-08-08 10:59:06,905 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_call_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:59:06.905", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "attempt": 1, "num_predict": 780, "elapsed_seconds": 47.4325, "status": "success", "received": [6], "missing": []}
+2026-08-08 10:59:06,905 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:59:06.905", "sub_batch": 3, "split_level": 0, "issue_ids": [6], "call_type": "initial", "num_predict": 780, "elapsed_seconds": 47.4332, "status": "success", "received": [6], "missing": []}
+2026-08-08 10:59:06,907 - [INFO] - PERF_AUDIT {"event": "central_sub_batch_summary", "agent": "Central_Init", "timestamp": "2026-08-08T10:59:06.906", "initial_sub_batches": 3, "generated_sub_batches": 3, "subdivision_generated_sub_batches": 0, "completed_sub_batches": 3, "failed_sub_batches": 0, "total_calls": 3, "selective_repairs": 0, "technical_retries": 0, "elapsed_seconds": 165.092, "expected_issue_ids": [8, 7, 6], "traceable_issue_ids": [8, 7, 6], "successful_issue_ids": [8, 7, 6], "insufficient_issue_ids": [], "error_issue_ids": [], "missing_issue_ids": [], "complete_issue_ids": [8, 7, 6], "incomplete_issue_ids": []}
+2026-08-08 10:59:06,907 - [INFO] - ✔ Agente Central (Init) completado en 165.10 segundos.
+2026-08-08 10:59:06,908 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Init", "timestamp": "2026-08-08T10:59:06.907", "elapsed_seconds": 165.0955}
+2026-08-08 10:59:06,909 - [INFO] - ▶ Iniciando Agente de Calidad (Lote)...
+2026-08-08 10:59:06,912 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Quality", "timestamp": "2026-08-08T10:59:06.912"}
+2026-08-08 10:59:06,915 - [INFO] - PERF_AUDIT {"event": "quality_input_prepared", "agent": "Quality", "timestamp": "2026-08-08T10:59:06.915", "expected_stories": 3, "found_stories": 3, "processed_issue_iids": [8, 7, 6], "mc01_functional_universe": 11, "mc02_evaluable_universe": 11, "by_issue": [{"issue_iid": 8, "main_function_count": 3, "contextual_rule_count": 1, "source": "historia_usuario_original"}, {"issue_iid": 7, "main_function_count": 5, "contextual_rule_count": 1, "source": "historia_usuario_original"}, {"issue_iid": 6, "main_function_count": 3, "contextual_rule_count": 3, "source": "historia_usuario_original"}], "source": "historia_usuario_original", "central_formalization_included": false}
+2026-08-08 10:59:06,920 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Calidad", "timestamp": "2026-08-08T10:59:06.920", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201146.920031, "status": "started"}
+2026-08-08 10:59:06,920 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Calidad", "timestamp": "2026-08-08T10:59:06.920", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201146.920031, "status": "started"}
+2026-08-08 10:59:07,821 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "quality", "timestamp": "2026-08-08T10:59:07.821", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-08 10:59:07,823 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-08-08T10:59:07.823", "started_at": "2026-08-08T10:59:07.823", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11932, "bytes_utf8": 12081, "tokens_aprox": 2983}, "context_size": {"chars": 1318, "bytes_utf8": 1328, "tokens_aprox": 330}, "input_json_size": {"json_chars": 1318, "json_bytes_utf8": 1328}}
+2026-08-08 10:59:10,768 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-08 10:59:10,781 - [INFO] - LLM_RESPONSE_METADATA agent=Quality provider=groq model=openai/gpt-oss-120b fallback=False chars=4247 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-08 10:59:10,782 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-08-08T10:59:10.782", "started_at": "2026-08-08T10:59:07.823", "finished_at": "2026-08-08T10:59:10.781", "elapsed_seconds": 2.9584, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11932, "bytes_utf8": 12081, "tokens_aprox": 2983}, "context_size": {"chars": 1318, "bytes_utf8": 1328, "tokens_aprox": 330}, "input_json_size": {"json_chars": 1318, "json_bytes_utf8": 1328}, "response_size": {"chars": 4247, "bytes_utf8": 4276, "tokens_aprox": 1062}, "response_json_size": {"json_chars": 3305, "json_bytes_utf8": 3334}}
+2026-08-08 10:59:10,789 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Calidad", "timestamp": "2026-08-08T10:59:10.788", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201146.920031, "elapsed_seconds": 3.8686, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-08 10:59:10,790 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Calidad", "timestamp": "2026-08-08T10:59:10.790", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201146.920031, "elapsed_seconds": 3.87, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [8, 7], "received_issue_ids": [8, 7], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": ["indice", "porcentaje", "estado", "meta", "A", "B", "metricas.cobertura_funcional.valor", "metricas.adecuacion_funcional.valor"], "empty_but_valid_fields": ["resultados[0].recomendaciones", "resultados[0].metricas.cobertura_funcional.funciones_faltantes", "resultados[0].metricas.cobertura_funcional.recomendacion", "resultados[0].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[0].metricas.adecuacion_funcional.recomendacion", "resultados[1].recomendaciones", "resultados[1].metricas.cobertura_funcional.funciones_faltantes", "resultados[1].metricas.cobertura_funcional.recomendacion", "resultados[1].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[1].metricas.adecuacion_funcional.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 8, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 1, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}, {"issue_iid": 7, "evaluation_source": "historia_usuario_original", "main_function_count": 5, "conditional_rule_count": 1, "expected_functions": 5, "classified_included": 5, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 5, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": null, "security_llm_raw_diagnostic": [], "security_normalized_summary": [{"issue_iid": 8, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 1, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}, {"issue_iid": 7, "evaluation_source": "historia_usuario_original", "main_function_count": 5, "conditional_rule_count": 1, "expected_functions": 5, "classified_included": 5, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 5, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}]}
+2026-08-08 10:59:10,791 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Calidad", "timestamp": "2026-08-08T10:59:10.791", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201150.7910361, "status": "started"}
+2026-08-08 10:59:10,791 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Calidad", "timestamp": "2026-08-08T10:59:10.791", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201150.7910361, "status": "started"}
+2026-08-08 10:59:11,378 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "quality", "timestamp": "2026-08-08T10:59:11.378", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-08 10:59:11,380 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Quality_Batch", "timestamp": "2026-08-08T10:59:11.380", "started_at": "2026-08-08T10:59:11.380", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11705, "bytes_utf8": 11854, "tokens_aprox": 2926}, "context_size": {"chars": 1094, "bytes_utf8": 1104, "tokens_aprox": 274}, "input_json_size": {"json_chars": 1094, "json_bytes_utf8": 1104}}
+2026-08-08 10:59:11,381 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Quality", "timestamp": "2026-08-08T10:59:11.381", "provider": "groq", "previous_agent": "Quality", "next_agent": "Quality", "configured_seconds": 60.0, "elapsed_seconds": 0.6, "waited_seconds": 59.4, "reason": "remote_rate_pacing"}
+2026-08-08 11:00:12,817 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-08 11:00:12,818 - [INFO] - LLM_RESPONSE_METADATA agent=Quality provider=groq model=openai/gpt-oss-120b fallback=False chars=2917 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-08 11:00:12,819 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Quality_Batch", "timestamp": "2026-08-08T11:00:12.819", "started_at": "2026-08-08T10:59:11.380", "finished_at": "2026-08-08T11:00:12.819", "elapsed_seconds": 61.4389, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 11705, "bytes_utf8": 11854, "tokens_aprox": 2926}, "context_size": {"chars": 1094, "bytes_utf8": 1104, "tokens_aprox": 274}, "input_json_size": {"json_chars": 1094, "json_bytes_utf8": 1104}, "response_size": {"chars": 2917, "bytes_utf8": 2942, "tokens_aprox": 729}, "response_json_size": {"json_chars": 2433, "json_bytes_utf8": 2458}}
+2026-08-08 11:00:12,823 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Calidad", "timestamp": "2026-08-08T11:00:12.822", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201150.7910361, "elapsed_seconds": 62.0318, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-08 11:00:12,824 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Calidad", "timestamp": "2026-08-08T11:00:12.824", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201150.7910361, "elapsed_seconds": 62.0337, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [6], "received_issue_ids": [6], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": ["indice", "porcentaje", "estado", "meta", "A", "B", "metricas.cobertura_funcional.valor", "metricas.adecuacion_funcional.valor"], "empty_but_valid_fields": ["resultados[0].recomendaciones", "resultados[0].metricas.cobertura_funcional.funciones_faltantes", "resultados[0].metricas.cobertura_funcional.recomendacion", "resultados[0].metricas.adecuacion_funcional.funciones_no_alineadas", "resultados[0].metricas.adecuacion_funcional.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 6, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 3, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": null, "security_llm_raw_diagnostic": [], "security_normalized_summary": [{"issue_iid": 6, "evaluation_source": "historia_usuario_original", "main_function_count": 3, "conditional_rule_count": 3, "expected_functions": 3, "classified_included": 3, "classified_missing": 0, "unclassified_coverage": 0, "classified_aligned": 3, "classified_not_aligned": 0, "unclassified_alignment": 0, "contradictions": 0, "out_of_universe_count": 0, "out_of_universe_by_field": {}, "out_of_universe_element_ids": [], "contradiction_function_ids": [], "explanations_required": 0, "explanations_present": 2}]}
+2026-08-08 11:00:12,834 - [INFO] - ✔ Agente de Calidad completado en 65.92 segundos.
+2026-08-08 11:00:12,835 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Quality", "timestamp": "2026-08-08T11:00:12.835", "elapsed_seconds": 65.9208}
+2026-08-08 11:00:12,836 - [INFO] - ▶ Iniciando Agente de Seguridad (Lote)...
+2026-08-08 11:00:12,836 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Security", "timestamp": "2026-08-08T11:00:12.836"}
+2026-08-08 11:00:12,843 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Seguridad", "timestamp": "2026-08-08T11:00:12.843", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201212.8431728, "status": "started"}
+2026-08-08 11:00:12,844 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Seguridad", "timestamp": "2026-08-08T11:00:12.844", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201212.8431728, "status": "started"}
+2026-08-08 11:00:13,467 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "security", "timestamp": "2026-08-08T11:00:13.467", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-08 11:00:13,469 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Security_Batch", "timestamp": "2026-08-08T11:00:13.469", "started_at": "2026-08-08T11:00:13.468", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 9245, "bytes_utf8": 9332, "tokens_aprox": 2311}, "context_size": {"chars": 4739, "bytes_utf8": 4790, "tokens_aprox": 1185}, "input_json_size": {"json_chars": 4739, "json_bytes_utf8": 4790}}
+2026-08-08 11:00:13,469 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Security", "timestamp": "2026-08-08T11:00:13.469", "provider": "groq", "previous_agent": "Quality", "next_agent": "Security", "configured_seconds": 60.0, "elapsed_seconds": 0.6508, "waited_seconds": 59.3492, "reason": "remote_rate_pacing"}
+2026-08-08 11:01:16,010 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-08 11:01:16,013 - [INFO] - LLM_RESPONSE_METADATA agent=Security provider=groq model=openai/gpt-oss-120b fallback=False chars=3139 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-08 11:01:16,013 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Security_Batch", "timestamp": "2026-08-08T11:01:16.013", "started_at": "2026-08-08T11:00:13.468", "finished_at": "2026-08-08T11:01:16.013", "elapsed_seconds": 62.5445, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 9245, "bytes_utf8": 9332, "tokens_aprox": 2311}, "context_size": {"chars": 4739, "bytes_utf8": 4790, "tokens_aprox": 1185}, "input_json_size": {"json_chars": 4739, "json_bytes_utf8": 4790}, "response_size": {"chars": 3139, "bytes_utf8": 3175, "tokens_aprox": 785}, "response_json_size": {"json_chars": 2349, "json_bytes_utf8": 2385}}
+2026-08-08 11:01:16,015 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Seguridad", "timestamp": "2026-08-08T11:01:16.015", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201212.8431728, "elapsed_seconds": 63.1722, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-08 11:01:16,019 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Seguridad", "timestamp": "2026-08-08T11:01:16.019", "sub_batch": 1, "issue_ids": [8, 7], "expected": [8, 7], "max_completion_tokens": 2048, "started_at": 1786201212.8431728, "elapsed_seconds": 63.1755, "received": [8, 7], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [8, 7], "received_issue_ids": [8, 7], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": [], "empty_but_valid_fields": ["resultados[0].observaciones", "resultados[0].recomendaciones", "resultados[0].metricas.cobertura_seguridad.aspectos_parciales", "resultados[0].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[0].metricas.clasificacion_datos.datos_clasificados", "resultados[0].metricas.clasificacion_datos.clasificaciones_inferidas", "resultados[1].observaciones", "resultados[1].recomendaciones", "resultados[1].metricas.cobertura_seguridad.aspectos_parciales", "resultados[1].metricas.cobertura_seguridad.aspectos_faltantes", "resultados[1].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[1].metricas.cobertura_seguridad.recomendacion", "resultados[1].metricas.clasificacion_datos.datos_clasificados", "resultados[1].metricas.clasificacion_datos.clasificaciones_inferidas"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 8, "applicable_aspects": 3, "documented_aspects": 2, "partial_aspects": 0, "missing_aspects": 1, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 2, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0}, {"issue_iid": 7, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": "semantic_validation_complete", "security_llm_raw_diagnostic": [{"contract_stage": "llm_raw", "issue_iid": 8, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}, {"contract_stage": "llm_raw", "issue_iid": 7, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}], "security_normalized_summary": [{"issue_iid": 8, "applicable_aspects": 3, "documented_aspects": 2, "partial_aspects": 0, "missing_aspects": 1, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 2, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 0}, {"issue_iid": 7, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}]}
+2026-08-08 11:01:16,022 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_start", "agent": "Seguridad", "timestamp": "2026-08-08T11:01:16.021", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201276.0216238, "status": "started"}
+2026-08-08 11:01:16,022 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_start", "agent": "Seguridad", "timestamp": "2026-08-08T11:01:16.022", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201276.0216238, "status": "started"}
+2026-08-08 11:01:16,623 - [INFO] - PERF_AUDIT {"event": "LLM_PROVIDER_SELECTED", "agent": "security", "timestamp": "2026-08-08T11:01:16.622", "provider": "groq", "model": "openai/gpt-oss-120b"}
+2026-08-08 11:01:16,624 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Security_Batch", "timestamp": "2026-08-08T11:01:16.624", "started_at": "2026-08-08T11:01:16.624", "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 7643, "bytes_utf8": 7716, "tokens_aprox": 1911}, "context_size": {"chars": 3140, "bytes_utf8": 3177, "tokens_aprox": 785}, "input_json_size": {"json_chars": 3140, "json_bytes_utf8": 3177}}
+2026-08-08 11:01:16,624 - [INFO] - PERF_AUDIT {"event": "remote_rate_pacing", "agent": "Security", "timestamp": "2026-08-08T11:01:16.624", "provider": "groq", "previous_agent": "Security", "next_agent": "Security", "configured_seconds": 60.0, "elapsed_seconds": 0.612, "waited_seconds": 59.388, "reason": "remote_rate_pacing"}
+2026-08-08 11:02:17,360 - [INFO] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-08 11:02:17,361 - [INFO] - LLM_RESPONSE_METADATA agent=Security provider=groq model=openai/gpt-oss-120b fallback=False chars=883 json_valid=True keys=['agente', 'resultados'] finish_reason=stop
+2026-08-08 11:02:17,365 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Security_Batch", "timestamp": "2026-08-08T11:02:17.365", "started_at": "2026-08-08T11:01:16.624", "finished_at": "2026-08-08T11:02:17.364", "elapsed_seconds": 60.7406, "model": "openai/gpt-oss-120b", "provider": "groq", "model_params": {"provider": "groq", "model": "openai/gpt-oss-120b", "temperature": 0.1, "max_completion_tokens": 2048, "reasoning_effort": "low", "reasoning_format": "hidden"}, "prompt_size": {"chars": 7643, "bytes_utf8": 7716, "tokens_aprox": 1911}, "context_size": {"chars": 3140, "bytes_utf8": 3177, "tokens_aprox": 785}, "input_json_size": {"json_chars": 3140, "json_bytes_utf8": 3177}, "response_size": {"chars": 883, "bytes_utf8": 896, "tokens_aprox": 221}, "response_json_size": {"json_chars": 932, "json_bytes_utf8": 945}}
+2026-08-08 11:02:17,366 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_call_end", "agent": "Seguridad", "timestamp": "2026-08-08T11:02:17.366", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201276.0216238, "elapsed_seconds": 61.3449, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success"}
+2026-08-08 11:02:17,368 - [INFO] - PERF_AUDIT {"event": "remote_sub_batch_end", "agent": "Seguridad", "timestamp": "2026-08-08T11:02:17.367", "sub_batch": 2, "issue_ids": [6], "expected": [6], "max_completion_tokens": 2048, "started_at": 1786201276.0216238, "elapsed_seconds": 61.3459, "received": [6], "missing": [], "finish_reason": "stop", "json_valid": true, "json_recovered": false, "status": "success", "error_category": null, "http_status": null, "retry_after_seconds": null, "expected_issue_ids": [6], "received_issue_ids": [6], "identity_validation": "success", "contract_validation": "success", "failed_validator": null, "missing_fields": [], "invalid_types": [], "premature_fields": [], "empty_but_valid_fields": ["resultados[0].observaciones", "resultados[0].recomendaciones", "resultados[0].metricas.cobertura_seguridad.aspectos_parciales", "resultados[0].metricas.cobertura_seguridad.aspectos_faltantes", "resultados[0].metricas.cobertura_seguridad.aspectos_inferidos", "resultados[0].metricas.cobertura_seguridad.recomendacion", "resultados[0].metricas.clasificacion_datos.datos_clasificados", "resultados[0].metricas.clasificacion_datos.clasificaciones_inferidas", "resultados[0].metricas.clasificacion_datos.recomendacion"], "alias_fields_detected": [], "contract_stage": "llm_raw", "semantic_validation": "success", "semantic_error_category": null, "semantic_by_issue": [{"issue_iid": 6, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}], "failed_semantic_rule": null, "semantic_subcategory": null, "failed_issue_iid": null, "pending_semantic_validation": [], "stage_reached": "semantic_validation_complete", "security_llm_raw_diagnostic": [{"contract_stage": "llm_raw", "issue_iid": 6, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1, "identified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1, "identity_extraction_failed": 0}, "classified_items": {"count": 0, "types": {}, "object_keys": {}, "strategies": {}, "identity_extraction_success": 0, "classification_extraction_success": 0, "identity_matches": 0, "source_classification_matches": 0}, "unclassified_items": {"count": 1, "types": {"str": 1}, "identity_extraction_success": 1}, "external_data_count": 0, "invented_data_count": 0, "normalization_collision_count": 0, "contradictions": 0}], "security_normalized_summary": [{"issue_iid": 6, "applicable_aspects": 3, "documented_aspects": 3, "partial_aspects": 0, "missing_aspects": 0, "unclassified_aspects": 0, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "inferred_classifications": 0, "invented_data_count": 0, "contradictions": 0, "explanations_required": 1, "explanations_present": 2, "canonical_data_count": 1, "llm_identified_data_count": 1, "canonical_data_classified": 0, "canonical_data_unclassified": 1, "missing_canonical_data_count": 0, "external_data_count": 0, "generic_group_count": 0, "canonical_generic_data_count": 1}]}
+2026-08-08 11:02:17,370 - [INFO] - PERF_AUDIT {"event": "security_post_python_summary", "agent": "Seguridad", "timestamp": "2026-08-08T11:02:17.370", "contract_stage": "post_python", "by_issue": [{"contract_stage": "post_python", "issue_iid": 8, "applicable_aspects": 4, "documented_aspects": 2, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.5, "ms02": 0.0, "security_index": 0.25, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}, {"contract_stage": "post_python", "issue_iid": 7, "applicable_aspects": 4, "documented_aspects": 3, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.75, "ms02": 0.0, "security_index": 0.375, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}, {"contract_stage": "post_python", "issue_iid": 6, "applicable_aspects": 4, "documented_aspects": 3, "identified_data": 1, "explicitly_classified_data": 0, "unclassified_data": 1, "ms01": 0.75, "ms02": 0.0, "security_index": 0.375, "lot": "LoT-2", "target": 0.9, "status": "No cumple"}]}
+2026-08-08 11:02:17,371 - [INFO] - ✔ Agente de Seguridad completado en 124.53 segundos.
+2026-08-08 11:02:17,372 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Security", "timestamp": "2026-08-08T11:02:17.372", "elapsed_seconds": 124.5299}
+2026-08-08 11:02:17,373 - [INFO] - ▶ Iniciando Agente Evaluador (Lote)...
+2026-08-08 11:02:17,374 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Evaluator", "timestamp": "2026-08-08T11:02:17.374"}
+2026-08-08 11:02:17,998 - [INFO] - PERF_AUDIT {"event": "agent_start", "agent": "Evaluator_Batch", "timestamp": "2026-08-08T11:02:17.998", "started_at": "2026-08-08T11:02:17.998", "model": "phi4-mini", "provider": "ollama", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 530, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 17762, "bytes_utf8": 17926, "tokens_aprox": 4440}, "context_size": {"chars": 16624, "bytes_utf8": 16776, "tokens_aprox": 4156}, "input_json_size": {"json_chars": 16624, "json_bytes_utf8": 16776}}
+2026-08-08 11:06:37,285 - [INFO] - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-08-08 11:09:24,419 - [INFO] - LOCAL_RESPONSE Evaluator provider=ollama chars=1553 json_valid=True keys=['agente', 'resultados']
+2026-08-08 11:09:24,430 - [INFO] - PERF_AUDIT {"event": "agent_end", "agent": "Evaluator_Batch", "timestamp": "2026-08-08T11:09:24.430", "started_at": "2026-08-08T11:02:17.998", "finished_at": "2026-08-08T11:09:24.424", "elapsed_seconds": 426.4239, "model": "phi4-mini", "provider": "ollama", "model_params": {"model": "phi4-mini", "base_url": "http://localhost:11434", "temperature": 0.0, "num_predict": 530, "num_ctx": 8192, "keep_alive": "30m", "format": "json"}, "prompt_size": {"chars": 17762, "bytes_utf8": 17926, "tokens_aprox": 4440}, "context_size": {"chars": 16624, "bytes_utf8": 16776, "tokens_aprox": 4156}, "input_json_size": {"json_chars": 16624, "json_bytes_utf8": 16776}, "response_size": {"chars": 1553, "bytes_utf8": 1572, "tokens_aprox": 388}, "response_json_size": {"json_chars": 1405, "json_bytes_utf8": 1424}}
+2026-08-08 11:09:24,470 - [INFO] - ✔ Agente Evaluador completado en 427.10 segundos.
+2026-08-08 11:09:24,471 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Evaluator", "timestamp": "2026-08-08T11:09:24.471", "elapsed_seconds": 427.096}
+2026-08-08 11:09:24,513 - [INFO] - ▶ Iniciando Nodo de Consolidación Central (Final, solo Python)...
+2026-08-08 11:09:24,513 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Central_Final", "timestamp": "2026-08-08T11:09:24.513"}
+2026-08-08 11:09:24,567 - [INFO] - ✔ Consolidación Central completada en 0.05 segundos.
+2026-08-08 11:09:24,574 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Central_Final", "timestamp": "2026-08-08T11:09:24.574", "elapsed_seconds": 0.0533}
+2026-08-08 11:09:25,838 - [INFO] - GitLab Issue #6 completado en 1.20s.
+2026-08-08 11:09:28,415 - [INFO] - GitLab Issue #7 completado en 0.81s.
+2026-08-08 11:09:30,199 - [INFO] - GitLab Issue #8 completado en 0.75s.
+2026-08-08 11:09:30,975 - [INFO] - Flujo de lote terminado en 782.88s: recibidas=3, correctas=3, con_error=0, comentarios_publicados=3, pendientes=0.
+2026-08-08 11:09:30,980 - [INFO] - Ollama lote: llamadas=4, reintentos=0, por_agente={'Central_Init_Batch': 3, 'Quality_Batch': 2, 'Security_Batch': 2, 'Evaluator_Batch': 1}.

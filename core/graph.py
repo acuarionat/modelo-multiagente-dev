@@ -100,93 +100,166 @@ def _persistir_fallo_central(error, audit):
 
 
 def preparar_entrada_calidad(central_init, issues_data):
-    """Complementa una copia del Central por issue_iid sin alterar su salida original."""
-    central_original = analizar_respuesta_lote(central_init, "Central")
-    central_para_calidad = deepcopy(central_original)
-    historias_por_iid = {
-        int(item["id"]): item
-        for item in issues_data
-        if isinstance(item, dict) and item.get("id") is not None
-    }
-    resultados = central_para_calidad.get("resultados", [])
-    requirements_before = sum(
-        len(item.get("requerimientos", []))
-        for item in resultados
-        if isinstance(item, dict) and isinstance(item.get("requerimientos"), list)
+    """
+    Construye el payload de Calidad exclusivamente desde las
+    Historias de Usuario originales.
+
+    La salida del Central se utiliza únicamente para determinar
+    cuáles historias continúan siendo procesables, pero ningún
+    contenido formalizado por Central se incorpora como evidencia
+    para MC-01 o MC-02.
+    """
+    from core.batch_contract import (
+        obtener_universo_funcional_original,
+        normalizar_iid,
     )
-    before_requirements = [
-        requirement
-        for item in resultados if isinstance(item, dict)
-        for requirement in item.get("requerimientos", []) if isinstance(requirement, dict)
-    ]
-    processed_iids = []
-    before_by_iid = {}
-    after_by_iid = {}
-    found_stories = 0
-    for result in resultados:
-        if not isinstance(result, dict):
+
+    central_parsed = analizar_respuesta_lote(
+        central_init,
+        "Central",
+    )
+
+    central_by_iid = indexar_resultados(
+        central_parsed
+    )
+
+    resultados_calidad = []
+    central_errors = []
+    by_issue_audit = []
+
+    for issue in issues_data:
+        if not isinstance(issue, dict):
             continue
-        try:
-            iid = int(result.get("issue_iid"))
-        except (TypeError, ValueError):
-            logger.warning("Entrada de Calidad sin issue_iid asociable; se conserva sin complementar.")
-            continue
-        source = historias_por_iid.get(iid)
-        if source is None:
-            logger.warning("No se encontró historia original para issue_iid=%s; se conserva la salida del Central.", iid)
-            continue
-        found_stories += 1
-        processed_iids.append(iid)
-        before_by_iid[iid] = len(result.get("requerimientos", [])) if isinstance(result.get("requerimientos"), list) else 0
-        result["requerimientos"] = completar_requerimientos_explicitos_faltantes(
-            result.get("requerimientos"), source,
+
+        iid = normalizar_iid(
+            issue.get("issue_iid")
+            or issue.get("id")
         )
-        for derived_field in (
-            "funciones_principales_evaluables", "reglas_funcionales_contextuales",
-            "evidencias_funciones_equivalentes",
+
+        if iid is None:
+            logger.warning(
+                "Historia original sin issue_iid válido; "
+                "no se incorpora al payload de Calidad."
+            )
+            continue
+
+        central_item = central_by_iid.get(iid)
+
+        # Conserva la política existente:
+        # una falla individual del Central no continúa hacia Calidad.
+        if (
+            isinstance(central_item, dict)
+            and str(
+                central_item.get("status", "")
+            ).strip().casefold() == "error"
         ):
-            result.pop(derived_field, None)
-        prepared = [item for item in result["requerimientos"] if isinstance(item, dict)]
-        universe = obtener_universo_funcional_calidad(result, source)
-        result["funciones_principales_evaluables"] = list(universe["funciones_principales_evaluables"])
-        result["reglas_funcionales_contextuales"] = list(universe["reglas_funcionales_contextuales"])
-        result["evidencias_funciones_equivalentes"] = deepcopy(
-            universe["evidencias_funciones_equivalentes"]
+            central_errors.append(
+                deepcopy(central_item)
+            )
+            continue
+
+        universe = obtener_universo_funcional_original(
+            issue
         )
-        after_by_iid[iid] = {
-            "issue_iid": iid, "requirements_before": before_by_iid[iid],
-            "requirements_after": len(prepared),
-            "rf": universe["documentary_rf_count"], "rnf": universe["documentary_rnf_count"],
-            "main_functions": universe["main_function_count"],
-            "conditional_rules": universe["conditional_rule_count"],
-            "mc01_universe": universe["main_function_count"],
-            "mc02_universe": universe["main_function_count"],
-            "documentary_rf_count": universe["documentary_rf_count"],
-            "documentary_rnf_count": universe["documentary_rnf_count"],
-            "main_functions_before_dedup": universe["main_functions_before_dedup"],
-            "main_functions_after_dedup": universe["main_functions_after_dedup"],
-            "equivalent_functions_merged": universe["equivalent_functions_merged"],
+
+        resultado = {
+            "issue_iid": iid,
+            "historia_id": str(
+                issue.get("historia_id") or ""
+            ),
+            "titulo": str(
+                issue.get("titulo") or ""
+            ),
+            "actor": str(
+                issue.get("actor") or ""
+            ),
+            "funcionalidad": str(
+                issue.get("funcionalidad") or ""
+            ),
+            "objetivo": str(
+                issue.get("objetivo") or ""
+            ),
+            "criterios_aceptacion": deepcopy(
+                issue.get(
+                    "criterios_aceptacion",
+                    [],
+                )
+            ),
+            "restricciones": deepcopy(
+                issue.get(
+                    "restricciones",
+                    [],
+                )
+            ),
+            "observaciones": deepcopy(
+                issue.get(
+                    "observaciones",
+                    ""
+                )
+            ),
+            "funciones_principales_evaluables": deepcopy(
+                universe[
+                    "funciones_principales_evaluables"
+                ]
+            ),
+            "reglas_funcionales_contextuales": deepcopy(
+                universe[
+                    "reglas_funcionales_contextuales"
+                ]
+            ),
         }
 
-    all_requirements = [
-        requirement
-        for item in resultados if isinstance(item, dict)
-        for requirement in item.get("requerimientos", []) if isinstance(requirement, dict)
-    ]
+        resultados_calidad.append(resultado)
+
+        by_issue_audit.append({
+            "issue_iid": iid,
+            "main_function_count": len(
+                universe[
+                    "funciones_principales_evaluables"
+                ]
+            ),
+            "contextual_rule_count": len(
+                universe[
+                    "reglas_funcionales_contextuales"
+                ]
+            ),
+            "source": "historia_usuario_original",
+        })
+
+    payload = {
+        "agente": "entrada_calidad",
+        "resultados": resultados_calidad,
+    }
+
     registrar_evento_grafo(
-        "quality_input_prepared", "Quality",
-        expected_stories=len(historias_por_iid), found_stories=found_stories,
-        requirements_before=requirements_before, requirements_after=len(all_requirements),
-        rf_before=sum(normalizar_tipo_requerimiento(item.get("tipo")) == "RF" for item in before_requirements),
-        rnf_before=sum(normalizar_tipo_requerimiento(item.get("tipo")) == "RNF" for item in before_requirements),
-        rf_after=sum(normalizar_tipo_requerimiento(item) == "RF" for item in all_requirements),
-        rnf_after=sum(normalizar_tipo_requerimiento(item) == "RNF" for item in all_requirements),
-        mc01_functional_universe=sum(item["mc01_universe"] for item in after_by_iid.values()),
-        mc02_evaluable_universe=sum(item["mc02_universe"] for item in after_by_iid.values()),
-        processed_issue_iids=sorted(processed_iids),
-        by_issue=[after_by_iid[iid] for iid in sorted(after_by_iid)],
+        "quality_input_prepared",
+        "Quality",
+        expected_stories=len(issues_data),
+        found_stories=len(resultados_calidad),
+        processed_issue_iids=[
+            item["issue_iid"]
+            for item in resultados_calidad
+        ],
+        mc01_functional_universe=sum(
+            item["main_function_count"]
+            for item in by_issue_audit
+        ),
+        mc02_evaluable_universe=sum(
+            item["main_function_count"]
+            for item in by_issue_audit
+        ),
+        by_issue=by_issue_audit,
+        source="historia_usuario_original",
+        central_formalization_included=False,
     )
-    return json.dumps(central_para_calidad, ensure_ascii=False)
+
+    return (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+        ),
+        central_errors,
+    )
 
 
 def _ejecutar_sublotes_remotos(req_text, agent_name, batch_size, invoke):
@@ -569,8 +642,10 @@ def nodo_calidad(state: AgentState):
     registrar_evento_grafo("node_start", "Quality")
     start_time = time.time()
     
-    req_text = preparar_entrada_calidad(state["central_init"], state["issues_data"])
-    req_text, central_errors = _separar_errores_centrales(req_text)
+    req_text, central_errors = preparar_entrada_calidad(
+        state["central_init"],
+        state["issues_data"]
+    )
     from core.remote_execution import remote_batch_size, remote_enabled_for, reiniciar_pacing_remoto
     remote_mode = remote_enabled_for("quality")
     if remote_mode and json.loads(req_text)["resultados"]:
@@ -590,23 +665,30 @@ def nodo_calidad(state: AgentState):
     parsed["resultados"].extend(
         _resultado_agente_no_evaluable(int(item["issue_iid"]), "Calidad") for item in central_errors
     )
-    expected_ids = [int(x["id"]) for x in state["issues_data"]]
-    central = analizar_respuesta_lote(req_text, "Central")
-    prepared_by_iid = indexar_resultados(central)
-    context_by_iid = {}
+    from core.batch_contract import normalizar_iid
+    expected_ids = []
     for issue in state["issues_data"]:
-        iid = int(issue["id"])
-        context = deepcopy(issue)
-        context["requerimientos_preparados"] = deepcopy(
-            prepared_by_iid.get(iid, {}).get("requerimientos", [])
+        iid = normalizar_iid(
+            issue.get("issue_iid")
+            or issue.get("id")
         )
-        context["funciones_principales_evaluables"] = deepcopy(
-            prepared_by_iid.get(iid, {}).get("funciones_principales_evaluables", [])
+        if iid is not None:
+            expected_ids.append(iid)
+
+    entrada_calidad = analizar_respuesta_lote(req_text, "Entrada Calidad")
+    
+    context_by_iid = {}
+    
+    for issue in state["issues_data"]:
+        iid = normalizar_iid(
+            issue.get("issue_iid")
+            or issue.get("id")
         )
-        context["reglas_funcionales_contextuales"] = deepcopy(
-            prepared_by_iid.get(iid, {}).get("reglas_funcionales_contextuales", [])
-        )
-        context_by_iid[iid] = context
+    
+        if iid is None:
+            continue
+    
+        context_by_iid[iid] = deepcopy(issue)
     if remote_mode:
         for note in conciliar_ids_issues(parsed, expected_ids, "Calidad"):
             logger.warning(note)
@@ -621,8 +703,22 @@ def nodo_calidad(state: AgentState):
             )
     else:
         def reparar(repair_ids):
-            subset = [item for item in central["resultados"] if item.get("issue_iid") in repair_ids]
-            return analizar_calidad(json.dumps({"agente": "central", "resultados": subset}, ensure_ascii=False))
+            subset = [
+                item
+                for item in entrada_calidad["resultados"]
+                if normalizar_iid(
+                    item.get("issue_iid")
+                ) in repair_ids
+            ]
+            return analizar_calidad(
+                json.dumps(
+                    {
+                        "agente": "entrada_calidad",
+                        "resultados": subset,
+                    },
+                    ensure_ascii=False,
+                )
+            )
         errors, content_errors = _validar_y_reparar(
             parsed, expected_ids, "Calidad", reparar,
             context_by_iid=context_by_iid,

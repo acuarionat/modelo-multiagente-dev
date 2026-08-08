@@ -473,6 +473,143 @@ def _descripcion_requerimiento_explicito(text: str, actor: str = "") -> str:
     return f"El sistema deberá {clean[:1].lower() + clean[1:]}."
 
 
+def obtener_universo_funcional_original(
+    issue_original: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    """
+    Construye el universo MC-01/MC-02 exclusivamente desde la
+    Historia de Usuario original recibida desde GitLab.
+
+    No utiliza requerimientos generados por Central,
+    requerimientos preparados ni correcciones posteriores.
+    """
+
+    issue_original = (
+        issue_original
+        if isinstance(issue_original, dict)
+        else {}
+    )
+
+    funcionalidad = str(
+        issue_original.get("funcionalidad") or ""
+    ).strip()
+
+    criterios = normalizar_lista_textos(
+        issue_original.get("criterios_aceptacion")
+    )
+
+    restricciones = normalizar_lista_textos(
+        issue_original.get("restricciones")
+    )
+
+    observaciones = normalizar_lista_textos(
+        issue_original.get("observaciones")
+    )
+
+    funciones_principales: List[str] = []
+    reglas_contextuales: List[str] = []
+
+    def agregar_funcion(texto: Any) -> None:
+        text = str(texto or "").strip()
+
+        if not text or _es_no_definido(text):
+            return
+
+        # No incorporar RNF al universo funcional.
+        if _tipo_desde_texto(text) == "RNF":
+            reglas_contextuales.append(text)
+            return
+
+        if not any(
+            funciones_equivalentes(text, existente)
+            for existente in funciones_principales
+        ):
+            funciones_principales.append(text)
+
+    # -----------------------------------------------------
+    # Funcionalidad principal declarada por la HU
+    # -----------------------------------------------------
+
+    if funcionalidad and not _es_no_definido(funcionalidad):
+        agregar_funcion(funcionalidad)
+
+    # -----------------------------------------------------
+    # Criterios de aceptación
+    # -----------------------------------------------------
+
+    for criterio in criterios:
+        key = _clave_texto(criterio)
+
+        # Reglas que condicionan una función, pero que no
+        # representan necesariamente una función principal.
+        es_regla_condicional = any(
+            marker in key
+            for marker in (
+                "solo ",
+                "cuando ",
+                "si ",
+                "sin ",
+                "no permitir",
+                "impedir",
+                "restringir",
+                "menos de",
+            )
+        )
+
+        if es_regla_condicional:
+            reglas_contextuales.append(criterio)
+            continue
+
+        agregar_funcion(criterio)
+
+    # -----------------------------------------------------
+    # Restricciones
+    # -----------------------------------------------------
+
+    # Las restricciones sirven como contexto, pero no forman
+    # parte automáticamente del universo funcional MC-01.
+    for restriccion in restricciones:
+        if not _es_no_definido(restriccion):
+            reglas_contextuales.append(restriccion)
+
+    # -----------------------------------------------------
+    # Observaciones
+    # -----------------------------------------------------
+
+    for observacion in observaciones:
+        if _es_no_definido(observacion):
+            continue
+
+        if _tipo_desde_texto(observacion) == "RNF":
+            reglas_contextuales.append(observacion)
+            continue
+
+        action, _ = _firma_funcional(observacion)
+
+        if action:
+            agregar_funcion(observacion)
+        else:
+            reglas_contextuales.append(observacion)
+
+    # Deduplicación final.
+    reglas_limpias: List[str] = []
+
+    for regla in reglas_contextuales:
+        if not any(
+            _clave_texto(regla) == _clave_texto(existing)
+            for existing in reglas_limpias
+        ):
+            reglas_limpias.append(regla)
+
+    return {
+        "fuente_universo": "historia_usuario_original",
+        "funciones_principales_evaluables": funciones_principales,
+        "reglas_funcionales_contextuales": reglas_limpias,
+        "main_function_count": len(funciones_principales),
+        "conditional_rule_count": len(reglas_limpias),
+    }
+
+
 def _es_restriccion_control_acceso(value: Any) -> bool:
     """
     Identifica restricciones cuyo propósito principal es expresar
@@ -768,10 +905,29 @@ def _preparar_metrica(metric: Dict[str, Any], fields: List[str]) -> List[str]:
     return warnings
 
 
-def _marcar_no_evaluable(metric: Dict[str, Any], message: str) -> None:
+def _marcar_no_evaluable(
+    metric: Dict[str, Any],
+    message: str,
+) -> None:
+    """
+    Marca una métrica como no evaluable de forma determinista.
+
+    Evita conservar valores, porcentajes o estados de cálculo
+    procedentes de una respuesta anterior o del LLM.
+    """
+
     metric["valor"] = None
+    metric["porcentaje"] = None
+
+    metric["estado_calculo"] = "No evaluado"
     metric["estado_medicion"] = "evidencia_insuficiente"
-    metric.setdefault("advertencias_tecnicas", []).append(message)
+
+    metric["calculo"] = "No evaluado"
+
+    metric.setdefault(
+        "advertencias_tecnicas",
+        [],
+    ).append(message)
 
 
 def _promedio_evaluable(values: Iterable[Any]) -> float | None:
@@ -875,90 +1031,170 @@ def completar_resultado_calidad(
     mc02 = mc02 if isinstance(mc02, dict) else {}
     _preparar_metrica(mc01, ["funciones_especificadas", "funciones_incluidas", "funciones_faltantes"])
     _preparar_metrica(mc02, ["funciones_evaluables", "funciones_alineadas", "funciones_no_alineadas"])
-    specified = mc01["funciones_especificadas"]
-    prepared_requirements = context.get("requerimientos_preparados", []) if context else []
-    universe_source = {"requerimientos_preparados": prepared_requirements}
-    if context:
-        universe_source["funciones_principales_evaluables"] = context.get("funciones_principales_evaluables")
-        universe_source["reglas_funcionales_contextuales"] = context.get("reglas_funcionales_contextuales")
-    universe = obtener_universo_funcional_calidad(universe_source, context)
-    functional_universe = list(universe["funciones_principales_evaluables"])
-    representations: Dict[str, List[str]] = {}
-    for requirement in prepared_requirements:
-        canonical = str(requirement.get("nombre") or requirement.get("descripcion_formal") or "").strip()
-        if canonical not in functional_universe:
-            continue
-        if not canonical:
-            continue
-        variants = [canonical]
-        variants.extend(
-            str(requirement.get(field) or "").strip()
-            for field in ("descripcion_formal", "descripcion")
-            if str(requirement.get(field) or "").strip()
-        )
-        variants.extend(
-            value.strip() for value in str(requirement.get("origen") or "").split(";")
-            if value.strip()
-        )
-        representations[canonical] = list(dict.fromkeys(variants))
-    explicit_sources = []
-    if context:
-        explicit_sources.extend(normalizar_lista_textos(context.get("funcionalidad")))
-        explicit_sources.extend(normalizar_lista_textos(context.get("criterios_aceptacion")))
-    for source in explicit_sources:
+
+    original_context = context if isinstance(context, dict) else {}
+    universe = obtener_universo_funcional_original(original_context)
+
+    functional_universe = list(universe.get("funciones_principales_evaluables", []))
+    contextual_rules = list(universe.get("reglas_funcionales_contextuales", []))
+
+    item["fuente_evaluacion"] = "historia_usuario_original"
+    item["universo_evaluacion"] = {
+        "fuente": "historia_usuario_original",
+        "funciones_principales_evaluables": functional_universe,
+        "reglas_funcionales_contextuales": contextual_rules,
+    }
+
+    representations: Dict[str, List[str]] = {
+        function: [function] for function in functional_universe
+    }
+
+    original_sources: List[str] = []
+    original_sources.extend(normalizar_lista_textos(original_context.get("funcionalidad")))
+    original_sources.extend(normalizar_lista_textos(original_context.get("criterios_aceptacion")))
+    original_sources.extend(normalizar_lista_textos(original_context.get("observaciones")))
+
+    for source in original_sources:
         matching = [
-            canonical for canonical, variants in representations.items()
-            if any(funciones_equivalentes(source, variant) for variant in variants)
+            canonical for canonical in functional_universe
+            if funciones_equivalentes(source, canonical)
         ]
-        if len(matching) == 1 and source not in representations[matching[0]]:
-            representations[matching[0]].append(source)
-    if functional_universe:
-        specified, universe_notes = _restringir_funciones(
-            specified, functional_universe, "función especificada", representations,
-        )
-        mc01["funciones_especificadas"] = specified
-        if universe_notes:
-            mc01.setdefault("advertencias_tecnicas", []).extend(universe_notes)
+        if len(matching) == 1:
+            canonical = matching[0]
+            if source not in representations[canonical]:
+                representations[canonical].append(source)
+
+    # MC-01: El universo viene dictado estrictamente por Python
+    specified = list(functional_universe)
+    mc01["funciones_especificadas"] = specified
+
     included, notes = _restringir_funciones(
-        mc01["funciones_incluidas"], specified, "función incluida", representations,
+        mc01["funciones_incluidas"], functional_universe, "función incluida", representations,
     )
-    _reported_missing, missing_notes = _restringir_funciones(
-        mc01["funciones_faltantes"], specified, "función faltante", representations,
+    missing, missing_notes = _restringir_funciones(
+        mc01["funciones_faltantes"], functional_universe, "función faltante", representations,
     )
-    classified = bool(mc01["funciones_incluidas"] or mc01["funciones_faltantes"])
-    missing = [function for function in specified if function not in included] if classified else []
+
+    included_keys = {_clave_texto(value) for value in included}
+    missing_keys = {_clave_texto(value) for value in missing}
+    overlap = included_keys & missing_keys
+    classified_keys = included_keys | missing_keys
+
+    unclassified = [
+        function for function in functional_universe
+        if _clave_texto(function) not in classified_keys
+    ]
+
+    mc01_particion_valida = (
+        not overlap
+        and not unclassified
+    )
+
+    if not mc01_particion_valida:
+        _marcar_no_evaluable(
+            mc01,
+            (
+                "El Agente de Calidad no clasificó "
+                "correctamente todas las funciones del "
+                "universo original o repitió funciones "
+                "entre incluida y faltante."
+            ),
+        )
+
     mc01["funciones_incluidas"] = included
     mc01["funciones_faltantes"] = missing
     if notes or missing_notes:
         mc01.setdefault("advertencias_tecnicas", []).extend(notes + missing_notes)
 
     # MC-02 usa exactamente el universo de MC-01; el agente solo aporta alineación.
-    evaluable = list(specified)
-    aligned, alignment_notes = _restringir_funciones(
-        mc02["funciones_alineadas"], evaluable, "función alineada", representations,
-    )
-    not_aligned = [function for function in evaluable if function not in aligned]
+    evaluable = list(functional_universe)
     mc02["funciones_evaluables"] = evaluable
+
+    aligned, alignment_notes = _restringir_funciones(
+        mc02["funciones_alineadas"], functional_universe, "función alineada", representations,
+    )
+    not_aligned, not_aligned_notes = _restringir_funciones(
+        mc02["funciones_no_alineadas"], functional_universe, "función no alineada", representations,
+    )
+
+    aligned_keys = {_clave_texto(value) for value in aligned}
+    not_aligned_keys = {_clave_texto(value) for value in not_aligned}
+    alignment_overlap = aligned_keys & not_aligned_keys
+    alignment_classified_keys = aligned_keys | not_aligned_keys
+
+    alignment_unclassified = [
+        function for function in functional_universe
+        if _clave_texto(function) not in alignment_classified_keys
+    ]
+
     mc02["funciones_alineadas"] = aligned
     mc02["funciones_no_alineadas"] = not_aligned
-    if alignment_notes:
-        mc02.setdefault("advertencias_tecnicas", []).extend(alignment_notes)
-    if context and isinstance(context.get("objetivo"), str):
-        mc02["objetivo_evaluado"] = context["objetivo"].strip()
-    mc01.update({"codigo": "MC-01", "nombre": "Cobertura Funcional"})
-    _calcular_proporcion_metrica(
-        mc01, len(missing), len(specified),
-        "1 - (funciones_faltantes / funciones_especificadas)",
-        f"1 - ({len(missing)} / {len(specified)})",
+    if alignment_notes or not_aligned_notes:
+        mc02.setdefault("advertencias_tecnicas", []).extend(alignment_notes + not_aligned_notes)
+
+    objetivo_original = str(original_context.get("objetivo") or "").strip()
+    mc02["objetivo_evaluado"] = objetivo_original
+
+    mc02_particion_valida = (
+        not alignment_overlap
+        and not alignment_unclassified
+        and not _es_no_definido(objetivo_original)
     )
-    if mc01.get("estado_calculo") == "Calculada":
-        value = round(1 - len(missing) / len(specified), 4)
-        mc01.update({"valor": value, "porcentaje": round(value * 100, 2)})
-    if specified and not included and not missing:
-        mc01.update({
-            "estado_calculo": "No evaluado", "estado_medicion": "evidencia_insuficiente",
-            "valor": None, "porcentaje": None, "calculo": "No evaluado",
-        })
+
+    if not mc02_particion_valida:
+        if _es_no_definido(objetivo_original):
+            motivo = (
+                "La Historia original no contiene "
+                "un objetivo evaluable."
+            )
+        else:
+            motivo = (
+                "El Agente de Calidad no clasificó "
+                "correctamente todas las funciones "
+                "del universo original o repitió "
+                "funciones entre alineada y no alineada."
+            )
+        _marcar_no_evaluable(
+            mc02,
+            motivo,
+        )
+    mc01.update({"codigo": "MC-01", "nombre": "Cobertura Funcional"})
+    if mc01_particion_valida:
+        total_funciones = len(specified)
+        funciones_faltantes = len(missing)
+
+        mc01["formula"] = (
+            "1 - (funciones_faltantes / funciones_especificadas)"
+        )
+
+        mc01["variables"] = {
+            "A_funciones_faltantes": funciones_faltantes,
+            "B_funciones_especificadas": total_funciones,
+        }
+
+        if total_funciones == 0:
+            mc01.update({
+                "estado_calculo": "No aplica",
+                "estado_medicion": "no_aplicable",
+                "valor": None,
+                "porcentaje": None,
+                "calculo": "No aplica",
+            })
+        else:
+            valor = 1 - (
+                funciones_faltantes / total_funciones
+            )
+
+            mc01.update({
+                "estado_calculo": "Calculada",
+                "estado_medicion": "evaluable",
+                "valor": round(valor, 4),
+                "porcentaje": round(valor * 100, 2),
+                "calculo": (
+                    f"1 - ({funciones_faltantes} / "
+                    f"{total_funciones})"
+                ),
+            })
     mc01["justificacion"] = _justificacion_proporcion(
         "MC-01", specified, included, missing,
     )
@@ -969,11 +1205,17 @@ def completar_resultado_calidad(
         if missing else ""
     )
     mc02.update({"codigo": "MC-02", "nombre": "Adecuación Funcional"})
-    _calcular_proporcion_metrica(
-        mc02, len(aligned), len(evaluable),
-        "funciones_alineadas / funciones_evaluables",
-        f"{len(aligned)} / {len(evaluable)}",
-    )
+    if mc02_particion_valida:
+        _calcular_proporcion_metrica(
+            mc02,
+            len(aligned),
+            len(evaluable),
+            (
+                "funciones_alineadas / "
+                "funciones_evaluables"
+            ),
+            f"{len(aligned)} / {len(evaluable)}",
+        )
     objective = str(mc02.get("objetivo_evaluado") or "no definido").strip()
     mc02["justificacion"] = (
         f"MC-02: {len(aligned)} de {len(evaluable)} funciones especificadas se alinean "
@@ -997,7 +1239,95 @@ def completar_resultado_calidad(
     item["recomendaciones"] = [
         text for text in (mc01["recomendacion"], mc02["recomendacion"]) if text
     ]
+    item["mejoras_sugeridas"] = normalizar_mejoras_calidad(
+        item,
+        original_context,
+    )
     return item
+
+
+def normalizar_mejoras_calidad(
+    item: Dict[str, Any],
+    context: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    raw = item.get("mejoras_sugeridas")
+
+    if not isinstance(raw, list):
+        return []
+
+    fuentes = []
+
+    for field in (
+        "funcionalidad",
+        "objetivo",
+        "criterios_aceptacion",
+        "restricciones",
+        "observaciones",
+    ):
+        fuentes.extend(
+            normalizar_lista_textos(
+                context.get(field)
+            )
+        )
+
+    fuentes_normalizadas = {
+        _clave_texto(value)
+        for value in fuentes
+        if str(value).strip()
+    }
+
+    resultado = []
+    vistos = set()
+
+    for mejora in raw:
+        if not isinstance(mejora, dict):
+            continue
+
+        evidencia = str(
+            mejora.get("evidencia") or ""
+        ).strip()
+
+        descripcion = str(
+            mejora.get("descripcion") or ""
+        ).strip()
+
+        recomendacion = str(
+            mejora.get("recomendacion") or ""
+        ).strip()
+
+        if not evidencia or not descripcion or not recomendacion:
+            continue
+
+        evidencia_key = _clave_texto(evidencia)
+
+        respaldada = any(
+            evidencia_key == fuente
+            or evidencia_key in fuente
+            or fuente in evidencia_key
+            for fuente in fuentes_normalizadas
+        )
+
+        if not respaldada:
+            continue
+
+        key = (
+            evidencia_key,
+            _clave_texto(descripcion),
+            _clave_texto(recomendacion),
+        )
+
+        if key in vistos:
+            continue
+
+        vistos.add(key)
+
+        resultado.append({
+            "evidencia": evidencia,
+            "descripcion": descripcion,
+            "recomendacion": recomendacion,
+        })
+
+    return resultado
 
 
 def _es_no_definido(value: Any) -> bool:
@@ -1726,6 +2056,145 @@ def recopilar_recomendaciones(result: Dict[str, Any]) -> List[str]:
     return filtered
 
 
+def recopilar_mejoras_sugeridas(
+    result: Dict[str, Any],
+) -> List[str]:
+
+    values = []
+    seen = set()
+
+    quality = result.get("quality") or {}
+
+    for mejora in quality.get("mejoras_sugeridas", []):
+        if not isinstance(mejora, dict):
+            continue
+
+        text = str(
+            mejora.get("recomendacion") or ""
+        ).strip()
+
+        if not text:
+            continue
+
+        key = _clave_texto(text)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        values.append(text)
+
+    return values
+
+
+def determinar_estado_orientativo(
+    evaluation: Dict[str, Any],
+    mejoras_sugeridas: List[str],
+) -> str:
+
+    verdict = str(
+        evaluation.get("veredicto") or ""
+    ).strip().upper()
+
+    if verdict == "APROBADO":
+        return (
+            "CONFORME CON MEJORAS"
+            if mejoras_sugeridas
+            else "CONFORME"
+        )
+
+    if verdict == "CORREGIR":
+        return "CORREGIR"
+
+    return "REVISIÓN HUMANA"
+
+
+def construir_brechas_calidad_100(
+    quality: Dict[str, Any],
+) -> List[str]:
+
+    metricas = quality.get("metricas", {})
+
+    mc01 = metricas.get(
+        "cobertura_funcional",
+        {},
+    )
+
+    mc02 = metricas.get(
+        "adecuacion_funcional",
+        {},
+    )
+
+    brechas = []
+
+    faltantes = normalizar_lista_textos(
+        mc01.get("funciones_faltantes")
+    )
+
+    no_alineadas = normalizar_lista_textos(
+        mc02.get("funciones_no_alineadas")
+    )
+
+    if faltantes:
+        brechas.append(
+            "Documentar las funciones faltantes: "
+            + ", ".join(faltantes)
+            + "."
+        )
+
+    if no_alineadas:
+        brechas.append(
+            "Revisar la alineación con el objetivo de: "
+            + ", ".join(no_alineadas)
+            + "."
+        )
+
+    return brechas
+
+
+def construir_brechas_seguridad_100(
+    security: Dict[str, Any],
+) -> List[str]:
+
+    metricas = security.get("metricas", {})
+
+    ms01 = metricas.get(
+        "cobertura_seguridad",
+        {},
+    )
+
+    ms02 = metricas.get(
+        "clasificacion_datos",
+        {},
+    )
+
+    brechas = []
+
+    aspectos = normalizar_lista_textos(
+        ms01.get("aspectos_faltantes")
+    )
+
+    datos = normalizar_lista_textos(
+        ms02.get("datos_sin_clasificacion")
+    )
+
+    if aspectos:
+        brechas.append(
+            "Documentar los aspectos de seguridad pendientes: "
+            + ", ".join(aspectos)
+            + "."
+        )
+
+    if datos:
+        brechas.append(
+            "Definir explícitamente la clasificación de: "
+            + ", ".join(datos)
+            + "."
+        )
+
+    return brechas
+
+
 def construir_etiquetas_resultado(old_labels: list, estado_evaluacion: str, quality_index=None, security_index=None) -> list:
     """Calcula el siguiente estado GitLab conservando etiquetas ajenas al flujo."""
     if estado_evaluacion not in {"APROBADO", "CORREGIR", "ALERTA", "NO_PROCESABLE", "NO_EVALUADO"}:
@@ -1952,9 +2421,7 @@ def validar_semantica_calidad_llm(
     for result in response.get("resultados", []):
         iid = normalizar_iid(result.get("issue_iid"))
         source = sources.get(iid, {})
-        requirements = source.get("requerimientos", []) if isinstance(source, dict) else []
-        requirements = [item for item in requirements if isinstance(item, dict)]
-        universe = obtener_universo_funcional_calidad(source)
+        universe = obtener_universo_funcional_original(source)
         canonical = list(universe["funciones_principales_evaluables"])
         metrics = result.get("metricas", {})
         coverage = metrics.get("cobertura_funcional", {}) if isinstance(metrics, dict) else {}
@@ -1996,10 +2463,6 @@ def validar_semantica_calidad_llm(
         explanations_present = int(not missing or bool(coverage_explanation)) + int(not not_aligned or bool(alignment_explanation))
 
         contradictory = []
-        if missing and not coverage_explanation:
-            for function in missing:
-                if any(funciones_equivalentes(function, str(req.get("nombre") or req.get("descripcion_formal") or "")) for req in requirements):
-                    contradictory.append(function)
         incomplete = bool(
             unclassified_coverage or unclassified_alignment or overlap_coverage or overlap_alignment
             or dup_included or dup_missing or dup_aligned or dup_not_aligned
@@ -2010,14 +2473,15 @@ def validar_semantica_calidad_llm(
         has_out_of_universe = has_out_of_universe or bool(outside)
         diagnostics.append({
             "issue_iid": iid,
-            "documentary_rf_count": universe["documentary_rf_count"],
-            "documentary_rnf_count": universe["documentary_rnf_count"],
+            "evaluation_source": "historia_usuario_original",
             "main_function_count": universe["main_function_count"],
             "conditional_rule_count": universe["conditional_rule_count"],
             "expected_functions": len(canonical),
-            "classified_included": len(included), "classified_missing": len(missing),
+            "classified_included": len(included),
+            "classified_missing": len(missing),
             "unclassified_coverage": len(unclassified_coverage),
-            "classified_aligned": len(aligned), "classified_not_aligned": len(not_aligned),
+            "classified_aligned": len(aligned),
+            "classified_not_aligned": len(not_aligned),
             "unclassified_alignment": len(unclassified_alignment),
             "contradictions": len(contradictory),
             "out_of_universe_count": len(outside),
@@ -3019,6 +3483,13 @@ def consolidar_lote(
             ajustar_veredicto_determinista(
                 central_item, quality_item, security_item, evaluation_item, input_validation,
             )
+            
+        if quality_item:
+            quality_item["fuente_evaluacion"] = "historia_usuario_original"
+            
+        if central_item:
+            central_item["tipo_resultado"] = "formalizacion_propuesta"
+
         estado_evaluacion = evaluation_item.get("veredicto", "NO_EVALUADO") if evaluation_item else "NO_EVALUADO"
         central_status = str((central_item or {}).get("status", "ok")).strip().casefold()
         traceable_individual_error = central_status == "error"
@@ -3043,7 +3514,24 @@ def consolidar_lote(
             "estado_revision_humana": "pendiente",
             "responsable_revision": None,
         }
-        consolidated_item["recommendations"] = recopilar_recomendaciones(consolidated_item)
+        correcciones = recopilar_recomendaciones(consolidated_item)
+        consolidated_item["recommendations"] = correcciones
+        consolidated_item["correcciones_necesarias"] = correcciones
+        consolidated_item["mejoras_sugeridas"] = recopilar_mejoras_sugeridas(
+            consolidated_item,
+        )
+        consolidated_item["estado_orientativo"] = determinar_estado_orientativo(
+            evaluation_item or {},
+            consolidated_item["mejoras_sugeridas"],
+        )
+        consolidated_item["para_alcanzar_100"] = {
+            "calidad": construir_brechas_calidad_100(
+                quality_item or {},
+            ),
+            "seguridad": construir_brechas_seguridad_100(
+                security_item or {},
+            ),
+        }
         consolidated.append(consolidated_item)
     traceable = [x for x in consolidated if isinstance(x.get("central"), dict)]
     quality_values = [x["quality"]["indice"] for x in traceable if isinstance(x.get("quality"), dict) and isinstance(x["quality"].get("indice"), (int, float))]
