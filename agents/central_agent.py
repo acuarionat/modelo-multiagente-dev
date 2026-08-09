@@ -9,6 +9,7 @@ from core.performance_audit import (
 )
 from core.batch_contract import (
     calcular_num_predict, normalizar_iid, normalizar_presentacion_requerimientos,
+    normalizar_requerimientos_propuestos_gap,
 )
 from core.config import OLLAMA_MODEL
 import json
@@ -166,6 +167,72 @@ def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str
         )
         audit["response"] = response.content
     return response.content
+
+
+def formalizar_gaps_calidad(
+    project_name: str,
+    original_issue: Dict[str, Any],
+    gaps_funcionales: List[Dict[str, Any]],
+    llm_override: Any = None,
+) -> List[Dict[str, Any]]:
+    """
+    Formaliza exclusivamente los gaps funcionales de confianza alta
+    validados por el Agente de Calidad para una Historia de Usuario.
+
+    No modifica retroactivamente la salida inicial del Agente Central:
+    devuelve una lista independiente de requerimientos propuestos,
+    pendientes de validación humana.
+    """
+    if not gaps_funcionales:
+        return []
+
+    entrada = {
+        "historia_original": original_issue,
+        "gaps_funcionales_validados": gaps_funcionales,
+    }
+    entrada_json_str = json.dumps(entrada, ensure_ascii=False)
+
+    if llm_override is not None:
+        llm = llm_override
+    else:
+        selection = obtener_llm_para_agente(
+            "central",
+            json_mode=True,
+            num_predict=min(400 + len(gaps_funcionales) * 200, 1600),
+            num_ctx=8192,
+            temperature=0.1,
+        )
+        llm = selection.llm
+
+    prompt_template = cargar_prompt("central_gaps_prompt.txt")
+    prompt = PromptTemplate.from_template(prompt_template)
+    chain = prompt | llm
+    prompt_text = prompt.format(
+        project_name=project_name,
+        entrada_json_str=entrada_json_str,
+    )
+
+    with auditar_llamada_agente(
+        "Central_Gaps",
+        prompt_text=prompt_text,
+        context_text=entrada_json_str,
+        model_params={"json_mode": True},
+    ) as audit:
+        response = chain.invoke({
+            "project_name": project_name,
+            "entrada_json_str": entrada_json_str,
+        })
+        audit["response"] = response.content
+
+    try:
+        parsed = json.loads(response.content)
+    except (TypeError, json.JSONDecodeError):
+        logger.warning("CENTRAL_GAPS_RESPUESTA_NO_JSON issue=%r", original_issue.get("issue_iid"))
+        return []
+
+    propuestas_raw = parsed.get("requerimientos_propuestos") if isinstance(parsed, dict) else None
+
+    return normalizar_requerimientos_propuestos_gap(propuestas_raw, gaps_funcionales)
 
 
 class RespuestaCentralNoRecuperable(ValueError):

@@ -68,7 +68,7 @@ st.markdown("""
         display: flex;
         flex-direction: column;
         justify-content: center;
-        min-height: 155px;
+        min-height: 135px;
         padding: 1.2rem 1.6rem;
         background: linear-gradient(115deg, var(--emi-blue-dark), var(--emi-blue));
         border-left: 9px solid var(--emi-yellow);
@@ -125,9 +125,9 @@ st.markdown("""
     }
 
     div[data-testid="stMetric"] {
-        min-height: 112px;
-        padding: 1rem 1.1rem;
-        margin:  1rem 0 0 0;
+        min-height: 94px;
+        padding: 0.8rem 1rem;
+        margin: 0.7rem 0 0 0;
         background: #FFFFFF;
         border: 1px solid var(--emi-line);
         border-top: 5px solid var(--emi-yellow);
@@ -241,11 +241,15 @@ st.markdown("""
     }
 
     [data-testid="stTextInput"] input,
-    [data-testid="stTextInput"] input::placeholder,
     [data-testid="stSelectbox"] div[data-baseweb="select"] span,
     [data-testid="stSelectbox"] div[data-baseweb="select"] input {
-        color: #FFFFFF !important;
+        color: #111111 !important;
         -webkit-text-fill-color: #111111 !important;
+    }
+
+    [data-testid="stTextInput"] input::placeholder {
+        color: #66788A !important;
+        -webkit-text-fill-color: #66788A !important;
     }
 
     [data-baseweb="popover"],
@@ -420,6 +424,94 @@ st.markdown("""
         font-size: 0.82rem;
         font-weight: 800;
         text-transform: uppercase;
+    }
+
+    .result-intro {
+        padding: 0.85rem 1rem;
+        margin: 0.6rem 0 1rem;
+        border: 1px solid var(--emi-line);
+        border-left: 5px solid var(--emi-blue);
+        border-radius: 8px;
+        background: #F8FBFE;
+    }
+
+    .result-intro strong {
+        color: var(--emi-blue-dark);
+    }
+
+    .result-section {
+        margin: 1rem 0;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--emi-line);
+        border-radius: 8px;
+        background: #FFFFFF;
+    }
+
+    .result-section h4 {
+        margin-top: 0;
+        color: var(--emi-blue-dark);
+    }
+
+    .state-badge {
+        display: inline-block;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+    }
+
+    .state-corregir {
+        background: #FFF1D6;
+        color: #8A5200;
+        border: 1px solid #E7B44D;
+    }
+
+    .state-conforme {
+        background: #E9F7EF;
+        color: #176B3A;
+        border: 1px solid #8BC9A6;
+    }
+
+    .state-mejoras {
+        background: #EAF3FB;
+        color: #07549A;
+        border: 1px solid #9BC6E8;
+    }
+
+    .state-revision {
+        background: #F1F3F5;
+        color: #4E5D6C;
+        border: 1px solid #C8D0D8;
+    }
+
+    .finding-block {
+        padding: 0.75rem 0.9rem;
+        margin: 0.55rem 0;
+        border-radius: 7px;
+        background: #F8FBFE;
+        border-left: 4px solid #9CBFD9;
+    }
+
+    .finding-correction {
+        border-left-color: #D99B26;
+        background: #FFFBF2;
+    }
+
+    .finding-precision {
+        border-left-color: #3787C8;
+    }
+
+    .finding-opportunity {
+        border-left-color: #7A8A99;
+    }
+
+    .metric-detail {
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        background: #F8FBFE;
+        border: 1px solid #DCE7F0;
+        margin-bottom: 0.8rem;
     }
 
     @media (max-width: 800px) {
@@ -687,7 +779,7 @@ if start_analysis:
         for batch_idx, batch in enumerate(batches):
             batch_num = batch_idx + 1
             total_batches = len(batches)
-            global_ph.markdown(f"**Procesando lote {batch_num} de {total_batches} ({len(batch)} historias)**... ⏳\n*(Agente Central -> Calidad -> Seguridad -> Evaluador -> Central Final)*")
+            global_ph.markdown(f"**Procesando lote {batch_num} de {total_batches} ({len(batch)} historias)**... ⏳\n*(Central → Calidad → Seguridad → Evaluador → Formalización final)*")
             
             try:
                 from integrations.issue_service import procesar_flujo_lote
@@ -756,6 +848,153 @@ if start_analysis:
     else:
         st.success("¡Análisis del Sprint finalizado!")
 
+
+def _texto_hallazgo_ui(item):
+    if isinstance(item, str):
+        return item.strip()
+
+    if isinstance(item, dict):
+        for field in (
+            "recomendacion",
+            "precision",
+            "sugerencia",
+            "funcion",
+            "descripcion",
+            "texto",
+        ):
+            value = str(item.get(field) or "").strip()
+            if value:
+                return value
+
+    return ""
+
+
+def _lista_ui(value):
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    if isinstance(value, tuple):
+        return list(value)
+
+    return [value]
+
+
+def _porcentaje_ui(value):
+    if value is None:
+        return "N/D"
+
+    try:
+        return f"{float(value) * 100:.0f} %"
+    except (TypeError, ValueError):
+        return "N/D"
+
+
+def _porcentaje_metrica_ui(metric):
+    value = metric.get("porcentaje")
+
+    if value is None:
+        return "N/D"
+
+    try:
+        return f"{float(value):.0f} %"
+    except (TypeError, ValueError):
+        return "N/D"
+
+
+def _funciones_documentadas_mc01(mc01):
+    values = (
+        mc01.get("funciones_necesarias_documentadas")
+        or mc01.get("funciones_explicitas")
+        or mc01.get("funciones_incluidas")
+        or []
+    )
+
+    result = []
+
+    for item in _lista_ui(values):
+        if isinstance(item, dict):
+            text = str(
+                item.get("funcion")
+                or item.get("nombre")
+                or item.get("descripcion")
+                or ""
+            ).strip()
+        else:
+            text = str(item or "").strip()
+
+        if text:
+            result.append(text)
+
+    return result
+
+
+def _gaps_mc01(mc01):
+    gaps = (
+        mc01.get("funciones_necesarias_faltantes")
+        or []
+    )
+
+    return [
+        gap
+        for gap in gaps
+        if isinstance(gap, dict)
+    ]
+
+
+def _explicar_estado_ui(result):
+    estado = (
+        result.get("estado_orientativo")
+        or result.get("estado_evaluacion")
+        or "REVISIÓN HUMANA"
+    )
+
+    correcciones = _lista_ui(
+        result.get("correcciones_necesarias")
+    )
+
+    quality = result.get("quality") or {}
+    security = result.get("security") or {}
+
+    q = _porcentaje_ui(quality.get("indice"))
+    s = _porcentaje_ui(security.get("indice"))
+
+    if estado == "CORREGIR":
+        if correcciones:
+            return (
+                f"El estado es CORREGIR porque se identificaron "
+                f"{len(correcciones)} correcciones necesarias. "
+                f"La evaluación actual registra Calidad {q} y "
+                f"Seguridad {s}."
+            )
+
+        return (
+            "El estado es CORREGIR porque al menos una de las "
+            "métricas evaluadas presenta brechas que requieren revisión."
+        )
+
+    if estado == "CONFORME CON MEJORAS":
+        return (
+            "Las métricas evaluadas cumplen los criterios establecidos, "
+            "pero existen precisiones u oportunidades adicionales que "
+            "pueden fortalecer la especificación."
+        )
+
+    if estado == "CONFORME":
+        return (
+            "Las métricas evaluadas cumplen los criterios establecidos "
+            "y no se identificaron correcciones necesarias."
+        )
+
+    return (
+        "La evaluación requiere revisión humana debido a evidencia "
+        "insuficiente o a condiciones que no pudieron resolverse "
+        "automáticamente."
+    )
+
+
 # Resultados y documentos consolidados del último lote
 if st.session_state.get("last_batch_result", {}).get("issues"):
     st.divider()
@@ -766,23 +1005,72 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
     batch_result = st.session_state.last_batch_result
     results = batch_result["issues"]
     summary = batch_result["summary"]
+
     st.subheader("Resumen global")
-    st.write(f"**Milestone:** {st.session_state.last_milestone}")
-    a, b, c, d = st.columns(4)
-    a.metric("Historias procesadas", summary["procesadas"])
-    b.metric("Con error", summary["errores"])
-    c.metric("Índice de Calidad de Requerimientos promedio", f"{summary['calidad_promedio'] * 100:.0f} %" if summary["calidad_promedio"] is not None else "N/D")
-    d.metric("Índice de Seguridad en Requerimientos promedio", f"{summary['seguridad_promedio'] * 100:.0f} %" if summary["seguridad_promedio"] is not None else "N/D")
-    st.write(f"**Veredictos:** {summary['veredictos']} — **Requerimientos sugeridos:** {summary['requerimientos']}")
-    st.write(
-        f"**Total:** {summary['total']} · **Aprobadas:** {summary['aprobadas']} · "
-        f"**Requieren corrección:** {summary['requieren_correccion']} · **Alertas:** {summary['alertas']} · "
-        f"**Información insuficiente:** {summary['informacion_insuficiente']}"
+    st.caption(
+        f"Milestone: {st.session_state.last_milestone}"
     )
-    st.write(
-        f"**Calidad mínima:** {summary['calidad_minima'] * 100:.0f} %" if summary["calidad_minima"] is not None else "**Calidad mínima:** N/D",
-        f" · **Seguridad mínima:** {summary['seguridad_minima'] * 100:.0f} %" if summary["seguridad_minima"] is not None else " · **Seguridad mínima:** N/D",
-        f" · **Historias bajo meta:** {summary['historias_bajo_meta']} · **Riesgos críticos:** {summary['riesgos_criticos']}"
+
+    r1, r2, r3 = st.columns(3)
+
+    r1.metric(
+        "Historias procesadas",
+        summary["procesadas"],
+    )
+
+    r2.metric(
+        "Con error",
+        summary["errores"],
+    )
+
+    r3.metric(
+        "Requieren corrección",
+        summary["requieren_correccion"],
+    )
+
+    r4, r5, r6 = st.columns(3)
+
+    r4.metric(
+        "Calidad promedio",
+        (
+            f"{summary['calidad_promedio'] * 100:.0f} %"
+            if summary["calidad_promedio"] is not None
+            else "N/D"
+        ),
+    )
+
+    r5.metric(
+        "Seguridad promedio",
+        (
+            f"{summary['seguridad_promedio'] * 100:.0f} %"
+            if summary["seguridad_promedio"] is not None
+            else "N/D"
+        ),
+    )
+
+    r6.metric(
+        "Requerimientos formalizados propuestos",
+        summary["requerimientos"],
+    )
+
+    quality_min = (
+        f"{summary['calidad_minima'] * 100:.0f} %"
+        if summary["calidad_minima"] is not None
+        else "N/D"
+    )
+
+    security_min = (
+        f"{summary['seguridad_minima'] * 100:.0f} %"
+        if summary["seguridad_minima"] is not None
+        else "N/D"
+    )
+
+    st.caption(
+        f"Calidad mínima: {quality_min} · "
+        f"Seguridad mínima: {security_min} · "
+        f"Información insuficiente: "
+        f"{summary['informacion_insuficiente']} · "
+        f"Historias bajo meta: {summary['historias_bajo_meta']}"
     )
 
     st.subheader("Resultados por historia")
@@ -793,66 +1081,668 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         if result["status"] != "ok":
             st.error(f"HU-{result['issue_iid']:03d} — {' '.join(result['errors'])}")
             continue
-        central, quality = result["central"], result["quality"]
-        security, evaluation = result["security"], result["evaluation"]
-        fallback_id = f"HU-{result.get('issue_iid', '???')}"
-        title = f"{central.get('historia_id', fallback_id)} — {central.get('titulo', 'Sin título')}"
-        with st.expander(title):
-            quality_value = f"{quality['indice'] * 100:.0f} %" if quality.get("indice") is not None else "N/D"
-            security_value = f"{security['indice'] * 100:.0f} %" if security.get("indice") is not None else "N/D"
-            st.write(f"**Estado de evaluación asistida:** {result['estado_evaluacion']} · **Índice de Calidad de Requerimientos:** {quality_value} · **Índice de Seguridad en Requerimientos:** {security_value} · **Nivel de aseguramiento recomendado — LoT:** {security.get('lot_recomendado', 'No informado')}")
-            st.caption("El LoT no representa la confianza del modelo. La aceptación final requiere revisión humana.")
-            st.write(f"**Requerimientos sugeridos:** {len(central['requerimientos'])} · **Correcciones obligatorias:** {len(evaluation.get('correcciones_obligatorias', []))}")
-            st.write("**Métricas de calidad:**")
-            for metric in (quality.get("metricas") or {}).values():
-                if isinstance(metric, dict):
-                    st.write(
-                        f"{metric.get('codigo', '')} — {metric.get('nombre', '')}: "
-                        f"{metric.get('porcentaje') if metric.get('porcentaje') is not None else 'N/D'} % "
-                        f"({metric.get('estado_calculo', 'No evaluado')})"
-                    )
-                    st.caption(metric.get("justificacion", ""))
-            st.write("**Métricas de seguridad:**")
-            for metric in (security.get("metricas") or {}).values():
-                if isinstance(metric, dict):
-                    st.write(
-                        f"{metric.get('codigo', '')} — {metric.get('nombre', '')}: "
-                        f"{metric.get('porcentaje') if metric.get('porcentaje') is not None else 'N/D'} % "
-                        f"({metric.get('estado_calculo', 'No evaluado')})"
-                    )
-                    st.caption(metric.get("justificacion", ""))
-            st.write("**Riesgos:**", evaluation.get("riesgos_criticos", []))
-            st.write("**Recomendaciones:**", quality.get("recomendaciones", []) + security.get("recomendaciones", []))
-            st.write("**Comentario publicado en GitLab:**", "Sí" if result.get("comment_published") else "No")
 
-    st.subheader("Matriz de trazabilidad")
-    try:
-        rows = construir_filas_trazabilidad(
-            results, batch_result.get("generated_at")
+        central = result.get("central") or {}
+        quality = result.get("quality") or {}
+        security = result.get("security") or {}
+
+        fallback_id = (
+            f"HU-{result.get('issue_iid', '???')}"
         )
-        batch_result["traceability_rows"] = rows
-        if not rows:
-            raise ValueError("No fue posible construir la matriz porque el Agente Central no devolvió requerimientos formalizados.")
-        st.dataframe(rows, use_container_width=True, hide_index=True)
-        import csv
-        import io
-        csv_buffer = io.StringIO()
-        writer = csv.DictWriter(csv_buffer, fieldnames=rows[0].keys())
-        writer.writeheader()
-        writer.writerows(rows)
-        st.download_button("Descargar matriz CSV", csv_buffer.getvalue().encode("utf-8-sig"), "matriz_trazabilidad.csv", "text/csv")
-    except ValueError as exc:
-        st.error(str(exc))
+
+        historia_id = central.get(
+            "historia_id",
+            fallback_id,
+        )
+
+        titulo = central.get(
+            "titulo",
+            "Sin título",
+        )
+
+        estado = (
+            result.get("estado_orientativo")
+            or result.get("estado_evaluacion")
+            or "REVISIÓN HUMANA"
+        )
+
+        expander_title = (
+            f"{historia_id} — {titulo} · {estado}"
+        )
+
+        with st.expander(
+            expander_title,
+            expanded=False,
+        ):
+            actor = str(
+                central.get("actor") or "No identificado"
+            ).strip()
+
+            objetivo = str(
+                central.get("objetivo") or "No identificado"
+            ).strip()
+
+            st.markdown(
+                f"""
+                <div class="result-intro">
+                    <strong>Actor:</strong> {actor}<br>
+                    <strong>Objetivo:</strong> {objetivo}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            requirements = [
+                req
+                for req in central.get("requerimientos", [])
+                if isinstance(req, dict)
+            ]
+
+            m1, m2, m3, m4 = st.columns(4)
+
+            m1.metric(
+                "Calidad",
+                _porcentaje_ui(quality.get("indice")),
+            )
+
+            m2.metric(
+                "Seguridad",
+                _porcentaje_ui(security.get("indice")),
+            )
+
+            m3.metric(
+                "LoT recomendado",
+                security.get("lot_recomendado", "N/D"),
+            )
+
+            m4.metric(
+                "Requerimientos",
+                len(requirements),
+            )
+
+            st.info(
+                "**¿Por qué este estado?**\n\n"
+                + _explicar_estado_ui(result)
+            )
+
+            tab_resumen, tab_calidad, tab_seguridad, tab_formalizacion = st.tabs(
+                [
+                    "Resumen",
+                    "Calidad",
+                    "Seguridad",
+                    "Formalización",
+                ]
+            )
+
+            with tab_resumen:
+                correcciones = _lista_ui(
+                    result.get("correcciones_necesarias")
+                )
+
+                precisiones = _lista_ui(
+                    result.get("precisiones_necesarias")
+                )
+
+                oportunidades = _lista_ui(
+                    result.get("mejoras_sugeridas")
+                    or result.get("oportunidades_adicionales")
+                )
+
+                st.markdown("#### Correcciones necesarias")
+
+                if correcciones:
+                    for item in correcciones:
+                        text = _texto_hallazgo_ui(item)
+                        if text:
+                            st.markdown(
+                                f"""
+                                <div class="finding-block finding-correction">
+                                    {text}
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                else:
+                    st.success(
+                        "No se identificaron correcciones necesarias."
+                    )
+
+                st.markdown("#### Precisiones necesarias")
+
+                if precisiones:
+                    for item in precisiones:
+                        text = _texto_hallazgo_ui(item)
+                        if text:
+                            st.markdown(
+                                f"""
+                                <div class="finding-block finding-precision">
+                                    {text}
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                else:
+                    st.caption(
+                        "No se identificaron precisiones necesarias."
+                    )
+
+                st.markdown("#### Oportunidades adicionales")
+
+                if oportunidades:
+                    for item in oportunidades:
+                        text = _texto_hallazgo_ui(item)
+                        if text:
+                            st.markdown(
+                                f"""
+                                <div class="finding-block finding-opportunity">
+                                    {text}
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                else:
+                    st.caption(
+                        "No se identificaron oportunidades adicionales."
+                    )
+
+                st.markdown("#### Retroalimentación")
+
+                if result.get("comment_published"):
+                    st.success(
+                        "Retroalimentación publicada correctamente en GitLab."
+                    )
+                else:
+                    st.warning(
+                        "La retroalimentación no fue publicada en GitLab."
+                    )
+
+            with tab_calidad:
+                quality_metrics = (
+                    quality.get("metricas")
+                    if isinstance(quality.get("metricas"), dict)
+                    else {}
+                )
+
+                mc01 = quality_metrics.get("cobertura_funcional") or {}
+                mc02 = quality_metrics.get("adecuacion_funcional") or {}
+
+                st.markdown("### MC-01 — Cobertura Funcional")
+
+                mc01_pct = _porcentaje_metrica_ui(mc01)
+
+                documentadas = _funciones_documentadas_mc01(mc01)
+                faltantes = _gaps_mc01(mc01)
+                total_necesarias = len(documentadas) + len(faltantes)
+
+                st.metric("Resultado MC-01", mc01_pct)
+
+                st.markdown(
+                    "**Fórmula aplicada:** "
+                    "Funciones necesarias documentadas / "
+                    "Total de funciones necesarias identificadas"
+                )
+
+                st.markdown(
+                    f"**Cálculo:** "
+                    f"{len(documentadas)} / {total_necesarias} = {mc01_pct}"
+                )
+
+                q1, q2, q3 = st.columns(3)
+
+                q1.metric("Documentadas", len(documentadas))
+                q2.metric("Necesarias faltantes", len(faltantes))
+                q3.metric("Total necesarias", total_necesarias)
+
+                st.markdown(
+                    f"#### Documentadas en la evidencia original "
+                    f"({len(documentadas)})"
+                )
+
+                if documentadas:
+                    for funcion in documentadas:
+                        st.markdown(f"- {funcion}")
+                else:
+                    st.caption("Ninguna.")
+
+                st.markdown(
+                    f"#### Funciones necesarias no documentadas "
+                    f"({len(faltantes)})"
+                )
+
+                if faltantes:
+                    for gap in faltantes:
+                        funcion = str(
+                            gap.get("funcion") or "Función no identificada"
+                        ).strip()
+
+                        st.markdown(f"**{funcion}**")
+
+                        evidencia = str(
+                            gap.get("evidencia_relacionada") or ""
+                        ).strip()
+
+                        motivo = str(
+                            gap.get("justificacion_necesidad")
+                            or gap.get("motivo_necesidad")
+                            or ""
+                        ).strip()
+
+                        consecuencia = str(
+                            gap.get("consecuencia_ausencia") or ""
+                        ).strip()
+
+                        confianza = str(
+                            gap.get("confianza") or ""
+                        ).strip()
+
+                        if evidencia:
+                            st.caption(f"Evidencia relacionada: {evidencia}")
+
+                        if motivo:
+                            st.markdown(f"**Motivo de necesidad:** {motivo}")
+
+                        if consecuencia:
+                            st.markdown(
+                                f"**Consecuencia de la ausencia:** {consecuencia}"
+                            )
+
+                        if confianza:
+                            st.markdown(
+                                f"**Confianza de la inferencia:** "
+                                f"{confianza.capitalize()}"
+                            )
+
+                        st.divider()
+                else:
+                    st.success(
+                        "No se identificaron funciones "
+                        "necesarias faltantes con confianza alta."
+                    )
+
+                if faltantes:
+                    st.info(
+                        f"Si se formalizan las {len(faltantes)} funciones "
+                        f"necesarias faltantes identificadas, MC-01 podría "
+                        f"alcanzar una cobertura potencial del 100 %."
+                    )
+                else:
+                    st.caption(
+                        "La cobertura funcional evaluada ya alcanza el 100 %."
+                    )
+
+                st.divider()
+
+                st.markdown("### MC-02 — Adecuación Funcional")
+
+                mc02_pct = _porcentaje_metrica_ui(mc02)
+
+                alineadas = _lista_ui(mc02.get("funciones_alineadas"))
+                no_alineadas = _lista_ui(mc02.get("funciones_no_alineadas"))
+
+                objetivo_evaluado = str(
+                    mc02.get("objetivo_evaluado")
+                    or central.get("objetivo")
+                    or ""
+                ).strip()
+
+                total_mc02 = len(alineadas) + len(no_alineadas)
+
+                st.metric("Resultado MC-02", mc02_pct)
+
+                st.markdown(
+                    "**Fórmula aplicada:** "
+                    "Funciones alineadas / "
+                    "Funciones documentadas evaluables"
+                )
+
+                st.markdown(
+                    f"**Cálculo:** "
+                    f"{len(alineadas)} / {total_mc02} = {mc02_pct}"
+                )
+
+                if objetivo_evaluado:
+                    st.markdown(f"**Objetivo evaluado:** {objetivo_evaluado}")
+
+                st.markdown(f"#### Funciones alineadas ({len(alineadas)})")
+
+                if alineadas:
+                    for value in alineadas:
+                        st.markdown(f"- {value}")
+                else:
+                    st.caption("Ninguna.")
+
+                st.markdown(
+                    f"#### Funciones no alineadas ({len(no_alineadas)})"
+                )
+
+                if no_alineadas:
+                    for value in no_alineadas:
+                        st.markdown(f"- {value}")
+                else:
+                    st.caption("Ninguna.")
+
+            with tab_seguridad:
+                security_metrics = (
+                    security.get("metricas")
+                    if isinstance(security.get("metricas"), dict)
+                    else {}
+                )
+
+                ms01 = security_metrics.get("cobertura_seguridad") or {}
+                ms02 = security_metrics.get("clasificacion_datos") or {}
+
+                st.markdown("### MS-01 — Cobertura de Seguridad")
+
+                st.metric(
+                    "Resultado MS-01",
+                    _porcentaje_metrica_ui(ms01),
+                )
+
+                aplicables = _lista_ui(ms01.get("aspectos_aplicables"))
+                documentados_seg = _lista_ui(ms01.get("aspectos_documentados"))
+                faltantes_seg = _lista_ui(ms01.get("aspectos_faltantes"))
+
+                s1, s2, s3 = st.columns(3)
+
+                s1.metric("Aplicables", len(aplicables))
+                s2.metric("Documentados", len(documentados_seg))
+                s3.metric("Pendientes", len(faltantes_seg))
+
+                st.markdown("#### Aspectos documentados")
+
+                if documentados_seg:
+                    for value in documentados_seg:
+                        st.markdown(f"- {value}")
+                else:
+                    st.caption("Ninguno.")
+
+                st.markdown("#### Aspectos pendientes")
+
+                if faltantes_seg:
+                    for value in faltantes_seg:
+                        st.markdown(f"- {value}")
+                else:
+                    st.success(
+                        "No existen aspectos aplicables pendientes."
+                    )
+
+                st.divider()
+
+                st.markdown("### MS-02 — Clasificación de Datos")
+
+                st.metric(
+                    "Resultado MS-02",
+                    _porcentaje_metrica_ui(ms02),
+                )
+
+                identificados = _lista_ui(ms02.get("datos_identificados"))
+                clasificados = _lista_ui(ms02.get("datos_clasificados"))
+                sin_clasificacion = _lista_ui(
+                    ms02.get("datos_sin_clasificacion")
+                )
+
+                d1, d2, d3 = st.columns(3)
+
+                d1.metric("Identificados", len(identificados))
+                d2.metric("Clasificados", len(clasificados))
+                d3.metric("Pendientes", len(sin_clasificacion))
+
+                st.markdown("#### Datos identificados")
+
+                if identificados:
+                    for value in identificados:
+                        st.markdown(
+                            f"- {_texto_hallazgo_ui(value) or value}"
+                        )
+                else:
+                    st.caption("Ninguno.")
+
+                st.markdown("#### Pendientes de clasificación")
+
+                if sin_clasificacion:
+                    for value in sin_clasificacion:
+                        st.markdown(
+                            f"- {_texto_hallazgo_ui(value) or value}"
+                        )
+                else:
+                    st.success(
+                        "No existen datos identificados "
+                        "pendientes de clasificación."
+                    )
+
+                st.divider()
+
+                lot = security.get("lot_recomendado", "No informado")
+
+                st.info(
+                    f"**Nivel de aseguramiento recomendado: {lot}**\n\n"
+                    "El LoT representa el nivel de aseguramiento "
+                    "recomendado según la evidencia de seguridad "
+                    "disponible. No representa la confianza del "
+                    "modelo ni constituye una certificación."
+                )
+
+            with tab_formalizacion:
+                st.caption(
+                    "Los siguientes requerimientos corresponden "
+                    "a la formalización propuesta por el modelo "
+                    "y requieren validación del responsable."
+                )
+
+                if not requirements:
+                    st.info(
+                        "No se generaron requerimientos formalizados."
+                    )
+
+                for req in requirements:
+                    code = str(
+                        req.get("codigo")
+                        or req.get("id")
+                        or req.get("temp_id")
+                        or ""
+                    ).strip()
+
+                    name = str(
+                        req.get("nombre") or "Requerimiento"
+                    ).strip()
+
+                    with st.expander(
+                        f"{code} — {name}",
+                        expanded=False,
+                    ):
+                        st.markdown(
+                            str(
+                                req.get("descripcion_formal") or ""
+                            )
+                        )
+
+                        tipo = req.get("tipo", "No definido")
+
+                        prioridad_original = str(
+                            req.get("prioridad_original")
+                            or req.get("prioridad")
+                            or ""
+                        ).strip()
+
+                        prioridad_sugerida = str(
+                            req.get("prioridad_sugerida") or ""
+                        ).strip()
+
+                        if prioridad_sugerida:
+                            prioridad_visible = (
+                                f"{prioridad_sugerida} "
+                                "(sugerida, pendiente de validación)"
+                            )
+                        elif prioridad_original:
+                            prioridad_visible = prioridad_original
+                        else:
+                            prioridad_visible = "Pendiente de definición"
+
+                        st.markdown(f"**Tipo:** {tipo}")
+                        st.markdown(f"**Prioridad:** {prioridad_visible}")
+
+                        origen_tipo = str(
+                            req.get("origen_tipo") or ""
+                        ).strip()
+
+                        procedencia = str(
+                            req.get("procedencia") or ""
+                        ).strip()
+
+                        if procedencia or origen_tipo:
+                            st.caption(
+                                f"Procedencia: "
+                                f"{procedencia or 'No indicada'}"
+                                + (
+                                    f" · {origen_tipo}"
+                                    if origen_tipo
+                                    else ""
+                                )
+                            )
+
+                        pendientes_req = _lista_ui(
+                            req.get("pendientes_definicion")
+                        )
+
+                        if pendientes_req:
+                            st.warning(
+                                "Este requerimiento tiene "
+                                "aspectos pendientes de definición."
+                            )
+
+                            for pending in pendientes_req:
+                                text = _texto_hallazgo_ui(pending)
+                                if text:
+                                    st.markdown(f"- {text}")
+
+    with st.expander(
+        "Matriz de trazabilidad",
+        expanded=False,
+    ):
+        try:
+            rows = construir_filas_trazabilidad(
+                results,
+                batch_result.get("generated_at"),
+            )
+
+            batch_result["traceability_rows"] = rows
+
+            if not rows:
+                raise ValueError(
+                    "No fue posible construir la matriz "
+                    "porque no existen requerimientos "
+                    "formalizados."
+                )
+
+            import pandas as pd
+
+            df = pd.DataFrame(rows)
+
+            columnas_preferidas = [
+                "Código",
+                "Nombre",
+                "Tipo",
+                "Historia de origen",
+                "Estado de revisión",
+            ]
+
+            columnas_disponibles = [
+                col
+                for col in columnas_preferidas
+                if col in df.columns
+            ]
+
+            st.dataframe(
+                (
+                    df[columnas_disponibles]
+                    if columnas_disponibles
+                    else df
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            import csv
+            import io
+
+            csv_buffer = io.StringIO()
+
+            writer = csv.DictWriter(
+                csv_buffer,
+                fieldnames=rows[0].keys(),
+            )
+
+            writer.writeheader()
+            writer.writerows(rows)
+
+            st.download_button(
+                "Descargar matriz CSV",
+                csv_buffer.getvalue().encode("utf-8-sig"),
+                "matriz_trazabilidad.csv",
+                "text/csv",
+            )
+
+        except ValueError as exc:
+            st.error(str(exc))
 
     st.subheader("Documentos consolidados")
+
     col_pdf, col_docx = st.columns(2)
+
     with col_pdf:
-        if st.button("Generar Reporte Ejecutivo del Lote"):
-            st.session_state.batch_pdf = generar_reporte_lote_pdf(batch_result).getvalue()
+        st.markdown("### Reporte Ejecutivo")
+        st.caption(
+            "Presenta métricas, hallazgos, brechas, "
+            "precisiones y oportunidades del análisis."
+        )
+
+        if st.button(
+            "Generar Reporte Ejecutivo",
+            use_container_width=True,
+            key="generate_batch_pdf",
+        ):
+            st.session_state.batch_pdf = (
+                generar_reporte_lote_pdf(
+                    batch_result
+                ).getvalue()
+            )
+
         if st.session_state.get("batch_pdf"):
-            st.download_button("Descargar PDF consolidado", st.session_state.batch_pdf, "Reporte_Ejecutivo_Lote.pdf", "application/pdf")
+            st.download_button(
+                "Descargar Reporte PDF",
+                st.session_state.batch_pdf,
+                "Reporte_Ejecutivo_Lote.pdf",
+                "application/pdf",
+                use_container_width=True,
+            )
+
     with col_docx:
-        if st.button("Generar Documento Formal Consolidado"):
-            st.session_state.batch_docx = generar_documento_formal_lote_docx(batch_result).getvalue()
+        st.markdown("### Documento Formal")
+        st.caption(
+            "Consolida requerimientos formalizados, "
+            "trazabilidad, prioridades y aspectos "
+            "pendientes de revisión."
+        )
+
+        if st.button(
+            "Generar Documento Formal",
+            use_container_width=True,
+            key="generate_batch_docx",
+        ):
+            st.session_state.batch_docx = (
+                generar_documento_formal_lote_docx(
+                    batch_result
+                ).getvalue()
+            )
+
         if st.session_state.get("batch_docx"):
-            st.download_button("Descargar DOCX consolidado", st.session_state.batch_docx, "Requerimientos_Consolidados.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            st.download_button(
+                "Descargar Documento DOCX",
+                st.session_state.batch_docx,
+                "Requerimientos_Consolidados.docx",
+                (
+                    "application/vnd.openxmlformats-"
+                    "officedocument.wordprocessingml.document"
+                ),
+                use_container_width=True,
+            )

@@ -373,6 +373,62 @@ Cada elemento de "requerimientos" debe incluir obligatoriamente:
   copia la prioridad de la historia salvo que exista otra prioridad explícita
   en la misma evidencia.
 
+- prioridad_original:
+  valor exacto de prioridad recibido en la historia. Si no existe, usa
+  "Desconocida".
+
+- prioridad_sugerida:
+  propuesta orientativa cuando prioridad_original sea "Desconocida" o
+  equivalente. Valores permitidos: Alta, Media, Baja.
+  Si la prioridad original es válida, deja este campo vacío.
+
+- justificacion_prioridad:
+  explicación vinculada a la Historia concreta de por qué se propone esa
+  prioridad.
+
+
+PRIORIDAD
+
+Conserva la prioridad declarada por la Historia cuando exista.
+
+Si no existe una prioridad declarada, propone una prioridad orientativa
+para cada requerimiento utilizando únicamente:
+
+- relación con el objetivo principal;
+- dependencia de otros requerimientos de la misma Historia;
+- necesidad para satisfacer criterios explícitos;
+- relevancia para restricciones explícitas;
+- impacto de omitir el requerimiento sobre la finalidad de la Historia.
+
+Valores permitidos:
+Alta
+Media
+Baja
+
+Alta:
+El requerimiento resulta esencial para cumplir directamente la finalidad
+principal de la Historia o una condición indispensable explícita.
+
+Media:
+El requerimiento complementa de manera significativa la finalidad,
+pero su ausencia no elimina completamente la capacidad principal.
+
+Baja:
+El requerimiento representa una mejora secundaria o función de apoyo
+cuya ausencia no impide cumplir el objetivo principal.
+
+No uses reglas específicas de un dominio.
+
+No asignes prioridad por palabras como:
+paciente, médico, banco, dinero, administrador, estudiante, vehículo,
+producto u otras entidades particulares.
+
+No asignes automáticamente prioridad Alta por tratar datos sensibles.
+La criticidad de seguridad se evalúa separadamente.
+
+Toda prioridad propuesta debe incluir una justificación vinculada a
+la Historia concreta.
+
 
 11. REGLAS DE FIDELIDAD
 
@@ -424,7 +480,10 @@ pueden ser [] cuando no existan elementos respaldados por evidencia.
           "tipo": "RF",
           "origen": "Texto real de origen",
           "justificacion": "Explicación específica vinculada al origen.",
-          "prioridad": "Alta"
+          "prioridad": "Alta",
+          "prioridad_original": "Desconocida",
+          "prioridad_sugerida": "Alta",
+          "justificacion_prioridad": "La función constituye la capacidad principal necesaria para alcanzar el objetivo de la Historia."
         }}
       ],
       "restricciones": [],

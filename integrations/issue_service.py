@@ -5,7 +5,7 @@ from datetime import datetime
 
 from core.graph import construir_grafo
 from core.config import ALLOW_INCOMPLETE_STORIES, OLLAMA_MODEL
-from core.batch_contract import construir_etiquetas_resultado, normalizar_lista_textos
+from core.batch_contract import construir_etiquetas_resultado
 from core.performance_audit import obtener_contadores, reiniciar_contadores
 from core.utils import construir_resultado_lote, extraer_porcentaje
 from database.repository import calcular_hash_issue, guardar_cache, guardar_historial, insertar_o_actualizar_issue
@@ -43,34 +43,95 @@ def construir_comentario_issue(result: dict) -> str:
     quality = result.get("quality") or {}
     security = result.get("security") or {}
     evaluation = result.get("evaluation") or {}
-    estado = result.get("estado_evaluacion") or evaluation.get("veredicto") or "REVISAR"
-    recommendations = normalizar_lista_textos(result.get("recommendations"))
-    if not recommendations:
-        recommendations = normalizar_lista_textos(evaluation.get("correcciones_obligatorias"))
-    if not recommendations:
-        conclusions = normalizar_lista_textos(evaluation.get("conclusion"))
-        recommendations = conclusions[:1]
-    recommendation_text = "\n".join(f"- {text}" for text in recommendations[:3]) or "- Revisar el resultado consolidado."
-    next_action = (
-        "Actualizar la Historia con las correcciones obligatorias y volver a marcarla como **Pendiente**."
-        if estado in {"CORREGIR", "ALERTA", "REVISAR"}
-        else "La Historia queda marcada como **Revisada** y puede continuar con la siguiente etapa."
+    estado = (
+        result.get("estado_orientativo")
+        or evaluation.get("veredicto")
+        or "REVISIÓN HUMANA"
     )
-    return f"""## Resultado del análisis multiagente
 
-**Estado orientativo:** {estado}<br>
-**Índice de Calidad de Requerimientos:** {extraer_porcentaje(quality.get('indice'))}<br>
-**Índice de Seguridad en Requerimientos:** {extraer_porcentaje(security.get('indice'))}<br>
-**Nivel de aseguramiento recomendado:** {security.get('lot_recomendado', 'No informado')}
+    quality_metrics = quality.get("metricas") if isinstance(quality.get("metricas"), dict) else {}
+    mc01 = quality_metrics.get("cobertura_funcional") if isinstance(quality_metrics.get("cobertura_funcional"), dict) else {}
+    mc02 = quality_metrics.get("adecuacion_funcional") if isinstance(quality_metrics.get("adecuacion_funcional"), dict) else {}
 
-### Hallazgos principales
-{recommendation_text}
+    gaps = quality.get("gaps_funcionales")
+    gaps = [gap for gap in gaps if isinstance(gap, dict)] if isinstance(gaps, list) else []
 
-### Próxima acción
-{next_action}
+    precisiones = result.get("precisiones_necesarias")
+    precisiones = precisiones if isinstance(precisiones, list) else []
 
-> Evaluación asistida para apoyar el control, seguimiento y trazabilidad. La decisión final corresponde al responsable del proyecto.
-"""
+    mejoras = result.get("mejoras_sugeridas")
+    mejoras = mejoras if isinstance(mejoras, list) else []
+
+    secciones = [
+        "## Resultado del análisis multiagente",
+        "",
+        f"**Estado orientativo:** {estado}",
+        "",
+        "### Calidad de la evidencia original",
+        f"**MC-01 Cobertura Funcional:** {extraer_porcentaje(mc01.get('valor'))}",
+        f"**MC-02 Adecuación Funcional:** {extraer_porcentaje(mc02.get('valor'))}",
+        "",
+        "### Seguridad",
+        f"**Índice de Seguridad en Requerimientos:** {extraer_porcentaje(security.get('indice'))}",
+    ]
+
+    if gaps:
+        secciones += [
+            "",
+            "### Gap funcional identificado",
+            *[f"- {gap.get('funcion', '')}" for gap in gaps],
+            "",
+            "### Por qué afecta MC-01",
+            str(mc01.get("justificacion_final") or mc01.get("justificacion") or ""),
+            "",
+            "### Sugerencia para alcanzar el 100 % en MC-01",
+            *[f"- Formalizar {gap.get('funcion', '')}." for gap in gaps],
+        ]
+
+    if precisiones:
+        secciones += [
+            "",
+            "### Precisiones recomendadas",
+            *[
+                f"- {text}"
+                for precision in precisiones
+                if isinstance(precision, dict)
+                and (text := str(precision.get("precision") or "").strip())
+            ],
+        ]
+
+    if mejoras:
+        secciones += [
+            "",
+            "### Oportunidades adicionales",
+            *[
+                f"- {text}"
+                for mejora in mejoras
+                if isinstance(mejora, dict)
+                and (text := str(mejora.get("recomendacion") or "").strip())
+            ],
+        ]
+
+    secciones += ["", "### Próxima acción"]
+    if gaps or precisiones:
+        secciones.append(
+            "Revisar las propuestas, actualizar la HU cuando corresponda "
+            "y volver a marcarla como **Pendiente** para una nueva evaluación."
+        )
+    elif estado in {"CORREGIR", "ALERTA", "REVISIÓN HUMANA", "REVISAR"}:
+        secciones.append(
+            "Actualizar la Historia con las correcciones necesarias y "
+            "volver a marcarla como **Pendiente**."
+        )
+    else:
+        secciones.append(
+            "La Historia queda marcada como **Revisada** y puede "
+            "continuar con la siguiente etapa."
+        )
+
+    secciones += ["", f"> {DECISION_SUPPORT_NOTICE}"]
+
+    return "\n".join(secciones) + "\n"
 
 
 def _resultado_informacion_insuficiente(issue_data: dict) -> dict:

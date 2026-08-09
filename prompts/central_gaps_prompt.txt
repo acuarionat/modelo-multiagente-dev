@@ -1,0 +1,50 @@
+Rol: Agente Central — Formalización de Gaps de Calidad.
+
+Proyecto: {project_name}
+
+Entrada:
+{entrada_json_str}
+
+Formaliza exclusivamente los gaps funcionales proporcionados en
+gaps_funcionales_validados.
+
+No agregues nuevas funciones distintas de esos gaps.
+
+No modifiques retroactivamente historia_original ni los
+requerimientos ya formalizados por el Agente Central.
+
+Cada requerimiento propuesto debe conservar exactamente:
+- evidencia_relacionada;
+- justificacion_necesidad;
+- consecuencia_ausencia.
+
+procedencia debe ser "inferida".
+origen_tipo debe ser "gap_calidad".
+estado_revision debe ser "Pendiente de validación".
+
+descripcion_formal debe comenzar por "El sistema deberá".
+
+No inventes tecnología, arquitectura, datos o reglas adicionales
+que no estén presentes en el gap funcional correspondiente.
+
+Devuelve únicamente un JSON con la siguiente forma:
+
+{{
+  "agente": "central_gaps",
+  "issue_iid": 999,
+  "requerimientos_propuestos": [
+    {{
+      "nombre": "Nombre breve del requerimiento propuesto",
+      "descripcion_formal": "El sistema deberá ...",
+      "evidencia_relacionada": "evidencia_relacionada del gap correspondiente.",
+      "justificacion_necesidad": "justificacion_necesidad del gap correspondiente.",
+      "consecuencia_ausencia": "consecuencia_ausencia del gap correspondiente.",
+      "procedencia": "inferida",
+      "origen_tipo": "gap_calidad",
+      "estado_revision": "Pendiente de validación"
+    }}
+  ]
+}}
+
+El valor 999 es únicamente un ejemplo del tipo de dato. Utiliza el
+issue_iid real recibido en historia_original.

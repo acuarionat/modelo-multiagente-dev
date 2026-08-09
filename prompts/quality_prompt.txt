@@ -69,60 +69,194 @@ Debes identificar evidencia y justificar exclusivamente las siguientes métricas
 
 MC-01 — COBERTURA FUNCIONAL
 
-Su propósito es identificar si las funciones esperadas a partir de la propia Historia de Usuario se encuentran suficientemente especificadas en la documentación original.
+Evalúa la Historia de Usuario original y determina qué funciones son
+necesarias para satisfacer adecuadamente su objetivo.
 
-Debes devolver:
+No te limites a enumerar las funciones ya escritas.
 
-- funciones_especificadas
-- funciones_incluidas
-- funciones_faltantes
-- justificacion
-- recomendacion
+Identifica primero:
 
-El universo autorizado de evaluación será proporcionado por Python mediante funciones_principales_evaluables.
+A. funciones_explicitas:
+Funciones identificadas de manera directa o funcionalmente equivalente
+en la evidencia original.
 
-Las únicas funciones que puedes clasificar son las incluidas en funciones_principales_evaluables.
+Cada hallazgo adicional que identifiques debe clasificarse exactamente
+en una de las siguientes tres categorías. No mezcles estas categorías.
 
-No añadas nuevas funciones al universo.
+CLASIFICACIÓN OBLIGATORIA DE HALLAZGOS
 
-No dividas una función en varias.
+Cada hallazgo identificado debe pertenecer exactamente a una de las
+siguientes categorías:
 
-No agrupes varias funciones en una sola.
+1. FUNCION_NECESARIA_FALTANTE
 
-No reformules sus identidades.
+Es una capacidad funcional que no está documentada explícita ni
+funcionalmente equivalente en la evidencia original y cuya ausencia
+impide o compromete directamente el cumplimiento de la función
+principal u objetivo declarado de la Historia de Usuario.
 
-Conserva exactamente las funciones principales proporcionadas por Python.
+Solo puede clasificarse como función necesaria faltante cuando:
+- existe una relación directa con la funcionalidad u objetivo declarado;
+- su necesidad puede justificarse utilizando evidencia concreta de la
+  Historia de Usuario o del contexto explícito del proyecto;
+- no constituye únicamente un detalle, atributo, regla, precisión o
+  forma particular de implementar una función ya existente;
+- la confianza de la inferencia es ALTA.
 
-Cada función de funciones_principales_evaluables debe aparecer exactamente una vez entre:
+Estas funciones afectan MC-01.
 
-- funciones_incluidas
-- funciones_faltantes
+2. PRECISION_NECESARIA
 
-Una función se considera incluida únicamente cuando la Historia de Usuario ORIGINAL contiene evidencia documental suficiente para reconocerla.
+Es información que falta para hacer más clara, verificable o
+implementable una función, restricción o regla ya documentada, pero
+NO constituye una nueva capacidad funcional.
 
-La existencia posterior de un requerimiento formalizado no convierte una función originalmente ausente en incluida.
+Ejemplos generales:
+- precisar campos;
+- definir formatos;
+- aclarar valores;
+- especificar reglas de validación;
+- precisar condiciones;
+- definir tolerancias;
+- aclarar una política ya mencionada.
 
-Si la evidencia original no permite identificar suficientemente una función, clasifícala como faltante y explica la brecha.
+Las precisiones necesarias NO afectan MC-01.
 
-Ejemplo:
+3. OPORTUNIDAD_ADICIONAL
 
-Si Python proporciona:
+Es una capacidad, característica o mejora razonable que podría aportar
+valor al proyecto, pero cuya necesidad no puede demostrarse con alta
+confianza a partir de la evidencia disponible.
 
-funciones_principales_evaluables:
-["Registrar un pedido", "Consultar estado del pedido"]
+Las oportunidades adicionales NO afectan MC-01.
 
-y la Historia original solamente documenta claramente "Registrar un pedido":
+REGLA DE PRUDENCIA
 
-funciones_especificadas:
-["Registrar un pedido", "Consultar estado del pedido"]
+No conviertas buenas prácticas generales, características comunes del
+dominio ni funcionalidades que podrían resultar útiles en funciones
+necesarias faltantes.
 
-funciones_incluidas:
-["Registrar un pedido"]
+No supongas que una aplicación debe poseer una función únicamente
+porque sistemas similares suelen incluirla.
 
-funciones_faltantes:
-["Consultar estado del pedido"]
+No inventes procesos, actores, reglas de negocio, estados, filtros,
+operaciones, datos o comportamientos que no puedan derivarse
+razonablemente de la evidencia proporcionada.
 
-No debes asumir que "Consultar estado del pedido" existe porque posteriormente pueda ser formalizado por otro agente.
+Cuando exista duda entre "función necesaria faltante" y "oportunidad
+adicional", clasifica el hallazgo como oportunidad adicional.
+
+Cuando el hallazgo únicamente complete o precise una función ya
+documentada, clasifícalo como precisión necesaria.
+
+PRUEBA PARA FUNCIONES NECESARIAS FALTANTES
+
+Antes de clasificar un hallazgo como FUNCION_NECESARIA_FALTANTE,
+verifica:
+
+Pregunta 1:
+¿Es realmente una nueva capacidad funcional o solamente precisa una
+función ya existente?
+Si solamente precisa una función existente:
+→ precision_necesaria.
+
+Pregunta 2:
+¿La función puede justificarse directamente a partir del objetivo,
+funcionalidad, criterios, restricciones u otra evidencia explícita?
+Si no:
+→ oportunidad_adicional.
+
+Pregunta 3:
+¿La Historia de Usuario podría cumplir razonablemente su objetivo sin
+incorporar esta función?
+Si sí:
+→ oportunidad_adicional.
+
+Pregunta 4:
+¿Existe ya una función funcionalmente equivalente en la HU?
+Si sí:
+→ no crear gap.
+
+Pregunta 5:
+¿La confianza de que esta función es necesaria es alta?
+Si no:
+→ oportunidad_adicional.
+
+Solamente cuando las respuestas permitan demostrar una ausencia
+funcional necesaria se clasificará como FUNCION_NECESARIA_FALTANTE.
+
+INDEPENDENCIA DE SEGURIDAD
+
+No clasifiques como función necesaria faltante un aspecto que
+corresponda principalmente a protección de datos, autorización,
+autenticación, auditoría o clasificación de datos. Esos aspectos
+corresponden a la evaluación de Seguridad. Un hallazgo de ese tipo
+solo podría afectar MC-01 si, además, constituye inequívocamente una
+función funcional necesaria del comportamiento esperado, y no
+únicamente un control de acceso o una regla de seguridad.
+
+No calcules porcentajes. Python calculará MC-01.
+
+Cada función necesaria faltante debe incluir:
+- funcion
+- evidencia_relacionada
+- fuente_evidencia
+- motivo_necesidad
+- consecuencia_ausencia
+- confianza
+
+confianza solo puede ser:
+- alta
+- media
+- baja
+
+Solo puedes incluir en funciones_necesarias_faltantes hallazgos con
+confianza alta. Si la confianza de un hallazgo es media o baja,
+clasifícalo como oportunidad_adicional en lugar de incluirlo en
+funciones_necesarias_faltantes.
+
+Cada precisión necesaria debe incluir:
+- precision
+- evidencia_relacionada
+- motivo
+
+Cada oportunidad adicional debe incluir:
+- sugerencia
+- fundamento
+
+No es obligatorio identificar funciones necesarias faltantes.
+
+Una Historia de Usuario puede obtener MC-01 = 100 % cuando, después
+del razonamiento contextual, todas las funciones que pueden
+considerarse necesarias con alta confianza ya están documentadas.
+
+La existencia de un MC-01 de 100 % no impide identificar precisiones
+necesarias u oportunidades adicionales.
+
+EJEMPLOS DE CLASIFICACIÓN
+
+Ejemplo — precisión necesaria (no función faltante):
+Función existente: "Registrar información obligatoria".
+Hallazgo: no se especifica cuál es esa información.
+Clasificación: precisión necesaria.
+Razón: no falta la capacidad de registrar información; falta precisar
+qué información comprende esa función.
+
+Ejemplo — precisión necesaria o evidencia de Seguridad (no función
+faltante):
+Restricción existente: "Solo recepcionistas autorizadas".
+Hallazgo: no se explica cómo se determina esa autorización.
+Clasificación: precisión necesaria, o evidencia para la evaluación de
+Seguridad según corresponda. No la clasifiques como función necesaria
+faltante ni la dupliques en ambas categorías.
+
+Ejemplo — oportunidad adicional (no función faltante):
+Funcionalidad existente: "Consultar mi agenda del día".
+Hallazgo: "filtrar la agenda por rango de fechas o por profesional".
+La Historia no exige consultar otros periodos ni seleccionar otro
+profesional, y puede cumplir razonablemente su objetivo sin ese
+filtro.
+Clasificación: oportunidad adicional.
 
 
 REGLAS FUNCIONALES CONTEXTUALES
@@ -133,9 +267,8 @@ Estas reglas sirven exclusivamente para comprender condiciones, restricciones y 
 
 No las incorpores en:
 
-- funciones_especificadas;
-- funciones_incluidas;
-- funciones_faltantes;
+- funciones_explicitas;
+- funciones_necesarias_faltantes;
 - funciones_evaluables;
 - funciones_alineadas;
 - funciones_no_alineadas.
@@ -166,7 +299,7 @@ Debes devolver:
 - justificacion
 - recomendacion
 
-Python utilizará como funciones_evaluables exactamente las funciones_especificadas de MC-01.
+Python utilizará como funciones_evaluables exactamente las funciones_explicitas de MC-01.
 
 No amplíes ni modifiques este universo.
 
@@ -266,26 +399,102 @@ Devuelve únicamente el JSON solicitado.
 OPORTUNIDADES DE MEJORA
 
 Además de MC-01 y MC-02, puedes identificar oportunidades de mejora
-en la documentación original aunque ambas métricas alcancen el 100 %.
+que ayuden a que la Historia de Usuario sea más clara, precisa,
+verificable, consistente o útil para las siguientes actividades del
+proceso de desarrollo.
 
-Una mejora sugerida no modifica MC-01 ni MC-02 y no implica por sí
-misma que la Historia sea incorrecta.
+Las oportunidades de mejora son propuestas orientativas.
 
-Las mejoras deben:
-- basarse exclusivamente en evidencia textual de la Historia original;
-- ayudar a aumentar precisión, claridad, verificabilidad o utilidad
-  para el equipo de desarrollo;
-- no inventar información;
-- no utilizar conocimiento externo del dominio;
-- no convertir una mejora opcional en una función faltante.
+No forman parte de la evidencia original.
+No modifican MC-01 ni MC-02.
+No representan automáticamente una corrección obligatoria.
+No deben presentarse como información ya definida por el proyecto.
 
-Ejemplo:
-Si existe el criterio "Registrar información obligatoria", la función
-puede estar cubierta para MC-01, pero puedes sugerir:
-"Precisar cuáles datos se consideran obligatorios para facilitar
-la posterior verificación del requerimiento."
+REGLAS DE OPORTUNIDADES DE MEJORA
 
-Si no existe una oportunidad de mejora sustentada, devuelve una lista vacía.
+Las oportunidades de mejora pueden ser inferencias razonadas y no
+necesitan aparecer literalmente en la Historia de Usuario.
+
+Sin embargo, toda propuesta debe partir de una necesidad, función,
+criterio, restricción, objetivo u observación existente y mantenerse
+en el mismo nivel conceptual.
+
+Antes de proponer una mejora:
+1. revisa todos los campos de la Historia;
+2. comprueba que la necesidad propuesta no esté ya documentada;
+3. determina si la propuesta precisa una necesidad existente o introduce
+   una nueva decisión.
+
+No propongas como mejora algo que ya esté cubierto en otro campo de la
+Historia.
+
+Puedes recomendar que se defina o precise una decisión relevante,
+pero no debes decidir cuál debe ser esa decisión cuando la evidencia
+no lo permite.
+
+Una propuesta es válida cuando:
+
+1. parte de una necesidad, función, objetivo, criterio, restricción,
+   observación o contexto efectivamente presente en la Historia;
+
+2. ayuda a precisar o mejorar esa necesidad sin sustituirla por una
+   funcionalidad diferente;
+
+3. no contradice información existente;
+
+4. no agrega una nueva capacidad independiente que no tenga relación
+   directa con lo solicitado;
+
+5. no presupone características propias de un dominio concreto;
+
+6. no inventa tecnologías, arquitecturas, protocolos, frameworks,
+   algoritmos, bases de datos, servicios externos ni mecanismos técnicos
+   específicos, salvo que ya estén documentados;
+
+7. no inventa datos, actores, roles, entidades o reglas de negocio como
+   si fueran requisitos confirmados;
+
+8. no inventa campos concretos, formatos de interfaz, mecanismos
+   técnicos específicos, valores o límites cuantitativos, salvo que
+   estén respaldados por la evidencia disponible;
+
+9. puede plantear una decisión que convendría definir, pero no debe decidir
+   por el responsable del proyecto cuando la evidencia no permite hacerlo.
+
+Si afirma_ausencia es true, explica concretamente qué información falta y
+verifica previamente que no esté presente en ningún campo de la Historia.
+
+Ejemplo permitido:
+"Definir, si resulta necesario para el proceso, el criterio de
+organización o presentación de los elementos mostrados."
+
+Ejemplo no permitido:
+"Mostrar los elementos en una tabla ordenada por fecha con columnas
+de hora, estado y usuario."
+
+Ejemplo permitido:
+"Precisar qué información se considera obligatoria y las condiciones
+necesarias para verificar su registro."
+
+Ejemplo no permitido:
+"Solicitar nombre, apellido, dirección, teléfono y fecha de nacimiento."
+
+Las precisiones necesarias se identifican exclusivamente dentro de
+MC-01 (ver sección MC-01 — COBERTURA FUNCIONAL) y no como
+mejoras_sugeridas.
+
+Cada mejora debe utilizar exclusivamente los siguientes valores para
+tipo_inferencia: precision, claridad, verificabilidad, consistencia
+o completitud_contextual.
+
+Cada mejora debe indicar impacto_documental como asociable_requerimiento
+cuando afecte la definición de un RF o RNF concreto, o general_historia
+cuando sea retroalimentación general no vinculable a un requerimiento.
+
+Cada mejora debe indicar afirma_ausencia como true si la propuesta
+declara que algo falta, o false en caso contrario.
+
+Si no existe una mejora razonable y sustentable, devuelve una lista vacía.
 
 
 FORMA JSON REQUERIDA
@@ -300,13 +509,35 @@ FORMA JSON REQUERIDA
       "metricas": {{
         "cobertura_funcional": {{
           "codigo": "MC-01",
-          "funciones_especificadas": [
-            "Función principal proporcionada por Python"
+          "funciones_explicitas": [
+            {{
+              "funcion": "Consultar elementos disponibles",
+              "evidencia": "Consultar los elementos disponibles."
+            }}
           ],
-          "funciones_incluidas": [
-            "Función con evidencia suficiente en la Historia original"
+          "funciones_necesarias_faltantes": [
+            {{
+              "funcion": "Definir el comportamiento cuando no existen resultados disponibles",
+              "evidencia_relacionada": "Consultar los elementos disponibles.",
+              "fuente_evidencia": "funcionalidad",
+              "motivo_necesidad": "La consulta debe quedar funcionalmente definida también cuando no existan resultados.",
+              "consecuencia_ausencia": "El comportamiento de la operación queda indeterminado en ese escenario.",
+              "confianza": "alta"
+            }}
           ],
-          "funciones_faltantes": [],
+          "precisiones_necesarias": [
+            {{
+              "precision": "Precisar qué información se considera obligatoria.",
+              "evidencia_relacionada": "Registrar información obligatoria.",
+              "motivo": "La función ya existe, pero no se especifica qué información comprende."
+            }}
+          ],
+          "oportunidades_adicionales": [
+            {{
+              "sugerencia": "Considerar mecanismos de consulta de la agenda por otros periodos si el alcance del proyecto lo requiere.",
+              "fundamento": "La Historia solo exige consultar la agenda del día; ampliar el rango no es necesario para cumplir su objetivo."
+            }}
+          ],
           "justificacion": "Explicación concreta basada exclusivamente en la Historia original.",
           "recomendacion": ""
         }},
@@ -328,9 +559,13 @@ FORMA JSON REQUERIDA
       "recomendaciones": [],
       "mejoras_sugeridas": [
         {{
-          "evidencia": "Texto original relacionado",
-          "descripcion": "Aspecto que podría mejorarse",
-          "recomendacion": "Mejora propuesta sin inventar información"
+          "evidencia_base": "Texto o necesidad que origina la propuesta.",
+          "tipo_inferencia": "verificabilidad",
+          "descripcion": "Aspecto que podría definirse o mejorarse.",
+          "recomendacion": "Propuesta orientativa.",
+          "justificacion": "Relación concreta entre la propuesta y la evidencia.",
+          "impacto_documental": "asociable_requerimiento",
+          "afirma_ausencia": false
         }}
       ]
     }}

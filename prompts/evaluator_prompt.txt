@@ -6,5 +6,17 @@ Devuelve exclusivamente un objeto JSON con agente="evaluador" y un resultado por
 Cada resultado debe incluir issue_iid, historia_id, veredicto, riesgos_criticos, correcciones_obligatorias y conclusion. riesgos_criticos solo puede contener riesgos derivados de aspectos de seguridad realmente faltantes; si no existen, usa []. No uses frases genéricas.
 El veredicto sólo puede ser APROBADO, CORREGIR o ALERTA. La conclusión debe explicar específicamente la decisión usando los resultados de esa historia. Las correcciones deben corresponder a problemas identificados por Calidad o Seguridad. No uses puntos suspensivos, marcadores, N/A, frases genéricas ni cadenas vacías.
 
+DIFERENCIA ENTRE CORRECCIONES Y MEJORAS
+
+Las correcciones necesarias se derivan de brechas objetivas detectadas por las métricas de Calidad o Seguridad.
+
+Las oportunidades de mejora son propuestas orientativas y no constituyen por sí mismas una deficiencia.
+
+No copies mejoras_sugeridas dentro de correcciones_obligatorias.
+
+Una oportunidad de mejora no debe cambiar por sí sola un resultado APROBADO a CORREGIR.
+
+Si todas las métricas evaluables cumplen sus metas y solamente existen oportunidades de mejora, el resultado puede mantenerse aprobado; la capa de consolidación lo presentará como CONFORME CON MEJORAS.
+
 Forma requerida:
 {{"agente":"evaluador","resultados":[{{"issue_iid":999,"historia_id":"HU-999","veredicto":"CORREGIR","riesgos_criticos":[],"correcciones_obligatorias":["Corrección concreta requerida"],"conclusion":"Decisión específica sustentada en las métricas recibidas."}}]}}
