@@ -12,6 +12,14 @@ from integrations.gitlab_adapter import GitLabAdapter
 from integrations.issue_service import procesar_flujo_lote
 from database.repository import limpiar_datos_seguimiento
 from project_config import load_project_config, save_project_config
+from core.design_ui import render_design_stage
+from core.ui_components import (
+    _lista_ui as lista_ui,
+    _texto_hallazgo_ui as texto_hallazgo_ui,
+    render_findings_section,
+    render_gitlab_feedback,
+    render_state_badge,
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EMI_LOGO_PATH = os.path.join(BASE_DIR, "assets", "emi_logo.png")
@@ -279,7 +287,92 @@ st.markdown("""
         border-left: 6px solid var(--emi-yellow);
         border-radius: 7px;
         background: #F5F9FD;
-        color: var(--emi-ink);
+        color: var(--emi-ink) !important;
+    }
+
+    div[data-testid="stAlert"] p,
+    div[data-testid="stAlert"] span,
+    div[data-testid="stAlert"] div {
+        color: var(--emi-ink) !important;
+        -webkit-text-fill-color: var(--emi-ink) !important;
+        opacity: 1 !important;
+    }
+
+    /* Cargador de archivos integrado con la paleta clara de la aplicaciÃ³n. */
+    [data-testid="stFileUploaderDropzone"] {
+        background: #F8FBFE !important;
+        border: 2px dashed #9BC6E8 !important;
+        border-radius: 9px !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] p,
+    [data-testid="stFileUploaderDropzone"] span,
+    [data-testid="stFileUploaderDropzone"] small {
+        color: var(--emi-ink) !important;
+        -webkit-text-fill-color: var(--emi-ink) !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] button {
+        background: #FFFFFF !important;
+        border: 1px solid var(--emi-blue) !important;
+        color: var(--emi-blue-dark) !important;
+        -webkit-text-fill-color: var(--emi-blue-dark) !important;
+    }
+
+    /* Las tablas estÃ¡ticas deben conservar contraste dentro de expanders. */
+    [data-testid="stTable"] {
+        background: #FFFFFF !important;
+        color: var(--emi-ink) !important;
+    }
+
+    [data-testid="stTable"] table {
+        border-collapse: collapse !important;
+        background: #FFFFFF !important;
+    }
+
+    [data-testid="stTable"] th {
+        background: var(--emi-blue-soft) !important;
+        border-color: #B8CADB !important;
+        color: var(--emi-blue-dark) !important;
+        -webkit-text-fill-color: var(--emi-blue-dark) !important;
+        font-weight: 750 !important;
+    }
+
+    [data-testid="stTable"] td {
+        background: #FFFFFF !important;
+        border-color: var(--emi-line) !important;
+        color: var(--emi-ink) !important;
+        -webkit-text-fill-color: var(--emi-ink) !important;
+    }
+
+    [data-testid="stTable"] th *,
+    [data-testid="stTable"] td * {
+        color: inherit !important;
+        -webkit-text-fill-color: inherit !important;
+        opacity: 1 !important;
+    }
+
+    /* ConfirmaciÃ³n previa de DiseÃ±o: texto y control mÃ¡s visibles. */
+    .st-key-diseno_matriz_confirmada [data-testid="stCheckbox"] label {
+        gap: 0.75rem !important;
+        padding: 0.35rem 0 !important;
+    }
+
+    .st-key-diseno_matriz_confirmada [data-testid="stCheckbox"] label p {
+        color: var(--emi-blue-dark) !important;
+        -webkit-text-fill-color: var(--emi-blue-dark) !important;
+        font-size: 1.05rem !important;
+        font-weight: 750 !important;
+        line-height: 1.4 !important;
+    }
+
+    .st-key-diseno_matriz_confirmada [data-baseweb="checkbox"] > div:first-child,
+    .st-key-diseno_matriz_confirmada [data-testid="stCheckbox"] div[role="checkbox"] {
+        width: 1.45rem !important;
+        min-width: 1.45rem !important;
+        height: 1.45rem !important;
+        min-height: 1.45rem !important;
     }
 
     hr {
@@ -289,6 +382,26 @@ st.markdown("""
 
     [data-testid="stCaptionContainer"] {
         color: #5B7187;
+    }
+
+    /* Mantener visibles las etiquetas de las pestañas sobre el fondo blanco. */
+    [data-testid="stTabs"] [data-baseweb="tab"] {
+        color: var(--emi-blue-dark) !important;
+        -webkit-text-fill-color: var(--emi-blue-dark) !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab"] p,
+    [data-testid="stTabs"] [data-baseweb="tab"] span {
+        color: inherit !important;
+        -webkit-text-fill-color: inherit !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
+        color: var(--emi-blue) !important;
+        -webkit-text-fill-color: var(--emi-blue) !important;
+        font-weight: 800;
     }
 
     .st-key-stage_shell {
@@ -714,6 +827,16 @@ milestone_val = MILESTONES_BY_STAGE[stage_id]
 st.subheader(next(stage[2] for stage in STAGES if stage[0] == stage_id))
 st.write(f"**Milestone asociado:** {milestone_val}")
 
+# La etapa de Diseño tiene su propio bloque, separado del de Requerimientos
+# (no comparte nodos ni lógica). Las demás etapas aún no implementadas
+# conservan el placeholder existente.
+if stage_id == "diseno":
+    render_design_stage(project_name, project_config, adapter)
+    st.stop()
+elif stage_id != "requerimientos":
+    render_coming_soon(stage_id)
+    st.stop()
+
 ISSUE_FILTER_VERSION = "pending-or-rework-v1"
 if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
     st.session_state.pop("issues_by_stage", None)
@@ -849,37 +972,8 @@ if start_analysis:
         st.success("¡Análisis del Sprint finalizado!")
 
 
-def _texto_hallazgo_ui(item):
-    if isinstance(item, str):
-        return item.strip()
-
-    if isinstance(item, dict):
-        for field in (
-            "recomendacion",
-            "precision",
-            "sugerencia",
-            "funcion",
-            "descripcion",
-            "texto",
-        ):
-            value = str(item.get(field) or "").strip()
-            if value:
-                return value
-
-    return ""
-
-
-def _lista_ui(value):
-    if value is None:
-        return []
-
-    if isinstance(value, list):
-        return value
-
-    if isinstance(value, tuple):
-        return list(value)
-
-    return [value]
+_texto_hallazgo_ui = texto_hallazgo_ui
+_lista_ui = lista_ui
 
 
 def _porcentaje_ui(value):
@@ -1188,73 +1282,10 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                     or result.get("oportunidades_adicionales")
                 )
 
-                st.markdown("#### Correcciones necesarias")
-
-                if correcciones:
-                    for item in correcciones:
-                        text = _texto_hallazgo_ui(item)
-                        if text:
-                            st.markdown(
-                                f"""
-                                <div class="finding-block finding-correction">
-                                    {text}
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-                else:
-                    st.success(
-                        "No se identificaron correcciones necesarias."
-                    )
-
-                st.markdown("#### Precisiones necesarias")
-
-                if precisiones:
-                    for item in precisiones:
-                        text = _texto_hallazgo_ui(item)
-                        if text:
-                            st.markdown(
-                                f"""
-                                <div class="finding-block finding-precision">
-                                    {text}
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-                else:
-                    st.caption(
-                        "No se identificaron precisiones necesarias."
-                    )
-
-                st.markdown("#### Oportunidades adicionales")
-
-                if oportunidades:
-                    for item in oportunidades:
-                        text = _texto_hallazgo_ui(item)
-                        if text:
-                            st.markdown(
-                                f"""
-                                <div class="finding-block finding-opportunity">
-                                    {text}
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-                else:
-                    st.caption(
-                        "No se identificaron oportunidades adicionales."
-                    )
+                render_findings_section(correcciones, precisiones, oportunidades)
 
                 st.markdown("#### Retroalimentación")
-
-                if result.get("comment_published"):
-                    st.success(
-                        "Retroalimentación publicada correctamente en GitLab."
-                    )
-                else:
-                    st.warning(
-                        "La retroalimentación no fue publicada en GitLab."
-                    )
+                render_gitlab_feedback(result.get("comment_published", False))
 
             with tab_calidad:
                 quality_metrics = (
@@ -1665,11 +1696,13 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             import csv
             import io
 
-            csv_buffer = io.StringIO()
+            csv_buffer = io.StringIO(newline="")
 
             writer = csv.DictWriter(
                 csv_buffer,
                 fieldnames=rows[0].keys(),
+                delimiter=";",
+                quoting=csv.QUOTE_MINIMAL,
             )
 
             writer.writeheader()

@@ -1,0 +1,102 @@
+Rol: Agente Evaluador de Diseño.
+
+IDs GitLab obligatorios: {expected_issue_ids}
+
+Entrada de Diseño con métricas ya calculadas: {issues_json_str}
+
+Recibes, para cada Issue de Diseño, las métricas MC-03, MC-04, MS-03 y MS-04
+YA CALCULADAS por Python: "valor", "numerador" y "denominador" son de solo
+lectura. No los recalcules, no los sustituyas, no los corrijas ni los
+repitas con un valor distinto al recibido.
+
+Regla de oro (imposible por contrato):
+Si "valor" de una métrica es 0.75, tu razonamiento y tus conclusiones no
+pueden afirmar ni implicar que esa métrica es 100 % o que está totalmente
+cumplida. Refleja siempre el valor real recibido.
+
+Usa el campo "evidencia" de cada métrica (el detalle real ya producido por
+Calidad de Diseño y Seguridad de Diseño: elementos documentados,
+elementos/amenazas/controles faltantes, precisiones necesarias,
+oportunidades adicionales) para fundamentar tus conclusiones y hallazgos.
+No inventes evidencia que no esté en "evidencia".
+
+No decidas el estado orientativo final del diseño (por ejemplo APROBADO,
+CORREGIR o similar): eso lo calculará Python después, usando los
+porcentajes ya calculados y la presencia de correcciones necesarias.
+
+No inventes elementos de diseño (ED) ni códigos de requerimiento (RF/RNF)
+que no aparezcan en la evidencia recibida.
+
+Conserva exactamente issue_iid y diseno_id.
+
+Debe existir exactamente un resultado por cada ID GitLab obligatorio.
+No sustituyas los IDs reales por 1..N.
+No mezcles información entre Issues de Diseño distintos.
+
+DIFERENCIA ENTRE CORRECCIÓN, PRECISIÓN Y OPORTUNIDAD
+
+"correcciones_necesarias": brechas objetivas ya identificadas por Calidad o
+Seguridad de Diseño en "evidencia" (por ejemplo, un elemento necesario
+faltante de confianza alta, una amenaza sin tratamiento, un control
+faltante). Debe existir evidencia concreta de esa brecha en la entrada
+recibida.
+
+"precisiones_necesarias": los puntos ya señalados como
+"precisiones_necesarias" en la evidencia de Calidad o Seguridad, o
+ambigüedades reales que impiden confirmar si algo está completo, sin llegar
+a ser una brecha confirmada.
+
+"oportunidades_mejora": las "oportunidades_adicionales" ya señaladas por
+Calidad o Seguridad, y cualquier sugerencia razonable que no derive de una
+brecha objetiva. Una oportunidad de mejora nunca debe registrarse como
+corrección.
+
+No copies oportunidades_mejora dentro de correcciones_necesarias.
+
+"hallazgos_prioritarios": selecciona, entre las correcciones necesarias y
+precisiones necesarias ya registradas, aquellas que consideres más
+relevantes para la revisión del diseño. No agregues aquí ningún hallazgo
+que no esté ya sustentado en "correcciones_necesarias" o
+"precisiones_necesarias".
+
+"conclusion_calidad" debe explicar específicamente, usando los valores y la
+evidencia de MC-03 y MC-04 recibidos, el estado de la Calidad del diseño.
+
+"conclusion_seguridad" debe explicar específicamente, usando los valores y
+la evidencia de MS-03 y MS-04 recibidos, el estado de la Seguridad del
+diseño.
+
+"recomendacion_revision" debe ser una recomendación concreta y específica
+para quien revise el diseño, basada en las correcciones y precisiones
+identificadas.
+
+No uses puntos suspensivos, marcadores, "N/A", frases genéricas ni cadenas
+vacías en los textos.
+
+FORMA JSON REQUERIDA
+
+{{
+  "agente": "evaluador_diseno",
+  "etapa": "Diseño",
+  "resultados": [
+    {{
+      "issue_iid": 999,
+      "diseno_id": "DIS-999",
+      "conclusion_calidad": "Explicación específica basada en MC-03 y MC-04 recibidos.",
+      "conclusion_seguridad": "Explicación específica basada en MS-03 y MS-04 recibidos.",
+      "correcciones_necesarias": [
+        "Brecha objetiva concreta detectada en la evidencia recibida."
+      ],
+      "precisiones_necesarias": [],
+      "oportunidades_mejora": [],
+      "hallazgos_prioritarios": [
+        "Brecha objetiva concreta detectada en la evidencia recibida."
+      ],
+      "recomendacion_revision": "Recomendación concreta para la revisión del diseño."
+    }}
+  ]
+}}
+
+El 999 es solamente un ejemplo del tipo de dato.
+Reemplázalo por cada ID GitLab obligatorio real y por el diseno_id real de
+cada Issue.

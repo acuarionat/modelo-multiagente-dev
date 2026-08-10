@@ -2,15 +2,18 @@ import json
 import logging
 import time
 from datetime import datetime
+from types import SimpleNamespace
 
 from core.graph import construir_grafo
 from core.config import ALLOW_INCOMPLETE_STORIES, OLLAMA_MODEL
 from core.batch_contract import construir_etiquetas_resultado
 from core.performance_audit import obtener_contadores, reiniciar_contadores
-from core.utils import construir_resultado_lote, extraer_porcentaje
+from core.utils import construir_filas_trazabilidad, construir_resultado_lote, extraer_porcentaje
 from database.repository import calcular_hash_issue, guardar_cache, guardar_historial, insertar_o_actualizar_issue
 from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente
 from integrations.issue_mapper import mapear_issue_a_json, separar_entradas_para_analisis
+from integrations.design_issue_mapper import mapear_issue_diseno
+from integrations.traceability_issue_mapper import construir_markdown_matriz_trazabilidad, mapear_matriz_trazabilidad
 
 logger = logging.getLogger(__name__)
 SCHEMA_VERSION = "v4-assisted-evaluation"
@@ -18,6 +21,7 @@ DECISION_SUPPORT_NOTICE = (
     "Este resultado constituye una evaluación asistida para apoyar el control, seguimiento y trazabilidad. "
     "La decisión de aceptación corresponde al responsable del proyecto y requiere revisión humana."
 )
+TRZ_001_TITULO = "TRZ-001 - Matriz de Trazabilidad"
 
 
 def _lineas_metricas(metrics: dict) -> str:
@@ -132,6 +136,73 @@ def construir_comentario_issue(result: dict) -> str:
     secciones += ["", f"> {DECISION_SUPPORT_NOTICE}"]
 
     return "\n".join(secciones) + "\n"
+
+
+def construir_comentario_diseno(resumen_diseno: dict) -> str:
+    """
+    Construye el comentario compacto de retroalimentación operativa para un
+    Issue de Diseño a partir de state["design_summary"]. No repite las
+    métricas completas MC-03/MC-04/MS-03/MS-04: solo los índices, el estado
+    orientativo y los hallazgos ya clasificados por el Evaluador de Diseño.
+    """
+    diseno_id = resumen_diseno.get("diseno_id", "")
+    estado = resumen_diseno.get("estado_orientativo", "")
+    indice_calidad = extraer_porcentaje(resumen_diseno.get("indice_calidad_diseno"))
+    indice_seguridad = extraer_porcentaje(resumen_diseno.get("indice_seguridad_diseno"))
+
+    def _textos(campo):
+        valores = resumen_diseno.get(campo)
+        if not isinstance(valores, list):
+            return []
+        return [texto.strip() for texto in valores if isinstance(texto, str) and texto.strip()]
+
+    correcciones = _textos("correcciones_necesarias")
+    precisiones = _textos("precisiones_necesarias")
+    oportunidades = _textos("oportunidades_mejora")
+
+    lineas = [
+        f"Resultado del análisis de Diseño — {diseno_id}",
+        "",
+        f"Estado orientativo: {estado}",
+        f"Índice de Calidad de Diseño: {indice_calidad}",
+        f"Índice de Seguridad de Diseño: {indice_seguridad}",
+        "",
+        "Correcciones necesarias:",
+        *([f"- {item}" for item in correcciones] if correcciones else ["- Ninguna."]),
+        "",
+        "Precisiones:",
+        *([f"- {item}" for item in precisiones] if precisiones else ["- Ninguna."]),
+        "",
+        "Oportunidades de mejora:",
+        *([f"- {item}" for item in oportunidades] if oportunidades else ["- Ninguna."]),
+        "",
+        "Próxima acción:",
+        (
+            "Actualizar el Issue de Diseño con las correcciones necesarias y volver a marcarlo como Pendiente."
+            if correcciones else
+            "El Issue de Diseño queda marcado como Revisado y puede continuar con la siguiente etapa."
+        ),
+        "",
+        "Evaluación asistida para apoyar el control, seguimiento y trazabilidad. La decisión final corresponde al responsable del proyecto.",
+    ]
+
+    return "\n".join(lineas) + "\n"
+
+
+def publicar_comentario_diseno(project_id, issue_iid, resumen_diseno: dict):
+    """Publica en GitLab el comentario de retroalimentación operativa de Diseño (reutiliza GitLabAdapter.agregar_comentario, sin duplicar llamadas HTTP)."""
+    if not resumen_diseno:
+        raise ValueError("No existe resumen de Diseño para publicar.")
+
+    if resumen_diseno.get("estado_orientativo") == "ERROR":
+        raise ValueError(
+            "No se publica comentario de evaluación cuando existe error técnico."
+        )
+
+    comentario = construir_comentario_diseno(resumen_diseno)
+
+    adapter = GitLabAdapter(project_id=project_id)
+    return adapter.agregar_comentario(issue_iid, comentario)
 
 
 def _resultado_informacion_insuficiente(issue_data: dict) -> dict:
@@ -298,4 +369,102 @@ La historia quedará como **Requiere modificación**. Después de corregirla, vu
         "Ollama lote: llamadas=%s, reintentos=%s, por_agente=%s.",
         audit["llamadas_ollama"], audit["reintentos"], audit["por_agente"],
     )
+
+    try:
+        generation_date = datetime.now().date().isoformat()
+        filas_matriz_requerimientos_actual = construir_filas_trazabilidad(batch_result["issues"], generation_date)
+        execution_id = datetime.now().strftime("requerimientos-%Y%m%d-%H%M%S")
+        crear_o_actualizar_issue_matriz_trazabilidad(
+            project_id=adapter.project_id,
+            filas_matriz=filas_matriz_requerimientos_actual,
+            metadata={
+                "project_id": adapter.project_id,
+                "milestone": milestone,
+                "execution_id": execution_id,
+                "generated_at": datetime.now().isoformat(timespec="seconds"),
+            },
+        )
+    except Exception:
+        logger.exception("No se pudo publicar/actualizar TRZ-001 en GitLab.")
+
     return batch_result
+
+
+def obtener_issues_diseno(project_id, milestone_title="Diseño"):
+    """Obtiene los Issues DIS-xxx de GitLab y los estructura con design_issue_mapper."""
+    adapter = GitLabAdapter(project_id=project_id)
+    issues = adapter.listar_issues_abiertos(milestone_title=milestone_title)
+    return [mapear_issue_diseno(issue) for issue in issues]
+
+
+def construir_matriz_requerimientos_original(resultados_lote_actual: list) -> list:
+    """
+    Utilidad de recuperación/pruebas: normaliza un conjunto de resultados de
+    lote YA DETERMINADO por quien la llama (nunca se auto-descubre desde
+    cache_results). El flujo real de Requerimientos NO usa esta función: usa
+    construir_filas_trazabilidad() directamente sobre los resultados en
+    memoria de la ejecución que acaba de terminar.
+    """
+    from core.design_context import normalizar_fila_trazabilidad
+
+    if not resultados_lote_actual:
+        return []
+
+    filas_crudas = construir_filas_trazabilidad(resultados_lote_actual)
+    return [normalizar_fila_trazabilidad(fila) for fila in filas_crudas]
+
+
+def obtener_issue_matriz_trazabilidad(project_id):
+    """Recupera TRZ-001 desde GitLab y lo normaliza al contrato interno (codigo/nombre/descripcion/...). (None, None) si no existe todavía."""
+    from core.design_context import normalizar_fila_trazabilidad
+
+    adapter = GitLabAdapter(project_id=project_id)
+    issue = adapter.buscar_issue_por_titulo("TRZ-001")
+    if issue is None:
+        return None, None
+    filas = mapear_matriz_trazabilidad(issue)
+    return issue, [normalizar_fila_trazabilidad(fila) for fila in filas]
+
+
+def validar_consistencia_matriz_publicacion(filas_oficiales: list, filas_trz: list) -> None:
+    """Verifica que el Markdown publicado en TRZ-001 no haya perdido, alterado ni renumerado ningún requisito oficial."""
+    assert len(filas_oficiales) == len(filas_trz), (
+        f"La matriz publicada tiene {len(filas_trz)} filas; se esperaban {len(filas_oficiales)}."
+    )
+
+    oficiales = {fila["Código"]: fila for fila in filas_oficiales}
+    publicadas = {fila["Código"]: fila for fila in filas_trz}
+
+    assert oficiales.keys() == publicadas.keys(), (
+        f"Los códigos publicados no coinciden con los oficiales: "
+        f"faltantes={sorted(oficiales.keys() - publicadas.keys())}, "
+        f"inesperados={sorted(publicadas.keys() - oficiales.keys())}."
+    )
+
+    for codigo in oficiales:
+        assert oficiales[codigo]["Nombre"] == publicadas[codigo]["Nombre"], f"{codigo}: Nombre no coincide tras publicar."
+        assert oficiales[codigo]["Descripción"] == publicadas[codigo]["Descripción"], f"{codigo}: Descripción no coincide tras publicar."
+
+
+def crear_o_actualizar_issue_matriz_trazabilidad(project_id, filas_matriz, metadata=None):
+    """
+    Publica (crea o actualiza) TRZ-001 con las filas YA CONSOLIDADAS de la
+    ejecución actual (mismo contrato de construir_filas_matriz_requerimientos_final).
+    Función pasiva: no lee cache_results, no reconstruye ni renumera nada.
+    Reemplaza por completo la descripción anterior del Issue (GitLab ya
+    conserva el historial de edición).
+    """
+    if not filas_matriz:
+        logger.warning("No hay filas de matriz para publicar TRZ-001.")
+        return None
+
+    contenido = construir_markdown_matriz_trazabilidad(filas_matriz, metadata)
+
+    filas_publicables = mapear_matriz_trazabilidad(SimpleNamespace(description=contenido))
+    validar_consistencia_matriz_publicacion(filas_matriz, filas_publicables)
+
+    adapter = GitLabAdapter(project_id=project_id)
+    issue = adapter.buscar_issue_por_titulo("TRZ-001")
+    if issue is None:
+        return adapter.crear_issue(TRZ_001_TITULO, contenido)
+    return adapter.actualizar_descripcion_issue(issue.iid, contenido)

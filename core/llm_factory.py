@@ -189,6 +189,9 @@ def obtener_llm_para_agente(
 ) -> LLMSelection:
 
     agent = agent_name.strip().casefold()
+    if agent == "design_central":
+        # Arranca mapeado al mismo provider/modelo del Central de Requerimientos.
+        agent = "central"
 
     fallback_enabled = _env_bool(
         "ENABLE_LOCAL_FALLBACK",
@@ -210,7 +213,7 @@ def obtener_llm_para_agente(
     # =====================================================
 
     if (
-        agent == "central"
+        agent in {"central", "evaluator"}
         and remote_enabled
         and provider == "nvidia"
     ):

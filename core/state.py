@@ -17,3 +17,26 @@ class AgentState(TypedDict):
     final_report: Optional[str]     # Reporte final JSON Array (consolidado en Python)
     validation_errors: List[str]
     content_validation_errors: Dict[int, List[str]]
+
+    # --- Diseño (independiente de Requerimientos; no reutilizar los campos de arriba) ---
+    design_issues: List[Dict[str, Any]]      # Issues DIS-xxx mapeados (design_issue_mapper)
+    design_context: List[Dict[str, Any]]     # Contexto construido (design_context + matriz heredada)
+
+    design_central_result: Optional[Dict[str, Any]]    # Resultado del Central de Diseño
+    design_quality_result: Optional[Dict[str, Any]]    # {"raw", "mc03", "mc04"}
+    design_security_result: Optional[Dict[str, Any]]   # {"raw", "ms03", "ms04"}
+    design_evaluator_result: Optional[Dict[str, Any]]  # Hallazgos del Evaluador de Diseño
+
+    design_metrics: Optional[Dict[str, Any]]           # Reservado para fases posteriores
+    design_summary: Optional[Dict[str, Any]]           # Consolidación determinística final
+    design_traceability: Optional[List[Dict[str, Any]]]  # Reservado para la matriz RF/RNF → DIS → ED
+
+    # --- Matriz de entrada de Diseño (previa al análisis) ---
+    matriz_requerimientos_original: Optional[List[Dict[str, Any]]]  # Matriz generada al finalizar Requerimientos
+    matriz_entrada_diseno: Optional[List[Dict[str, Any]]]           # Matriz vigente (GitLab TRZ-001 o Excel), normalizada
+    matriz_estado: Optional[str]            # ORIGINAL / EDITADA / INVALIDA
+    matriz_fuente: Optional[str]            # "GitLab" / "EXCEL" / "Original"
+    matriz_confirmada: Optional[bool]       # True solo tras la confirmación explícita del responsable
+    matriz_validacion: Optional[Dict[str, Any]]        # {"valida": bool, "errores": [...]}
+    matriz_cambios_pre_diseno: Optional[Dict[str, Any]]  # {"agregados","modificados","retirados","hay_cambios"}
+    matriz_diseno_evolucionada: Optional[List[Dict[str, Any]]]  # Filas de construir_filas_matriz_diseno (post-análisis)

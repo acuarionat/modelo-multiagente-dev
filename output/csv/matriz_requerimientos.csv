@@ -1,0 +1,21 @@
+﻿Código;Nombre;Descripción;Tipo;Historia de origen;Fecha de generación;Estado de revisión
+RF-001;Registrar pacientes nuevos;El sistema deberá registrar pacientes nuevos.;Funcional;HU-002 – HU-002 - Registrar pacientes;09/08/2026;Pendiente de validación
+RF-002;Validar documento de identidad;El sistema deberá validar el documento de identidad del paciente.;Funcional;HU-002 – HU-002 - Registrar pacientes;09/08/2026;Pendiente de definición y validación
+RF-003;Registrar información obligatoria;El sistema deberá registrar la información obligatoria del paciente.;Funcional;HU-002 – HU-002 - Registrar pacientes;09/08/2026;Pendiente de definición y validación
+RF-004;Evitar registros duplicados;El sistema deberá evitar registros duplicados de pacientes.;Funcional;HU-002 – HU-002 - Registrar pacientes;09/08/2026;Pendiente de definición y validación
+RF-005;Editar información de pacientes;El sistema deberá permitir editar posteriormente la información del paciente.;Funcional;HU-002 – HU-002 - Registrar pacientes;09/08/2026;Pendiente de validación
+RF-006;Consultar agenda médica;El sistema deberá consultar la agenda del médico.;Funcional;HU-003 – HU-003 - Consultar agenda médica;09/08/2026;Pendiente de definición y validación
+RF-007;Mostrar nombre del paciente;El sistema deberá mostrar el nombre del paciente en la cita de la agenda.;Funcional;HU-003 – HU-003 - Consultar agenda médica;09/08/2026;Pendiente de definición y validación
+RF-008;Exportar reportes como PDF;El sistema deberá permitir el exportación de los reportes generados sobre citas como archivos PDF.;Funcional;HU-009 – Generar reportes de citas;01/08/2026;Pendiente de validación
+RF-009;Filtrar reportes por fecha;El sistema deberá permitir filtrar los reportes generados sobre citas por fechas específicas.;Funcional;HU-009 – Generar reportes de citas;01/08/2026;Pendiente de validación
+RF-010;Mostrar estadísticas en reportes;El sistema deberá mostrar estadísticas dentro de los reportes generados sobre citas.;Funcional;HU-009 – Generar reportes de citas;01/08/2026;Pendiente de validación
+RF-011;Generar reportes;El sistema deberá generar reportes.;Funcional;HU-009 – Generar reportes de citas;01/08/2026;Pendiente de validación
+RF-012;Ninguna;El sistema deberá ninguna.;Funcional;HU-009 – Generar reportes de citas;01/08/2026;Pendiente de validación
+RF-013;Los reportes deben poder imprimirse;El sistema deberá permitir imprimir los reportes.;Funcional;HU-009 – Generar reportes de citas;01/08/2026;Pendiente de validación
+RF-014;Permitir cancelar una cita;El sistema deberá permitir que los pacientes cancelen su cita médica.;Funcional;HU-010 – Cancelar cita médica;01/08/2026;Pendiente de validación
+RNF-001;No se podrá cancelar con menos de 24 horas de anticipación;El sistema deberá no se podrá cancelar con menos de 24 horas de anticipación.;No funcional;HU-010 – Cancelar cita médica;01/08/2026;Pendiente de validación
+RF-015;Consulta y visualización de horarios disponibles;El sistema deberá consultar y mostrar únicamente los horarios disponibles de los médicos.;Funcional;HU-001 – HU-001 - Consultar horarios disponibles;09/08/2026;Pendiente de validación
+RF-016;Visualización de información del médico;El sistema deberá mostrar el nombre y la especialidad del médico junto con los horarios disponibles.;Funcional;HU-001 – HU-001 - Consultar horarios disponibles;09/08/2026;Pendiente de validación
+RF-017;Actualización inmediata de disponibilidad;El sistema deberá actualizar la disponibilidad de horarios inmediatamente después de registrar una cita.;Funcional;HU-001 – HU-001 - Consultar horarios disponibles;09/08/2026;Pendiente de validación
+RNF-002;Tiempo de respuesta de consulta;El sistema deberá responder a las consultas de horarios disponibles en menos de tres segundos.;No funcional;HU-001 – HU-001 - Consultar horarios disponibles;09/08/2026;Pendiente de definición y validación
+RNF-003;Visualización de información en tiempo real;El sistema deberá mostrar la información de horarios disponibles en tiempo real.;No funcional;HU-001 – HU-001 - Consultar horarios disponibles;09/08/2026;Pendiente de definición y validación

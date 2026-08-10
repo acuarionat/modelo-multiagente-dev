@@ -113,7 +113,30 @@ class GitLabAdapter:
     def obtener_issue(self, issue_iid: int):
         """Obtiene un issue específico por su IID."""
         return self.project.issues.get(issue_iid)
-        
+
+    def buscar_issue_por_titulo(self, titulo_prefijo: str):
+        """Busca, entre issues abiertos y cerrados, el primero cuyo título comience con el prefijo dado."""
+        for state in ("opened", "closed"):
+            issues = self.project.issues.list(search=titulo_prefijo, in_="title", state=state, all=True)
+            for issue in issues:
+                if issue.title.strip().startswith(titulo_prefijo):
+                    return issue
+        return None
+
+    def crear_issue(self, titulo: str, descripcion: str, labels: Optional[List[str]] = None):
+        """Crea un issue nuevo con el título y la descripción dados."""
+        payload = {"title": titulo, "description": descripcion}
+        if labels:
+            payload["labels"] = ",".join(labels)
+        return self.project.issues.create(payload)
+
+    def actualizar_descripcion_issue(self, issue_iid: int, descripcion: str):
+        """Reemplaza la descripción de un issue existente."""
+        issue = self.obtener_issue(issue_iid)
+        issue.description = descripcion
+        issue.save()
+        return issue
+
     def agregar_comentario(self, issue_iid: int, body: str):
         """Añade un comentario a un issue."""
         issue = self.obtener_issue(issue_iid)

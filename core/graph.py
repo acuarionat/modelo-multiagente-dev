@@ -8,6 +8,19 @@ from agents.central_agent import procesar_central_en_sublotes
 from agents.quality_agent import analizar_calidad
 from agents.security_agent import analizar_seguridad
 from agents.evaluator_agent import evaluar_reportes
+from agents.design_central_agent import procesar_diseno_central
+from agents.design_quality_agent import analizar_calidad_diseno
+from agents.design_security_agent import analizar_seguridad_diseno
+from agents.design_evaluator_agent import analizar_evaluador_diseno
+from core.design_contract import (
+    validar_salida_central_diseno, validar_salida_calidad_diseno,
+    validar_salida_seguridad_diseno, validar_salida_evaluador_diseno,
+)
+from core.design_metrics import (
+    calcular_mc03, calcular_mc04, calcular_ms03, calcular_ms04,
+    calcular_indice_calidad_diseno, calcular_indice_seguridad_diseno,
+    determinar_estado_diseno,
+)
 import json
 from datetime import datetime
 from core.config import LOGS_DIR
@@ -877,6 +890,287 @@ def nodo_central_final(state: AgentState):
     registrar_evento_grafo("node_end", "Central_Final", elapsed_seconds=round(elapsed, 4))
         
     return {"final_report": final_report}
+
+# 1b. Definición de Nodos de Diseño (independientes de Requerimientos)
+
+def nodo_design_central(state: AgentState):
+    """Nodo Central de Diseño: establece la trazabilidad Requisito → Elemento de Diseño."""
+    logger.info("▶ Iniciando Agente Central de Diseño...")
+    registrar_evento_grafo("node_start", "Design_Central")
+    start_time = time.time()
+
+    design_context = state["design_context"]
+    contexto = design_context[0]
+
+    respuesta = procesar_diseno_central(
+        project_name=state["project_name"],
+        issues_json_str=json.dumps(design_context, ensure_ascii=False),
+        sprint_context=state["sprint_context"],
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Design_Central")
+    resultado = parsed["resultados"][0]
+
+    valid_requirement_codes = {
+        requerimiento["codigo"] for requerimiento in contexto["requerimientos_contextualizados"]
+    }
+    valid_element_ids = {
+        elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
+    }
+    validacion = validar_salida_central_diseno(
+        resultado, [contexto["issue_iid"]], valid_requirement_codes, valid_element_ids,
+    )
+    if not validacion["valido"]:
+        raise ValueError(f"Design_Central: salida inválida: {validacion['errores']}")
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Central de Diseño completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Design_Central", elapsed_seconds=round(elapsed, 4))
+
+    return {"design_central_result": resultado}
+
+
+def nodo_design_quality(state: AgentState):
+    """Nodo de Calidad de Diseño: evalúa MC-03 y MC-04 a partir de la salida del Central."""
+    logger.info("▶ Iniciando Agente de Calidad de Diseño...")
+    registrar_evento_grafo("node_start", "Design_Quality")
+    start_time = time.time()
+
+    design_context = state["design_context"]
+    contexto = design_context[0]
+    central_envelope = {
+        "agente": "central_diseno",
+        "etapa": "Diseño",
+        "resultados": [state["design_central_result"]],
+    }
+
+    respuesta = analizar_calidad_diseno(
+        resultado_central_json_str=json.dumps(central_envelope, ensure_ascii=False),
+        contexto_json_str=json.dumps(design_context, ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Design_Quality")
+    resultado = parsed["resultados"][0]
+
+    valid_element_ids = {
+        elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
+    }
+    validacion = validar_salida_calidad_diseno(resultado.get("metricas", {}), valid_element_ids)
+    if not validacion["valido"]:
+        raise ValueError(f"Design_Quality: salida inválida: {validacion['errores']}")
+
+    metricas = resultado.get("metricas", {})
+    mc03_raw = metricas.get("completitud_descripcion", {})
+    mc04_raw = metricas.get("acoplamiento_componentes", {})
+
+    mc03_calculado = calcular_mc03(
+        mc03_raw.get("elementos_documentados", []),
+        mc03_raw.get("elementos_necesarios_faltantes", []),
+    )
+    mc04_calculado = calcular_mc04(mc04_raw.get("componentes_evaluados", []))
+
+    design_quality_result = {
+        "raw": resultado,
+        "mc03": {
+            "valor": mc03_calculado.get("valor"),
+            "numerador": mc03_calculado.get("documentados"),
+            "denominador": mc03_calculado.get("esperados"),
+            "estado": "calculada" if mc03_calculado.get("valor") is not None else "no_evaluable",
+        },
+        "mc04": {
+            "valor": mc04_calculado.get("valor"),
+            "numerador": mc04_calculado.get("aceptables"),
+            "denominador": mc04_calculado.get("evaluables"),
+            "estado": "calculada" if mc04_calculado.get("valor") is not None else "no_evaluable",
+        },
+    }
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Calidad de Diseño completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Design_Quality", elapsed_seconds=round(elapsed, 4))
+
+    return {"design_quality_result": design_quality_result}
+
+
+def nodo_design_security(state: AgentState):
+    """Nodo de Seguridad de Diseño: evalúa MS-03 y MS-04."""
+    logger.info("▶ Iniciando Agente de Seguridad de Diseño...")
+    registrar_evento_grafo("node_start", "Design_Security")
+    start_time = time.time()
+
+    design_context = state["design_context"]
+    contexto = design_context[0]
+
+    respuesta = analizar_seguridad_diseno(
+        issues_json_str=json.dumps(design_context, ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Design_Security")
+    resultado = parsed["resultados"][0]
+
+    valid_element_ids = {
+        elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
+    }
+    validacion = validar_salida_seguridad_diseno(
+        resultado, contexto["issue_iid"], contexto["diseno_id"], valid_element_ids,
+    )
+    if not validacion["valido"]:
+        raise ValueError(f"Design_Security: salida inválida: {validacion['errores']}")
+
+    ms03_raw = resultado.get("cobertura_amenazas", {})
+    ms04_raw = resultado.get("cobertura_controles", {})
+    ms03_calculado = calcular_ms03(ms03_raw)
+    ms04_calculado = calcular_ms04(ms04_raw)
+
+    design_security_result = {
+        "raw": resultado,
+        "ms03": {
+            "valor": ms03_calculado.get("valor"),
+            "numerador": ms03_calculado.get("numerador"),
+            "denominador": ms03_calculado.get("denominador"),
+            "estado": ms03_calculado.get("estado_calculo"),
+        },
+        "ms04": {
+            "valor": ms04_calculado.get("valor"),
+            "numerador": ms04_calculado.get("numerador"),
+            "denominador": ms04_calculado.get("denominador"),
+            "estado": ms04_calculado.get("estado_calculo"),
+        },
+    }
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Seguridad de Diseño completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Design_Security", elapsed_seconds=round(elapsed, 4))
+
+    return {"design_security_result": design_security_result}
+
+
+def nodo_design_evaluator(state: AgentState):
+    """Nodo Evaluador de Diseño: consolida hallazgos a partir de métricas ya calculadas (solo lectura)."""
+    logger.info("▶ Iniciando Agente Evaluador de Diseño...")
+    registrar_evento_grafo("node_start", "Design_Evaluator")
+    start_time = time.time()
+
+    contexto = state["design_context"][0]
+    quality_result = state["design_quality_result"]
+    security_result = state["design_security_result"]
+
+    entrada_evaluador = {
+        "issue_iid": contexto["issue_iid"],
+        "diseno_id": contexto["diseno_id"],
+        "calidad": {
+            "mc03": quality_result["mc03"],
+            "mc04": quality_result["mc04"],
+        },
+        "seguridad": {
+            "ms03": security_result["ms03"],
+            "ms04": security_result["ms04"],
+        },
+        "evidencia_calidad": quality_result["raw"],
+        "evidencia_seguridad": security_result["raw"],
+    }
+
+    respuesta = analizar_evaluador_diseno(
+        issues_json_str=json.dumps([entrada_evaluador], ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Design_Evaluator")
+    resultado = parsed["resultados"][0]
+
+    valid_element_ids = {
+        elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
+    }
+    valid_requirement_codes = {
+        requerimiento["codigo"] for requerimiento in contexto["requerimientos_contextualizados"]
+    }
+    validacion = validar_salida_evaluador_diseno(
+        resultado, contexto["issue_iid"], contexto["diseno_id"],
+        valid_element_ids, valid_requirement_codes,
+    )
+    if not validacion["valido"]:
+        raise ValueError(f"Design_Evaluator: salida inválida: {validacion['errores']}")
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Evaluador de Diseño completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Design_Evaluator", elapsed_seconds=round(elapsed, 4))
+
+    return {"design_evaluator_result": resultado}
+
+
+def nodo_design_central_final(state: AgentState):
+    """Nodo final de Diseño (determinístico, solo Python): índices, correcciones y estado orientativo."""
+    logger.info("▶ Iniciando Nodo de Consolidación de Diseño (Final, solo Python)...")
+    registrar_evento_grafo("node_start", "Design_Central_Final")
+    start_time = time.time()
+
+    contexto = state["design_context"][0]
+    mc03 = state["design_quality_result"]["mc03"]
+    mc04 = state["design_quality_result"]["mc04"]
+    ms03 = state["design_security_result"]["ms03"]
+    ms04 = state["design_security_result"]["ms04"]
+    evaluador = state["design_evaluator_result"]
+
+    indice_calidad = calcular_indice_calidad_diseno(mc03["valor"], mc04["valor"])
+    indice_seguridad = calcular_indice_seguridad_diseno(ms03["valor"], ms04["valor"])
+
+    estado = determinar_estado_diseno(
+        correcciones_necesarias=evaluador["correcciones_necesarias"],
+        precisiones_necesarias=evaluador["precisiones_necesarias"],
+        oportunidades_mejora=evaluador["oportunidades_mejora"],
+    )
+
+    design_summary = {
+        "issue_iid": contexto["issue_iid"],
+        "diseno_id": contexto["diseno_id"],
+        "metricas": {
+            "MC-03": mc03,
+            "MC-04": mc04,
+            "MS-03": ms03,
+            "MS-04": ms04,
+        },
+        "indice_calidad_diseno": indice_calidad,
+        "indice_seguridad_diseno": indice_seguridad,
+        "estado_orientativo": estado,
+        "correcciones_necesarias": evaluador["correcciones_necesarias"],
+        "precisiones_necesarias": evaluador["precisiones_necesarias"],
+        "oportunidades_mejora": evaluador["oportunidades_mejora"],
+        "matriz_metadata": {
+            "matriz_version": state.get("matriz_version"),
+            "matriz_fuente": state.get("matriz_fuente"),
+            "matriz_estado": state.get("matriz_estado"),
+            "requisitos_vigentes": state.get("requisitos_vigentes"),
+        },
+    }
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Consolidación de Diseño completada en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Design_Central_Final", elapsed_seconds=round(elapsed, 4))
+
+    return {"design_summary": design_summary}
+
+
+def construir_grafo_diseno():
+    """Grafo independiente para el flujo de Diseño. No reutiliza los nodos de Requerimientos."""
+    workflow = StateGraph(AgentState)
+
+    workflow.add_node("Design_Central", nodo_design_central)
+    workflow.add_node("Design_Quality", nodo_design_quality)
+    workflow.add_node("Design_Security", nodo_design_security)
+    workflow.add_node("Design_Evaluator", nodo_design_evaluator)
+    workflow.add_node("Design_Central_Final", nodo_design_central_final)
+
+    workflow.set_entry_point("Design_Central")
+
+    # Quality y Security son independientes entre sí (ninguno usa la salida del
+    # otro), pero ambos llaman a Groq: se encadenan en secuencia para que
+    # REMOTE_PACER siga espaciando las llamadas remotas y no se agoten los
+    # tokens por minuto al ejecutarlos de forma concurrente.
+    workflow.add_edge("Design_Central", "Design_Quality")
+    workflow.add_edge("Design_Quality", "Design_Security")
+
+    workflow.add_edge("Design_Security", "Design_Evaluator")
+    workflow.add_edge("Design_Evaluator", "Design_Central_Final")
+    workflow.add_edge("Design_Central_Final", END)
+
+    app = workflow.compile()
+    return app
+
 
 # 2. Construcción del Grafo
 

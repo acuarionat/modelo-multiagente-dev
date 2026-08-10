@@ -1,5 +1,4 @@
 import io
-import csv
 import hashlib
 import os
 import shutil
@@ -15,6 +14,7 @@ from core.batch_contract import (
     normalizar_tipo_requerimiento,
     renumerar_requerimientos,
 )
+from core.traceability_export import exportar_csv_excel
 
 logger = logging.getLogger(__name__)
 
@@ -514,10 +514,31 @@ def _normalizar_requerimientos_visibles(batch_results: list, generation_date: st
     renumerar_requerimientos(centrals)
 
 
+def construir_filas_matriz_requerimientos_final(requerimientos_formalizados: list, fecha_generacion: str) -> list:
+    """
+    Única función que da forma a una fila de la Matriz de Requerimientos, a
+    partir de requerimientos ya formalizados (Central final de la ejecución
+    actual). Exactamente esta misma lista alimenta CSV, XLSX, TRZ-001 y DOCX:
+    no existe una segunda ruta de construcción de filas.
+    """
+    return [
+        {
+            "Código": requerimiento.get("codigo", ""),
+            "Nombre": requerimiento.get("nombre", ""),
+            "Descripción": requerimiento.get("descripcion_formal", ""),
+            "Tipo": requerimiento.get("tipo", ""),
+            "Historia de origen": requerimiento.get("historia_origen", ""),
+            "Fecha de generación": _fecha_visible(requerimiento.get("fecha_generacion")) or fecha_generacion,
+            "Estado de revisión": requerimiento.get("estado_revision", ""),
+        }
+        for requerimiento in requerimientos_formalizados
+    ]
+
+
 def construir_filas_trazabilidad(batch_results: list, generation_date: str | None = None) -> list:
     generation_date = generation_date or datetime.now().date().isoformat()
     _normalizar_requerimientos_visibles(batch_results, generation_date)
-    rows = []
+    requerimientos_formalizados = []
     for result in batch_results:
         if not isinstance(result, dict) or result.get("status") != "ok":
             continue
@@ -544,15 +565,16 @@ def construir_filas_trazabilidad(batch_results: list, generation_date: str | Non
                 else "Pendiente de validación"
             )
 
-            rows.append({
-                "Código": requirement.get("id", ""),
-                "Nombre": requirement.get("nombre", ""),
-                "Descripción": requirement.get("descripcion_formal") or requirement.get("descripcion", ""),
-                "Tipo": "Funcional" if kind == "RF" else "No funcional",
-                "Historia de origen": history,
-                "Fecha de generación": _fecha_visible(requirement.get("fecha_generacion")),
-                "Estado de revisión": estado_revision,
+            requerimientos_formalizados.append({
+                "codigo": requirement.get("id", ""),
+                "nombre": requirement.get("nombre", ""),
+                "descripcion_formal": requirement.get("descripcion_formal") or requirement.get("descripcion", ""),
+                "tipo": "Funcional" if kind == "RF" else "No funcional",
+                "historia_origen": history,
+                "fecha_generacion": requirement.get("fecha_generacion"),
+                "estado_revision": estado_revision,
             })
+    rows = construir_filas_matriz_requerimientos_final(requerimientos_formalizados, generation_date)
     if not rows:
         raise ValueError("No fue posible construir la matriz porque el Agente Central no devolvió requerimientos formalizados.")
     return rows
@@ -1748,10 +1770,7 @@ def generar_artefactos_atomicos(
             model["issues"], model.get("generated_at")
         )
         csv_path = building / "matriz_trazabilidad.csv"
-        with csv_path.open("w", newline="", encoding="utf-8-sig") as handle:
-            writer = csv.DictWriter(handle, fieldnames=TRACEABILITY_COLUMNS)
-            writer.writeheader()
-            writer.writerows(rows)
+        exportar_csv_excel(rows, csv_path)
         created += 1
         if len(rows) != len(validation["codes"]):
             raise ValueError("La matriz no conserva todos los requerimientos validados.")
@@ -2046,6 +2065,369 @@ def generar_matriz_trazabilidad_md(central_init_json: dict) -> str:
         md += f"| {req_id} | {hu} | {nombre} | {tipo} | {justif} | {prioridad} | Pendiente |\n"
         
     return md
+
+def generar_reporte_diseno_pdf(project_name: str, milestone: str, presentaciones: list, resumen_trazabilidad: dict, matriz_metadata: dict = None) -> io.BytesIO:
+    """
+    Reporte Ejecutivo Consolidado de Diseño. Consume objetos de
+    construir_presentacion_resultado_diseno(). No recalcula nada.
+    """
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
+    if not presentaciones:
+        raise ValueError("No existen Diseños completos para generar el PDF.")
+
+    indices_calidad = [p["indice_calidad"] for p in presentaciones if p.get("indice_calidad") is not None]
+    indices_seguridad = [p["indice_seguridad"] for p in presentaciones if p.get("indice_seguridad") is not None]
+    con_error = sum(1 for p in presentaciones if p.get("estado_orientativo") == "ERROR")
+
+    pdf = FPDF()
+    pdf.set_margins(20, 20, 20)
+    pdf.add_page()
+    kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
+
+    def encabezado(text, size=14):
+        pdf.set_font("Helvetica", style="B", size=size)
+        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
+
+    def linea(text):
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
+
+    def bullet(text):
+        linea(f"- {text}")
+
+    encabezado("Reporte Ejecutivo Consolidado — Diseño", 16)
+    linea(DECISION_SUPPORT_NOTICE)
+    pdf.ln(2)
+    linea(f"Proyecto: {project_name}")
+    linea(f"Milestone: {milestone}")
+    linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    if matriz_metadata:
+        pdf.ln(2)
+        encabezado("Matriz de entrada", 12)
+        linea(f"Version: {matriz_metadata.get('matriz_version', 'No informado')}")
+        linea(f"Fuente: {matriz_metadata.get('matriz_fuente', 'No informado')}")
+        linea(f"Estado: {matriz_metadata.get('matriz_estado', 'No informado')}")
+        linea(f"Requerimientos considerados: {matriz_metadata.get('requisitos_vigentes', 'No informado')}")
+    pdf.ln(4)
+
+    encabezado("Resumen global", 13)
+    linea(f"Disenos procesados: {len(presentaciones)} | Con error: {con_error}")
+    linea(f"Indice de Calidad de Diseno promedio: {extraer_porcentaje(sum(indices_calidad) / len(indices_calidad) if indices_calidad else None)}")
+    linea(f"Indice de Seguridad de Diseno promedio: {extraer_porcentaje(sum(indices_seguridad) / len(indices_seguridad) if indices_seguridad else None)}")
+    linea(f"Cubiertos en trazabilidad: {resumen_trazabilidad.get('cubiertos', 0)}")
+    linea(f"Pendientes de relacion: {resumen_trazabilidad.get('pendientes_relacion', 0)}")
+    linea(f"No evaluados: {resumen_trazabilidad.get('no_evaluados', 0)}")
+
+    for p in presentaciones:
+        pdf.add_page()
+        encabezado(f"{p['diseno_id']} — {p.get('titulo', '')}", 13)
+        linea(f"Estado orientativo: {p['estado_orientativo']}")
+        pdf.ln(1)
+
+        linea(f"Requerimientos relacionados: {', '.join(p['requerimientos_relacionados']) or 'Ninguno.'}")
+        eds = [ed.get('elemento_id', '') for ed in p.get('elementos_diseno', [])]
+        linea(f"Elementos de Diseno identificados: {', '.join(eds) or 'Ninguno.'}")
+        pdf.ln(2)
+
+        # --- CALIDAD ---
+        encabezado("CALIDAD", 12)
+        mc03 = p["metricas"]["MC-03"]
+        encabezado(f"MC-03 {mc03['nombre']}: {extraer_porcentaje(mc03['valor'])}", 11)
+        pdf.ln(1)
+        linea(f"Que mide esta metrica:")
+        linea(mc03["que_mide"])
+        pdf.ln(1)
+        linea("Elementos evaluados:")
+        for ed in mc03.get("elementos_evaluados", []):
+            bullet(f"{ed['id']} — {ed['nombre']} ({ed['tipo']})")
+            linea(f"  Responsabilidad: {ed['responsabilidad']}")
+        for ed in mc03.get("elementos_faltantes", []):
+            bullet(f"{ed['id']} — Faltante: {ed['nombre']}")
+        pdf.ln(1)
+        linea(f"Resultado: {mc03['resultado']}")
+        pdf.ln(2)
+
+        mc04 = p["metricas"]["MC-04"]
+        encabezado(f"MC-04 {mc04['nombre']}: {extraer_porcentaje(mc04['valor'])}", 11)
+        pdf.ln(1)
+        linea(f"Que mide esta metrica:")
+        linea(mc04["que_mide"])
+        pdf.ln(1)
+        linea("Relaciones documentadas:")
+        for rel in mc04.get("relaciones_documentadas", []):
+            bullet(f"{rel['origen']} -> {rel['destino']} ({rel['tipo']}): {rel['descripcion']}")
+        pdf.ln(1)
+        linea(f"Interpretacion: {mc04['interpretacion']}")
+        pdf.ln(2)
+
+        # --- SEGURIDAD ---
+        encabezado("SEGURIDAD", 12)
+        ms03 = p["metricas"]["MS-03"]
+        encabezado(f"MS-03 {ms03['nombre']}: {extraer_porcentaje(ms03['valor'])}", 11)
+        pdf.ln(1)
+        linea(f"Que mide esta metrica:")
+        linea(ms03["que_mide"])
+        pdf.ln(1)
+        linea("Amenazas evaluadas:")
+        for i, am in enumerate(ms03.get("amenazas", []), 1):
+            estado_am = "Tiene tratamiento" if am["tiene_tratamiento"] else "NO tiene tratamiento documentado"
+            bullet(f"{am['amenaza']}")
+            linea(f"  -> {estado_am}")
+        pdf.ln(1)
+        linea(f"Calculo: {ms03['numerador']} de {ms03['denominador']} = {extraer_porcentaje(ms03['valor'])}")
+        pdf.ln(2)
+
+        ms04 = p["metricas"]["MS-04"]
+        encabezado(f"MS-04 {ms04['nombre']}: {extraer_porcentaje(ms04['valor'])}", 11)
+        pdf.ln(1)
+        linea(f"Que mide esta metrica:")
+        linea(ms04["que_mide"])
+        pdf.ln(1)
+        linea("Controles evaluados:")
+        for ctrl in ms04.get("controles", []):
+            estado_ctrl = f"Definido (responsable: {ctrl['responsable']})" if ctrl["definido"] else "NO definido"
+            bullet(f"{ctrl.get('aspecto', ctrl['control'])} -> {estado_ctrl}")
+        pdf.ln(1)
+        linea(f"Calculo: {ms04['numerador']} de {ms04['denominador']} = {extraer_porcentaje(ms04['valor'])}")
+        pdf.ln(2)
+
+        # --- HALLAZGOS ---
+        encabezado("Correcciones necesarias", 11)
+        correcciones = deduplicar_textos_estables(p.get("correcciones_necesarias", []))
+        for item in correcciones or ["Ninguna."]:
+            bullet(item) if correcciones else linea(item)
+
+        encabezado("Precisiones", 11)
+        precisiones = deduplicar_textos_estables(p.get("precisiones_necesarias", []))
+        for item in precisiones or ["Ninguna."]:
+            bullet(item) if precisiones else linea(item)
+
+        encabezado("Oportunidades de mejora", 11)
+        oportunidades = deduplicar_textos_estables(p.get("oportunidades_mejora", []))
+        for item in oportunidades or ["Ninguna."]:
+            bullet(item) if oportunidades else linea(item)
+
+        propuesta = p.get("propuesta_para_maximo", [])
+        if propuesta:
+            encabezado("Propuesta para alcanzar el maximo", 11)
+            for item in propuesta:
+                bullet(item)
+
+        # --- TRAZABILIDAD ---
+        encabezado("Trazabilidad de este diseno", 11)
+        trz = p.get("trazabilidad", {})
+        cubiertos = trz.get("cubiertos", [])
+        pendientes = trz.get("pendientes_relacion", [])
+        revision = trz.get("requieren_revision", [])
+        linea(f"Cubiertos: {', '.join(cubiertos) if cubiertos else 'Ninguno.'}")
+        linea(f"Pendientes de relacion: {', '.join(pendientes) if pendientes else 'Ninguno.'}")
+        if revision:
+            linea(f"Requieren revision: {', '.join(revision)}")
+
+    pdf_bytes = pdf.output(dest='S')
+    return io.BytesIO(pdf_bytes)
+
+
+def generar_documento_formal_diseno_docx(project_name: str, milestone: str, presentaciones: list, matriz_metadata: dict = None, filas_trazabilidad: list = None) -> io.BytesIO:
+    """
+    Documento Formal Consolidado de Diseño. Consume objetos de
+    construir_presentacion_resultado_diseno(). No incluye porcentajes,
+    indices ni estados orientativos.
+    """
+    from docx import Document
+    from docx.shared import Inches
+    if not presentaciones:
+        raise ValueError("No existen Diseños completos para generar el DOCX.")
+
+    doc = Document()
+    doc.add_heading("Documento Formal Consolidado de Diseño", 0)
+    doc.add_paragraph(DECISION_SUPPORT_NOTICE)
+    doc.add_paragraph(f"Proyecto: {project_name}")
+    doc.add_paragraph(f"Milestone: {milestone}")
+    doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    doc.add_paragraph("Versión: 1.0")
+    if matriz_metadata:
+        doc.add_paragraph("Matriz de entrada:")
+        doc.add_paragraph(f"Versión: {matriz_metadata.get('matriz_version', 'No informado')}")
+        doc.add_paragraph(f"Fuente: {matriz_metadata.get('matriz_fuente', 'No informado')}")
+        doc.add_paragraph(f"Estado: {matriz_metadata.get('matriz_estado', 'No informado')}")
+        doc.add_paragraph(f"Requerimientos considerados: {matriz_metadata.get('requisitos_vigentes', 'No informado')}")
+    doc.add_page_break()
+
+    doc.add_heading("1. Introducción", 1)
+    doc.add_paragraph(
+        "El presente documento constituye el artefacto formal consolidado de "
+        "la etapa de Diseño. Integra los elementos de diseño documentados, "
+        "sus relaciones, las restricciones y decisiones registradas, y las "
+        "consideraciones de seguridad derivadas de los Issues de Diseño "
+        "analizados."
+    )
+
+    doc.add_heading("2. Alcance del Diseño", 1)
+    doc.add_paragraph(
+        f"Este documento formaliza {len(presentaciones)} Issue(s) de Diseño: "
+        + ", ".join(p["diseno_id"] for p in presentaciones) + "."
+    )
+
+    for p in presentaciones:
+        ctx = p.get("contexto_original", {})
+        doc.add_page_break()
+        doc.add_heading(f"{p['diseno_id']} — {p.get('titulo', '')}", 1)
+
+        # 3. Elementos de Diseño (tabla Word)
+        doc.add_heading("3. Elementos de Diseño", 2)
+        elementos = p.get("elementos_diseno", [])
+        if elementos:
+            table = doc.add_table(rows=1, cols=4)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "ID"
+            hdr[1].text = "Nombre"
+            hdr[2].text = "Tipo"
+            hdr[3].text = "Responsabilidad"
+            for ed in elementos:
+                row = table.add_row().cells
+                row[0].text = ed.get("elemento_id", "")
+                row[1].text = ed.get("nombre", "")
+                row[2].text = ed.get("tipo", "")
+                row[3].text = ed.get("responsabilidad", "")
+        else:
+            doc.add_paragraph("Ninguno documentado.")
+
+        # 4. Relaciones entre Elementos (tabla Word)
+        doc.add_heading("4. Relaciones entre Elementos", 2)
+        relaciones = p.get("relaciones_diseno", [])
+        if relaciones:
+            table = doc.add_table(rows=1, cols=4)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "Origen"
+            hdr[1].text = "Destino"
+            hdr[2].text = "Relación"
+            hdr[3].text = "Descripción"
+            for rel in relaciones:
+                row = table.add_row().cells
+                row[0].text = rel.get("origen", "")
+                row[1].text = rel.get("destino", "")
+                row[2].text = rel.get("tipo", "")
+                row[3].text = rel.get("descripcion", "")
+        else:
+            doc.add_paragraph("Ninguna documentada.")
+
+        # 5. Restricciones del Diseño
+        doc.add_heading("5. Restricciones del Diseño", 2)
+        restricciones = ctx.get("restricciones") or []
+        if restricciones:
+            for restriccion in restricciones:
+                doc.add_paragraph(restriccion, style="List Bullet")
+        else:
+            doc.add_paragraph("Ninguna documentada.")
+
+        # 6. Decisiones de Diseño
+        doc.add_heading("6. Decisiones de Diseño", 2)
+        decisiones = ctx.get("decisiones_diseno") or []
+        if decisiones:
+            for decision in decisiones:
+                doc.add_paragraph(decision, style="List Bullet")
+        else:
+            doc.add_paragraph("Ninguna documentada.")
+
+        # 7. Seguridad del Diseño
+        doc.add_heading("7. Seguridad del Diseño", 2)
+        seguridad_ctx = ctx.get("seguridad", {})
+
+        # 7.1 Medidas documentadas
+        doc.add_heading("7.1 Medidas documentadas", 3)
+        medidas = seguridad_ctx.get("medidas_seguridad") or []
+        if medidas:
+            for medida in medidas:
+                doc.add_paragraph(
+                    f"{medida.get('aspecto', '')}: {medida.get('medida', '')} "
+                    f"(Responsable: {medida.get('elemento_responsable', '')})",
+                    style="List Bullet",
+                )
+        else:
+            doc.add_paragraph("Ninguna documentada.")
+
+        # 7.2 Amenazas y tratamientos
+        doc.add_heading("7.2 Amenazas y tratamientos", 3)
+        amenazas_ctx = seguridad_ctx.get("amenazas") or []
+        if amenazas_ctx:
+            for amenaza in amenazas_ctx:
+                estado_tratamiento = (
+                    "Con tratamiento documentado" if amenaza.get("tratamiento_definido")
+                    else "Sin tratamiento documentado"
+                )
+                doc.add_paragraph(f"{amenaza.get('amenaza', '')} — {estado_tratamiento}", style="List Bullet")
+        else:
+            doc.add_paragraph("Ninguna documentada.")
+
+        # 7.3 Aspectos pendientes
+        doc.add_heading("7.3 Aspectos pendientes", 3)
+        ms03_data = p["metricas"]["MS-03"]
+        ms04_data = p["metricas"]["MS-04"]
+        pendientes_seguridad = []
+        for am in ms03_data.get("amenazas", []):
+            if not am.get("tiene_tratamiento"):
+                pendientes_seguridad.append((
+                    f"No se encuentra documentado un tratamiento para la amenaza: {am.get('amenaza', '')}.",
+                    "Definir y documentar el tratamiento correspondiente a esta amenaza.",
+                ))
+        for ctrl_det in ms04_data.get("controles_faltantes_detalle", []):
+            pendientes_seguridad.append((
+                f"No se encuentra documentada una medida específica para: {ctrl_det.get('control', '')}.",
+                "Definir una medida de protección acorde con la información tratada por el diseño.",
+            ))
+        if pendientes_seguridad:
+            for aspecto, propuesta_texto in pendientes_seguridad:
+                doc.add_paragraph("Aspecto pendiente:")
+                doc.add_paragraph(aspecto, style="List Bullet")
+                doc.add_paragraph("Propuesta de formalización:")
+                doc.add_paragraph(propuesta_texto, style="List Bullet")
+                doc.add_paragraph("Estado: Pendiente de revisión.")
+        else:
+            doc.add_paragraph("Sin aspectos pendientes de seguridad identificados.")
+
+    # 8. Matriz de Trazabilidad de Diseño
+    doc.add_page_break()
+    doc.add_heading("8. Matriz de Trazabilidad de Diseño", 1)
+    columnas_trz = [
+        "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
+        "Descripción", "Diseño", "Elementos de Diseño",
+        "Estado de trazabilidad", "Estado de Diseño", "Observación",
+    ]
+    if filas_trazabilidad:
+        table = doc.add_table(rows=1, cols=len(columnas_trz))
+        table.style = "Table Grid"
+        hdr = table.rows[0].cells
+        for i, col in enumerate(columnas_trz):
+            hdr[i].text = col
+        for fila in filas_trazabilidad:
+            row = table.add_row().cells
+            for i, col in enumerate(columnas_trz):
+                row[i].text = str(fila.get(col, ""))
+    else:
+        doc.add_paragraph("No se generaron filas de trazabilidad.")
+
+    # 9. Control del documento
+    doc.add_heading("9. Control del documento", 1)
+    table = doc.add_table(rows=1, cols=3)
+    table.style = "Table Grid"
+    hdr = table.rows[0].cells
+    hdr[0].text = "Versión"
+    hdr[1].text = "Fecha"
+    hdr[2].text = "Estado"
+    row = table.add_row().cells
+    row[0].text = "1.0"
+    row[1].text = datetime.now().strftime("%Y-%m-%d")
+    row[2].text = "Pendiente de revisión"
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
 
 def calcular_metricas_calidad(q_json: dict) -> dict:
     """Calcula las métricas de calidad FCp-1-G y FAp-1-G en base a los datos extraídos por el agente."""
