@@ -510,7 +510,6 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         expander_title = f"{p['diseno_id']} — {p['titulo']} · {p['estado_orientativo']}"
 
         with st.expander(expander_title, expanded=True):
-            # Encabezado (estado + índices)
             render_evaluation_header(
                 titulo="Resultado de evaluación asistida",
                 estado=p["estado_orientativo"],
@@ -519,163 +518,163 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                 explicacion_estado=_explicar_estado_diseno_from_p(p),
             )
 
-            # Contadores + hallazgos
-            render_findings_section(
-                p["correcciones_necesarias"],
-                p["precisiones_necesarias"],
-                p["oportunidades_mejora"],
-            )
-
-            # --- Calidad: MC-03 y MC-04 ---
             mc03 = p["metricas"]["MC-03"]
             mc04 = p["metricas"]["MC-04"]
-
-            with st.expander(f"MC-03 — {mc03['nombre']} · {extraer_porcentaje(mc03['valor'])}", expanded=False):
-                st.metric(f"Resultado {mc03['codigo']}", extraer_porcentaje(mc03["valor"]))
-                st.markdown(
-                    f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{mc03["que_mide"]}</div>',
-                    unsafe_allow_html=True,
-                )
-                st.markdown("**Elementos evaluados:**")
-                for ed in mc03.get("elementos_evaluados", []):
-                    st.markdown(
-                        f'<div class="finding-block">'
-                        f'<strong>{ed["id"]}</strong> — {ed["nombre"]} ({ed["tipo"]})<br>'
-                        f'Responsabilidad: {ed["responsabilidad"]}'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-                for ed in mc03.get("elementos_faltantes", []):
-                    st.markdown(
-                        f'<div class="finding-block finding-correction">'
-                        f'<strong>{ed["id"]}</strong> — Faltante: {ed["nombre"]}'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-                st.markdown(
-                    f'<div class="result-intro"><strong>Resultado:</strong> {mc03["resultado"]}</div>',
-                    unsafe_allow_html=True,
-                )
-
-            with st.expander(f"MC-04 — {mc04['nombre']} · {extraer_porcentaje(mc04['valor'])}", expanded=False):
-                st.metric(f"Resultado {mc04['codigo']}", extraer_porcentaje(mc04["valor"]))
-                st.markdown(
-                    f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{mc04["que_mide"]}</div>',
-                    unsafe_allow_html=True,
-                )
-                st.markdown("**Relaciones documentadas:**")
-                for rel in mc04.get("relaciones_documentadas", []):
-                    st.markdown(
-                        f'<div class="finding-block">'
-                        f'<strong>{rel["origen"]}</strong> → <strong>{rel["destino"]}</strong> '
-                        f'({rel["tipo"]})<br>{rel["descripcion"]}'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-                st.markdown(
-                    f'<div class="result-intro"><strong>Interpretación:</strong> {mc04["interpretacion"]}</div>',
-                    unsafe_allow_html=True,
-                )
-
-            # --- Seguridad: MS-03 y MS-04 ---
             ms03 = p["metricas"]["MS-03"]
             ms04 = p["metricas"]["MS-04"]
+            tab_resumen, tab_calidad, tab_seguridad, tab_formalizacion = st.tabs(
+                ["Resumen", "Calidad", "Seguridad", "Formalización"]
+            )
 
-            with st.expander(f"MS-03 — {ms03['nombre']} · {extraer_porcentaje(ms03['valor'])}", expanded=False):
-                st.metric(f"Resultado {ms03['codigo']}", extraer_porcentaje(ms03["valor"]))
-                st.markdown(
-                    f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{ms03["que_mide"]}</div>',
-                    unsafe_allow_html=True,
-                )
-                st.markdown("**Amenazas evaluadas:**")
-                for i, am in enumerate(ms03.get("amenazas", []), 1):
-                    if am["tiene_tratamiento"]:
-                        st.markdown(
-                            f'<div class="finding-block">'
-                            f'{i}. {am["amenaza"]}<br>'
-                            f'→ <strong>Tiene tratamiento</strong>'
-                            f'</div>',
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.markdown(
-                            f'<div class="finding-block finding-correction">'
-                            f'{i}. {am["amenaza"]}<br>'
-                            f'→ <strong>NO tiene tratamiento documentado</strong>'
-                            f'</div>',
-                            unsafe_allow_html=True,
-                        )
-                st.markdown(
-                    f'<div class="result-intro">'
-                    f'<strong>Cálculo:</strong> {ms03["numerador"]} de {ms03["denominador"]} = {extraer_porcentaje(ms03["valor"])}'
-                    f'</div>',
-                    unsafe_allow_html=True,
+            with tab_resumen:
+                render_findings_section(
+                    p["correcciones_necesarias"],
+                    p["precisiones_necesarias"],
+                    p["oportunidades_mejora"],
                 )
 
-            with st.expander(f"MS-04 — {ms04['nombre']} · {extraer_porcentaje(ms04['valor'])}", expanded=False):
-                st.metric(f"Resultado {ms04['codigo']}", extraer_porcentaje(ms04["valor"]))
-                st.markdown(
-                    f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{ms04["que_mide"]}</div>',
-                    unsafe_allow_html=True,
-                )
-                st.markdown("**Controles evaluados:**")
-                for ctrl in ms04.get("controles", []):
-                    if ctrl["definido"]:
-                        st.markdown(
-                            f'<div class="finding-block">'
-                            f'<strong>{ctrl.get("aspecto", ctrl["control"])}</strong><br>'
-                            f'→ Definido (responsable: {ctrl["responsable"]})'
-                            f'</div>',
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.markdown(
-                            f'<div class="finding-block finding-correction">'
-                            f'<strong>{ctrl.get("aspecto", ctrl["control"])}</strong><br>'
-                            f'→ NO definido'
-                            f'</div>',
-                            unsafe_allow_html=True,
-                        )
-                st.markdown(
-                    f'<div class="result-intro">'
-                    f'<strong>Cálculo:</strong> {ms04["numerador"]} de {ms04["denominador"]} = {extraer_porcentaje(ms04["valor"])}'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown("#### Retroalimentación")
+                estado_tecnico_error = p["estado_orientativo"] == "ERROR"
+                gitlab_key = f"diseno_publicado_{diseno_id}"
+                if st.button(
+                    "Publicar retroalimentación en GitLab", key=f"diseno_publicar_{diseno_id}",
+                    disabled=estado_tecnico_error,
+                ):
+                    publicar_comentario_diseno(
+                        adapter.project_id, p["issue_iid"], resultado_grafo["design_summary"],
+                    )
+                    session[gitlab_key] = True
 
-            # Propuesta para alcanzar el máximo
-            propuesta = p.get("propuesta_para_maximo", [])
-            if propuesta:
-                st.markdown("#### Propuesta para alcanzar el máximo")
-                for item in propuesta:
+                if session.get(gitlab_key):
+                    render_gitlab_feedback(True)
+
+            with tab_calidad:
+                with st.expander(f"MC-03 — {mc03['nombre']} · {extraer_porcentaje(mc03['valor'])}", expanded=False):
+                    st.metric(f"Resultado {mc03['codigo']}", extraer_porcentaje(mc03["valor"]))
                     st.markdown(
-                        f'<div class="finding-block finding-precision">{item}</div>',
+                        f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{mc03["que_mide"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown("**Elementos evaluados:**")
+                    for ed in mc03.get("elementos_evaluados", []):
+                        st.markdown(
+                            f'<div class="finding-block">'
+                            f'<strong>{ed["id"]}</strong> — {ed["nombre"]} ({ed["tipo"]})<br>'
+                            f'Responsabilidad: {ed["responsabilidad"]}'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    for ed in mc03.get("elementos_faltantes", []):
+                        st.markdown(
+                            f'<div class="finding-block finding-correction">'
+                            f'<strong>{ed["id"]}</strong> — Faltante: {ed["nombre"]}'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    st.markdown(
+                        f'<div class="result-intro"><strong>Resultado:</strong> {mc03["resultado"]}</div>',
                         unsafe_allow_html=True,
                     )
 
-            # Trazabilidad resumida del DIS
-            trz = p.get("trazabilidad", {})
-            cubiertos = trz.get("cubiertos", [])
-            pendientes_trz = trz.get("pendientes_relacion", [])
-            st.markdown("#### Trazabilidad de este diseño")
-            st.markdown(f"**Cubiertos:** {', '.join(cubiertos) if cubiertos else 'Ninguno.'}")
-            st.markdown(f"**Pendientes de relación:** {', '.join(pendientes_trz) if pendientes_trz else 'Ninguno.'}")
+                with st.expander(f"MC-04 — {mc04['nombre']} · {extraer_porcentaje(mc04['valor'])}", expanded=False):
+                    st.metric(f"Resultado {mc04['codigo']}", extraer_porcentaje(mc04["valor"]))
+                    st.markdown(
+                        f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{mc04["que_mide"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown("**Relaciones documentadas:**")
+                    for rel in mc04.get("relaciones_documentadas", []):
+                        st.markdown(
+                            f'<div class="finding-block">'
+                            f'<strong>{rel["origen"]}</strong> → <strong>{rel["destino"]}</strong> '
+                            f'({rel["tipo"]})<br>{rel["descripcion"]}'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    st.markdown(
+                        f'<div class="result-intro"><strong>Interpretación:</strong> {mc04["interpretacion"]}</div>',
+                        unsafe_allow_html=True,
+                    )
 
-            # Retroalimentación GitLab
-            st.markdown("#### Retroalimentación")
-            estado_tecnico_error = p["estado_orientativo"] == "ERROR"
-            gitlab_key = f"diseno_publicado_{diseno_id}"
-            if st.button(
-                "Publicar retroalimentación en GitLab", key=f"diseno_publicar_{diseno_id}",
-                disabled=estado_tecnico_error,
-            ):
-                publicar_comentario_diseno(
-                    adapter.project_id, p["issue_iid"], resultado_grafo["design_summary"],
-                )
-                session[gitlab_key] = True
+            with tab_seguridad:
+                with st.expander(f"MS-03 — {ms03['nombre']} · {extraer_porcentaje(ms03['valor'])}", expanded=False):
+                    st.metric(f"Resultado {ms03['codigo']}", extraer_porcentaje(ms03["valor"]))
+                    st.markdown(
+                        f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{ms03["que_mide"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown("**Amenazas evaluadas:**")
+                    for i, am in enumerate(ms03.get("amenazas", []), 1):
+                        if am["tiene_tratamiento"]:
+                            st.markdown(
+                                f'<div class="finding-block">'
+                                f'{i}. {am["amenaza"]}<br>'
+                                f'→ <strong>Tiene tratamiento</strong>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(
+                                f'<div class="finding-block finding-correction">'
+                                f'{i}. {am["amenaza"]}<br>'
+                                f'→ <strong>NO tiene tratamiento documentado</strong>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                    st.markdown(
+                        f'<div class="result-intro">'
+                        f'<strong>Cálculo:</strong> {ms03["numerador"]} de {ms03["denominador"]} = {extraer_porcentaje(ms03["valor"])}'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
 
-            if session.get(gitlab_key):
-                render_gitlab_feedback(True)
+                with st.expander(f"MS-04 — {ms04['nombre']} · {extraer_porcentaje(ms04['valor'])}", expanded=False):
+                    st.metric(f"Resultado {ms04['codigo']}", extraer_porcentaje(ms04["valor"]))
+                    st.markdown(
+                        f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{ms04["que_mide"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown("**Controles evaluados:**")
+                    for ctrl in ms04.get("controles", []):
+                        if ctrl["definido"]:
+                            st.markdown(
+                                f'<div class="finding-block">'
+                                f'<strong>{ctrl.get("aspecto", ctrl["control"])}</strong><br>'
+                                f'→ Definido (responsable: {ctrl["responsable"]})'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(
+                                f'<div class="finding-block finding-correction">'
+                                f'<strong>{ctrl.get("aspecto", ctrl["control"])}</strong><br>'
+                                f'→ NO definido'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                    st.markdown(
+                        f'<div class="result-intro">'
+                        f'<strong>Cálculo:</strong> {ms04["numerador"]} de {ms04["denominador"]} = {extraer_porcentaje(ms04["valor"])}'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+            with tab_formalizacion:
+                propuesta = p.get("propuesta_para_maximo", [])
+                if propuesta:
+                    st.markdown("#### Propuesta para alcanzar el máximo")
+                    for item in propuesta:
+                        st.markdown(
+                            f'<div class="finding-block finding-precision">{item}</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                trz = p.get("trazabilidad", {})
+                cubiertos = trz.get("cubiertos", [])
+                pendientes_trz = trz.get("pendientes_relacion", [])
+                st.markdown("#### Trazabilidad de este diseño")
+                st.markdown(f"**Cubiertos:** {', '.join(cubiertos) if cubiertos else 'Ninguno.'}")
+                st.markdown(f"**Pendientes de relación:** {', '.join(pendientes_trz) if pendientes_trz else 'Ninguno.'}")
 
     # ---- Matriz de Trazabilidad Evolucionada ----
     with st.expander("Matriz de Trazabilidad Evolucionada", expanded=False):
