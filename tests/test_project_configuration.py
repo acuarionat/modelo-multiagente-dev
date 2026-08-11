@@ -8,9 +8,9 @@ def test_context_version_only_increments_when_values_change(tmp_path, monkeypatc
     assert project_config.save_project_config(values)["context_version"] == "v1.0"
     assert project_config.save_project_config(values)["context_version"] == "v1.0"
 
-    values["scope"] = "new scope"
+    values["name"] = "new project name"
     assert project_config.save_project_config(values)["context_version"] == "v1.1"
-    assert project_config.load_project_config()["scope"] == "new scope"
+    assert project_config.load_project_config()["name"] == "new project name"
 
 
 def test_milestones_are_not_duplicated():

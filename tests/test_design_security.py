@@ -9,7 +9,7 @@ from agents.design_security_agent import analizar_seguridad_diseno
 from agents.llm_invocation import obtener_ultimos_metadatos
 from core.batch_contract import analizar_respuesta_lote
 from core.design_context import construir_contexto_diseno
-from core.design_contract import validar_salida_seguridad_diseno
+from core.design_contract import normalizar_elementos_responsables, validar_salida_seguridad_diseno
 from core.design_metrics import calcular_ms03, calcular_ms04
 from integrations.issue_service import obtener_issues_diseno
 
@@ -115,6 +115,10 @@ def ejecutar_seguridad_diseno(diseno_id: str) -> None:
     resultado_seguridad_issue = resultado_seguridad["resultados"][0]
     metadata_llamada = obtener_ultimos_metadatos("Design_Security")
 
+    for control in (resultado_seguridad_issue.get("cobertura_controles") or {}).get("controles_definidos", []):
+        control["elementos_responsables"] = normalizar_elementos_responsables(control)
+        control.pop("elemento_responsable", None)
+
     ms03_raw = resultado_seguridad_issue.get("cobertura_amenazas", {})
     ms04_raw = resultado_seguridad_issue.get("cobertura_controles", {})
 
@@ -172,9 +176,9 @@ def ejecutar_seguridad_diseno(diseno_id: str) -> None:
         for elemento_id in item.get("elementos_afectados", [])
     }
     ids_responsables = {
-        item.get("elemento_responsable")
+        responsable
         for item in ms04_raw.get("controles_definidos", [])
-        if item.get("elemento_responsable")
+        for responsable in item.get("elementos_responsables", [])
     }
     ids_ed_inventados = (ids_afectados | ids_responsables) - valid_element_ids
 
@@ -205,3 +209,92 @@ print("\n" + "=" * 70)
 print("DIS-003 — trazabilidad_incompleta (no se invoca Central ni Seguridad)")
 print("=" * 70)
 print("Referencias inválidas:", contexto_dis003["validacion_trazabilidad"]["referencias_invalidas"])
+
+
+# ---------------------------------------------------------
+# Validación de elementos_responsables (contrato canónico)
+# ---------------------------------------------------------
+
+print("\n" + "=" * 70)
+print("VALIDACIÓN DE ELEMENTOS_RESPONSABLES")
+print("=" * 70)
+
+valid_ids = {"ED-01", "ED-02", "ED-03", "ED-04"}
+
+base_resultado = {
+    "issue_iid": 16,
+    "diseno_id": "DIS-001",
+    "cobertura_amenazas": {
+        "amenazas_identificadas": [],
+        "amenazas_con_tratamiento": [],
+        "amenazas_sin_tratamiento": [],
+    },
+    "cobertura_controles": {
+        "controles_aplicables": [
+            {"control": "C1", "aspecto_relacionado": "Autenticación", "confianza": "alta"},
+        ],
+        "controles_definidos": [],
+        "controles_faltantes": [],
+    },
+}
+
+import copy
+
+# Caso 1: un responsable → debe pasar
+r1 = copy.deepcopy(base_resultado)
+r1["cobertura_controles"]["controles_definidos"] = [
+    {"control": "C1", "medida_documentada": "M1", "elementos_responsables": ["ED-01"]},
+]
+v1 = validar_salida_seguridad_diseno(r1, 16, "DIS-001", valid_ids)
+assert v1["valido"], f"Caso 1 falló: {v1['errores']}"
+print("Caso 1 (un responsable): OK")
+
+# Caso 2: varios responsables → debe pasar
+r2 = copy.deepcopy(base_resultado)
+r2["cobertura_controles"]["controles_definidos"] = [
+    {"control": "C1", "medida_documentada": "M1", "elementos_responsables": ["ED-02", "ED-04"]},
+]
+v2 = validar_salida_seguridad_diseno(r2, 16, "DIS-001", valid_ids)
+assert v2["valido"], f"Caso 2 falló: {v2['errores']}"
+print("Caso 2 (varios responsables): OK")
+
+# Caso 3: un responsable inválido entre válidos → debe fallar solo por ED-99
+r3 = copy.deepcopy(base_resultado)
+r3["cobertura_controles"]["controles_definidos"] = [
+    {"control": "C1", "medida_documentada": "M1", "elementos_responsables": ["ED-02", "ED-99"]},
+]
+v3 = validar_salida_seguridad_diseno(r3, 16, "DIS-001", valid_ids)
+assert not v3["valido"]
+assert any("ED-99" in error for error in v3["errores"])
+assert not any("ED-02" in error for error in v3["errores"])
+print("Caso 3 (ED-99 inválido): OK")
+
+# Caso 4: compatibilidad con campo legacy "elemento_responsable": "ED-02, ED-04"
+r4 = copy.deepcopy(base_resultado)
+r4["cobertura_controles"]["controles_definidos"] = [
+    {"control": "C1", "medida_documentada": "M1", "elemento_responsable": "ED-02, ED-04"},
+]
+for control in r4["cobertura_controles"]["controles_definidos"]:
+    control["elementos_responsables"] = normalizar_elementos_responsables(control)
+    control.pop("elemento_responsable", None)
+
+assert r4["cobertura_controles"]["controles_definidos"][0]["elementos_responsables"] == ["ED-02", "ED-04"]
+v4 = validar_salida_seguridad_diseno(r4, 16, "DIS-001", valid_ids)
+assert v4["valido"], f"Caso 4 falló: {v4['errores']}"
+print("Caso 4 (compatibilidad legacy string): OK")
+
+# Caso 5: compatibilidad con campo legacy "elemento_responsable": "ED-02"
+r5 = copy.deepcopy(base_resultado)
+r5["cobertura_controles"]["controles_definidos"] = [
+    {"control": "C1", "medida_documentada": "M1", "elemento_responsable": "ED-02"},
+]
+for control in r5["cobertura_controles"]["controles_definidos"]:
+    control["elementos_responsables"] = normalizar_elementos_responsables(control)
+    control.pop("elemento_responsable", None)
+
+assert r5["cobertura_controles"]["controles_definidos"][0]["elementos_responsables"] == ["ED-02"]
+v5 = validar_salida_seguridad_diseno(r5, 16, "DIS-001", valid_ids)
+assert v5["valido"], f"Caso 5 falló: {v5['errores']}"
+print("Caso 5 (compatibilidad legacy single): OK")
+
+print("\nTodas las validaciones de elementos_responsables pasaron.")

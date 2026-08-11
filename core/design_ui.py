@@ -34,6 +34,7 @@ from core.ui_components import (
 )
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
 from integrations.issue_service import (
+    crear_o_actualizar_issue_matriz_trazabilidad_diseno,
     construir_matriz_requerimientos_original,
     obtener_issue_matriz_trazabilidad,
     obtener_issues_diseno,
@@ -403,8 +404,12 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     # ============================================================
 
     st.markdown("### B. Issues de Diseño detectados")
-    with st.spinner("Consultando Issues de Diseño en GitLab..."):
-        issues_diseno = obtener_issues_diseno(adapter.project_id, milestone_title="Diseño")
+    if "diseno_issues_detectados" not in session:
+        with st.spinner("Consultando Issues de Diseño en GitLab..."):
+            session["diseno_issues_detectados"] = obtener_issues_diseno(
+                adapter.project_id, milestone_title="Diseño",
+            )
+    issues_diseno = session["diseno_issues_detectados"]
     contextos_por_diseno_id = {
         issue.get("diseno_id"): construir_contexto_diseno(issue, carga["matriz_entrada_diseno"])
         for issue in issues_diseno
@@ -417,6 +422,10 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     c3.metric("Referencias inválidas", prevalidacion["referencias_invalidas"])
     c4.metric("Issues de Diseño válidos", len(prevalidacion["issues_validos"]))
     c5.metric("Issues bloqueados", len(prevalidacion["issues_bloqueados"]))
+
+    if st.button("Actualizar issues", key="diseno_actualizar_issues"):
+        session.pop("diseno_issues_detectados", None)
+        st.rerun()
 
     estado_entrada = preparar_estado_entrada_diseno(contextos_por_diseno_id)
     if not estado_entrada:
@@ -491,6 +500,18 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     estructura_interna = evolucionar_matriz_a_diseno(matriz_snapshot, resultados_central)
     filas_matriz = construir_filas_matriz_diseno(estructura_interna, evaluacion_por_diseno)
     resumen_trazabilidad = resumir_trazabilidad_diseno(filas_matriz)
+    session["diseno_filas_matriz_final"] = copy.deepcopy(filas_matriz)
+
+    hubo_error_global = any(
+        resultado.get("design_summary", {}).get("estado_orientativo") == "ERROR"
+        for resultado in resultados.values()
+    )
+    if ejecutar and filas_matriz and not hubo_error_global:
+        crear_o_actualizar_issue_matriz_trazabilidad_diseno(
+            project_id=adapter.project_id,
+            filas_matriz=filas_matriz,
+            metadata=session.get("matriz_snapshot_metadata"),
+        )
 
     presentaciones = {
         diseno_id: _construir_presentacion(resultado_grafo, filas_matriz)
@@ -637,10 +658,11 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                     st.markdown("**Controles evaluados:**")
                     for ctrl in ms04.get("controles", []):
                         if ctrl["definido"]:
+                            texto_responsables = ctrl.get("responsables", "")
                             st.markdown(
                                 f'<div class="finding-block">'
                                 f'<strong>{ctrl.get("aspecto", ctrl["control"])}</strong><br>'
-                                f'→ Definido (responsable: {ctrl["responsable"]})'
+                                f'→ Definido (responsables: {texto_responsables})'
                                 f'</div>',
                                 unsafe_allow_html=True,
                             )
@@ -686,7 +708,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         ]
         df = pd.DataFrame(filas_matriz)
         columnas_disponibles = [col for col in columnas_trz if col in df.columns]
-        st.dataframe(df[columnas_disponibles] if columnas_disponibles else df, use_container_width=True, hide_index=True)
+        st.dataframe(df[columnas_disponibles] if columnas_disponibles else df, width="stretch", hide_index=True)
 
         fecha = datetime.now().strftime("%Y%m%d")
         exportar_filas_xlsx(
@@ -698,7 +720,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                 "Descargar matriz (Excel)", handle.read(),
                 file_name="matriz_diseno.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
             )
 
     # ---- Documentos consolidados ----
@@ -725,7 +747,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         st.download_button(
             "Descargar Reporte Ejecutivo", pdf_bytes.getvalue(),
             file_name="reporte_diseno.pdf", mime="application/pdf",
-            use_container_width=True,
+            width="stretch",
         )
 
     with col_docx:
@@ -738,5 +760,5 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
             "Descargar Documento Formal", docx_bytes.getvalue(),
             file_name="documento_formal_diseno.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True,
+            width="stretch",
         )

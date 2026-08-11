@@ -192,6 +192,36 @@ def validar_salida_calidad_diseno(metricas: dict, valid_element_ids: set) -> dic
 CONFIANZAS_VALIDAS = {"alta", "media", "baja"}
 
 
+def normalizar_elementos_responsables(control: dict) -> list:
+    """Normaliza elemento_responsable (string legacy) o elementos_responsables (lista canónica)."""
+    responsables = control.get("elementos_responsables")
+
+    if isinstance(responsables, list):
+        return [
+            str(item).strip()
+            for item in responsables
+            if str(item).strip()
+        ]
+
+    legacy = control.get("elemento_responsable")
+
+    if not legacy:
+        return []
+
+    if isinstance(legacy, list):
+        return [
+            str(item).strip()
+            for item in legacy
+            if str(item).strip()
+        ]
+
+    return [
+        item.strip()
+        for item in str(legacy).split(",")
+        if item.strip()
+    ]
+
+
 def validar_salida_seguridad_diseno(
     resultado: dict,
     expected_issue_id: int,
@@ -263,9 +293,17 @@ def validar_salida_seguridad_diseno(
         if control in nombres_definidos:
             errores.append(f"MS-04: control duplicado en controles_definidos: {control!r}.")
         nombres_definidos.append(control)
-        elemento_id = item.get("elemento_responsable")
-        if elemento_id not in valid_element_ids:
-            errores.append(f"MS-04: elemento_responsable inexistente: {elemento_id!r}.")
+        responsables = item.get("elementos_responsables", [])
+        if not isinstance(responsables, list):
+            errores.append(
+                f"MS-04: elementos_responsables debe ser una lista."
+            )
+        else:
+            for responsable in responsables:
+                if responsable not in valid_element_ids:
+                    errores.append(
+                        f"MS-04: elemento responsable inexistente: {responsable!r}."
+                    )
 
     nombres_faltantes = []
     for item in controles_faltantes:

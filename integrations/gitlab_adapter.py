@@ -156,3 +156,63 @@ class GitLabAdapter:
         with open(filepath, 'rb') as f:
             uploaded_file = self.project.upload(filename, filedata=f.read())
         return uploaded_file
+
+    def obtener_lenguajes_repositorio(self) -> Dict[str, float]:
+        """Obtiene los lenguajes del repositorio y sus porcentajes.
+
+        Retorna: {"TypeScript": 83.4, "JavaScript": 10.2, ...}
+        """
+        try:
+            languages = self.project.languages()
+            return languages
+        except Exception:
+            return {}
+
+    def obtener_rama_predeterminada(self) -> str:
+        """Obtiene la rama predeterminada del repositorio.
+
+        Retorna: "main" o "master" según la configuración.
+        """
+        try:
+            default_branch = self.project.default_branch
+            return default_branch if default_branch else "main"
+        except Exception:
+            return "main"
+
+    def obtener_arbol_repositorio(self, *, ref: Optional[str] = None) -> List[Dict[str, str]]:
+        """Obtiene el árbol del repositorio (archivos y directorios).
+
+        Args:
+            ref: rama o commit. Si es None, usa la rama predeterminada.
+
+        Retorna lista de dicts: [{"nombre": "src", "ruta": "src", "tipo": "directorio"}, ...]
+        """
+        try:
+            ref = ref or self.obtener_rama_predeterminada()
+            tree = self.project.repository_tree(ref=ref, recursive=True, get_all=True)
+            return [
+                {
+                    "nombre": item["name"],
+                    "ruta": item["path"],
+                    "tipo": "directorio" if item["type"] == "tree" else "archivo",
+                }
+                for item in tree
+            ]
+        except Exception:
+            return []
+
+    def obtener_archivo_repositorio(self, ruta: str, *, ref: Optional[str] = None) -> bytes:
+        """Obtiene el contenido de un archivo del repositorio.
+
+        Args:
+            ruta: ruta del archivo en el repositorio
+            ref: rama o commit. Si es None, usa la rama predeterminada.
+
+        Retorna: contenido del archivo como bytes.
+        """
+        try:
+            ref = ref or self.obtener_rama_predeterminada()
+            archivo = self.project.files.get(file_path=ruta, ref=ref)
+            return archivo.decode()
+        except Exception:
+            return b""

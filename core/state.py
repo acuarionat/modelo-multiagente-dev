@@ -40,3 +40,36 @@ class AgentState(TypedDict):
     matriz_validacion: Optional[Dict[str, Any]]        # {"valida": bool, "errores": [...]}
     matriz_cambios_pre_diseno: Optional[Dict[str, Any]]  # {"agregados","modificados","retirados","hay_cambios"}
     matriz_diseno_evolucionada: Optional[List[Dict[str, Any]]]  # Filas de construir_filas_matriz_diseno (post-análisis)
+
+    # --- Codificación (independiente de Requerimientos y de Diseño; no
+    # reutiliza design_quality_result, design_summary, matriz_estado, etc.) ---
+    coding_issues: List[Dict[str, Any]]          # Issues COD-xxx mapeados (coding_issue_mapper)
+    coding_codigo_localizado: Optional[Dict[str, Any]]  # Salida de code_repository_service.obtener_codigo_codificacion (pre-grafo)
+    coding_context: List[Dict[str, Any]]         # Contexto construido (coding_context.py): issue + matriz + código + evidencia de herramientas
+
+    coding_tool_results: Optional[Dict[str, Any]]       # Evidencia normalizada {"radon","semgrep","pip_audit","gitleaks"}
+    coding_central_result: Optional[Dict[str, Any]]     # Resultado del Central de Codificación
+    coding_quality_result: Optional[Dict[str, Any]]     # {"raw", "mc05"}
+    coding_security_result: Optional[Dict[str, Any]]    # {"raw", "ms05", "ms06", "ms07"}
+    coding_evaluator_result: Optional[Dict[str, Any]]   # Hallazgos del Evaluador de Codificación
+
+    coding_metrics: Optional[Dict[str, Any]]            # Reservado para fases posteriores
+    coding_summary: Optional[Dict[str, Any]]            # Consolidación determinística final
+    coding_traceability: Optional[List[Dict[str, Any]]]  # Matriz evolucionada HU→RF/RNF→DIS→ED→COD
+
+    # --- Matriz de Diseño heredada como entrada de Codificación (previa al análisis) ---
+    coding_matrix_input: Optional[List[Dict[str, Any]]]      # Matriz de Diseño vigente (heredada), normalizada
+    coding_matrix_source: Optional[str]         # "GitLab" / "EXCEL" / "Diseño"
+    coding_matrix_status: Optional[str]         # ORIGINAL / EDITADA / INVALIDA
+    coding_matrix_version: Optional[str]
+    coding_matrix_changes: Optional[Dict[str, Any]]     # {"agregados","modificados","retirados","errores_estructura","hay_cambios"}
+    coding_matrix_snapshot: Optional[Dict[str, Any]]    # Snapshot versionado antes de comenzar Codificación
+    coding_matrix_metadata: Optional[Dict[str, Any]]    # Envoltorio de versión de la matriz evolucionada (post-análisis)
+
+    # --- Descubrimiento y validación del repositorio de Codificación ---
+    coding_repository_tree: Optional[List[Dict[str, str]]]    # Árbol completo del repositorio (archivos + directorios)
+    coding_repository_discovery: Optional[Dict[str, Any]]    # {"rama", "lenguajes", "archivos", "manifiestos", "lockfiles", ...}
+    coding_repository_profile: Optional[Dict[str, Any]]      # Perfil técnico consolidado (para UI/PDF/DOCX)
+    coding_detected_technologies: Optional[Dict[str, Any]]   # {"lenguajes", "ecosistemas", "tecnologias_detectadas"}
+    coding_selected_tools: Optional[Dict[str, Dict[str, Any]]]  # Herramientas seleccionadas por métrica (MC-05, MS-05, MS-06, MS-07)
+    coding_repository_context: Optional[Dict[str, Any]]      # Contexto combinado pre-análisis (issues + matriz + rutas + herramientas)

@@ -187,9 +187,9 @@ RESULTADOS_SECURITY_DISENO = {
                 {"control": "Protección del acceso a información de horarios y datos personales", "aspecto_relacionado": "Protección de datos", "confianza": "alta"},
             ],
             "controles_definidos": [
-                {"control": "Verificación de sesión autenticada antes de la consulta", "medida_documentada": "Verificar que el usuario tenga una sesión autenticada antes de permitir la consulta", "elemento_responsable": "ED-01"},
-                {"control": "Verificación de permisos de acceso a la funcionalidad de consulta", "medida_documentada": "Verificar que el usuario esté autorizado para acceder a la funcionalidad de consulta", "elemento_responsable": "ED-02"},
-                {"control": "Registro de operaciones relevantes de consulta y actualización", "medida_documentada": "Registrar las consultas consideradas relevantes para mantener trazabilidad", "elemento_responsable": "ED-02"},
+                {"control": "Verificación de sesión autenticada antes de la consulta", "medida_documentada": "Verificar que el usuario tenga una sesión autenticada antes de permitir la consulta", "elementos_responsables": ["ED-01"]},
+                {"control": "Verificación de permisos de acceso a la funcionalidad de consulta", "medida_documentada": "Verificar que el usuario esté autorizado para acceder a la funcionalidad de consulta", "elementos_responsables": ["ED-02"]},
+                {"control": "Registro de operaciones relevantes de consulta y actualización", "medida_documentada": "Registrar las consultas consideradas relevantes para mantener trazabilidad", "elementos_responsables": ["ED-02"]},
             ],
             "controles_faltantes": [
                 {"control": "Protección del acceso a información de horarios y datos personales", "justificacion": "Se necesita una medida que garantice la confidencialidad e integridad de los datos de horarios y datos personales durante la consulta."},
@@ -223,9 +223,9 @@ RESULTADOS_SECURITY_DISENO = {
                 {"control": "Protección del acceso a datos personales almacenados", "aspecto_relacionado": "Protección de datos", "confianza": "alta"},
             ],
             "controles_definidos": [
-                {"control": "Verificación de sesión autenticada antes de acceder a la gestión de pacientes", "medida_documentada": "Verificar que exista una sesión autenticada antes de acceder a la gestión de pacientes", "elemento_responsable": "ED-04"},
-                {"control": "Comprobación de permisos para registrar o modificar información", "medida_documentada": "Comprobar que el usuario tenga permiso para registrar o modificar información", "elemento_responsable": "ED-05"},
-                {"control": "Registro de operaciones relevantes de registro y modificación", "medida_documentada": "Registrar las operaciones relevantes de registro y modificación", "elemento_responsable": "ED-05"},
+                {"control": "Verificación de sesión autenticada antes de acceder a la gestión de pacientes", "medida_documentada": "Verificar que exista una sesión autenticada antes de acceder a la gestión de pacientes", "elementos_responsables": ["ED-04"]},
+                {"control": "Comprobación de permisos para registrar o modificar información", "medida_documentada": "Comprobar que el usuario tenga permiso para registrar o modificar información", "elementos_responsables": ["ED-05"]},
+                {"control": "Registro de operaciones relevantes de registro y modificación", "medida_documentada": "Registrar las operaciones relevantes de registro y modificación", "elementos_responsables": ["ED-05"]},
             ],
             "controles_faltantes": [
                 {"control": "Protección del acceso a datos personales almacenados", "justificacion": "No se ha documentado una medida de seguridad concreta que garantice la confidencialidad e integridad de los datos personales almacenados en ED-06."},

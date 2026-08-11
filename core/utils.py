@@ -2186,7 +2186,11 @@ def generar_reporte_diseno_pdf(project_name: str, milestone: str, presentaciones
         pdf.ln(1)
         linea("Controles evaluados:")
         for ctrl in ms04.get("controles", []):
-            estado_ctrl = f"Definido (responsable: {ctrl['responsable']})" if ctrl["definido"] else "NO definido"
+            responsables = ctrl.get("responsables", ctrl.get("responsable", ""))
+            estado_ctrl = (
+                f"Definido (responsables: {responsables or 'No especificado'})"
+                if ctrl.get("definido", False) else "NO definido"
+            )
             bullet(f"{ctrl.get('aspecto', ctrl['control'])} -> {estado_ctrl}")
         pdf.ln(1)
         linea(f"Calculo: {ms04['numerador']} de {ms04['denominador']} = {extraer_porcentaje(ms04['valor'])}")
@@ -2342,9 +2346,10 @@ def generar_documento_formal_diseno_docx(project_name: str, milestone: str, pres
         medidas = seguridad_ctx.get("medidas_seguridad") or []
         if medidas:
             for medida in medidas:
+                texto_responsables = medida.get("elemento_responsable", "")
                 doc.add_paragraph(
                     f"{medida.get('aspecto', '')}: {medida.get('medida', '')} "
-                    f"(Responsable: {medida.get('elemento_responsable', '')})",
+                    f"(Responsables: {texto_responsables})",
                     style="List Bullet",
                 )
         else:
@@ -2412,6 +2417,388 @@ def generar_documento_formal_diseno_docx(project_name: str, milestone: str, pres
 
     # 9. Control del documento
     doc.add_heading("9. Control del documento", 1)
+    table = doc.add_table(rows=1, cols=3)
+    table.style = "Table Grid"
+    hdr = table.rows[0].cells
+    hdr[0].text = "Versión"
+    hdr[1].text = "Fecha"
+    hdr[2].text = "Estado"
+    row = table.add_row().cells
+    row[0].text = "1.0"
+    row[1].text = datetime.now().strftime("%Y-%m-%d")
+    row[2].text = "Pendiente de revisión"
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def generar_reporte_codificacion_pdf(project_name: str, milestone: str, presentaciones: list, resumen_trazabilidad: dict, matriz_metadata: dict = None) -> io.BytesIO:
+    """
+    Reporte Ejecutivo Consolidado de Codificación. Consume objetos de
+    construir_presentacion_resultado_codificacion(). No recalcula nada.
+    """
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
+    if not presentaciones:
+        raise ValueError("No existen Codificaciones completas para generar el PDF.")
+
+    indices_calidad = [p["indice_calidad"] for p in presentaciones if p.get("indice_calidad") is not None]
+    indices_seguridad = [p["indice_seguridad"] for p in presentaciones if p.get("indice_seguridad") is not None]
+    con_error = sum(1 for p in presentaciones if p.get("estado_orientativo") == "ERROR")
+
+    pdf = FPDF()
+    pdf.set_margins(20, 20, 20)
+    pdf.add_page()
+    kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
+
+    def encabezado(text, size=14):
+        pdf.set_font("Helvetica", style="B", size=size)
+        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
+
+    def linea(text):
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
+
+    def bullet(text):
+        linea(f"- {text}")
+
+    encabezado("Reporte Ejecutivo Consolidado — Codificación", 16)
+    linea(DECISION_SUPPORT_NOTICE)
+    pdf.ln(2)
+    linea(f"Proyecto: {project_name}")
+    linea(f"Milestone: {milestone}")
+    linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    if matriz_metadata:
+        pdf.ln(2)
+        encabezado("Matriz de entrada (Diseño heredado)", 12)
+        linea(f"Version: {matriz_metadata.get('coding_matrix_version', 'No informado')}")
+        linea(f"Fuente: {matriz_metadata.get('coding_matrix_source', 'No informado')}")
+        linea(f"Estado: {matriz_metadata.get('coding_matrix_status', 'No informado')}")
+    pdf.ln(4)
+
+    encabezado("Resumen global", 13)
+    linea(f"Codificaciones procesadas: {len(presentaciones)} | Con error: {con_error}")
+    linea(f"Indice de Calidad del Codigo promedio: {extraer_porcentaje(sum(indices_calidad) / len(indices_calidad) if indices_calidad else None)}")
+    linea(f"Indice de Seguridad del Codigo promedio: {extraer_porcentaje(sum(indices_seguridad) / len(indices_seguridad) if indices_seguridad else None)}")
+    linea(f"Elementos de Diseno implementados: {resumen_trazabilidad.get('implementados', 0)}")
+    linea(f"Elementos declarados sin confirmar: {resumen_trazabilidad.get('no_confirmados', 0)}")
+    linea(f"Elementos no evaluados: {resumen_trazabilidad.get('no_evaluados', 0)}")
+
+    for p in presentaciones:
+        pdf.add_page()
+        encabezado(f"{p['codificacion_id']} — {p.get('titulo', '')}", 13)
+        linea(f"Estado orientativo: {p['estado_orientativo']}")
+        pdf.ln(1)
+
+        linea(f"Elementos de Diseno declarados: {', '.join(p.get('elementos_diseno_declarados', [])) or 'Ninguno.'}")
+        archivos = [a.get('ruta', '') for a in p.get('archivos_declarados', [])]
+        linea(f"Archivos declarados: {', '.join(archivos) or 'Ninguno.'}")
+        linea(f"Lenguaje detectado: {p.get('lenguaje_detectado') or 'No informado'}")
+        pdf.ln(2)
+
+        # --- CALIDAD ---
+        encabezado("CALIDAD", 12)
+        mc05 = p["metricas"]["MC-05"]
+        linea(f"MC-05 {mc05['nombre']}: {extraer_porcentaje(mc05['valor'])} ({mc05.get('estado_calculo', '')})")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(mc05["que_mide"])
+        pdf.ln(1)
+        linea("Funciones criticas (complejidad no aceptable):")
+        funciones_criticas = mc05.get("funciones_criticas", [])
+        for funcion in funciones_criticas:
+            bullet(f"{funcion.get('archivo', '')} — {funcion.get('nombre', '')} (CC={funcion.get('complejidad', '')})")
+            linea(f"  Problema: {funcion.get('problema', '')}")
+            linea(f"  Recomendacion: {funcion.get('recomendacion', '')}")
+        if not funciones_criticas:
+            linea("Ninguna.")
+        pdf.ln(1)
+        linea(f"Resultado: {mc05['resultado']}")
+        if mc05.get("conclusion"):
+            linea(f"Conclusion: {mc05['conclusion']}")
+        pdf.ln(2)
+
+        # --- SEGURIDAD ---
+        encabezado("SEGURIDAD", 12)
+        ms05 = p["metricas"]["MS-05"]
+        linea(f"MS-05 {ms05['nombre']}: {ms05.get('numero_criticas', 'No evaluable')} criticas ({ms05.get('estado_calculo', '')})")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(ms05["que_mide"])
+        vulnerabilidades = ms05.get("vulnerabilidades_criticas", [])
+        for vulnerabilidad in vulnerabilidades:
+            bullet(f"{vulnerabilidad.get('archivo', '')} — {vulnerabilidad.get('regla', '')}: {vulnerabilidad.get('mensaje', '')}")
+        if not vulnerabilidades:
+            linea("Ninguna.")
+        if ms05.get("conclusion"):
+            linea(f"Conclusion: {ms05['conclusion']}")
+        pdf.ln(2)
+
+        ms06 = p["metricas"]["MS-06"]
+        linea(f"MS-06 {ms06['nombre']}: {extraer_porcentaje(ms06['valor'])} ({ms06.get('estado_calculo', '')})")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(ms06["que_mide"])
+        dependencias_inseguras = ms06.get("dependencias_inseguras", [])
+        for dependencia in dependencias_inseguras:
+            bullet(f"{dependencia.get('nombre', '')} {dependencia.get('version', '')}: {dependencia.get('explicacion', '')}")
+        if not dependencias_inseguras:
+            linea("Ninguna.")
+        linea(f"Resultado: {ms06['resultado']}")
+        if ms06.get("conclusion"):
+            linea(f"Conclusion: {ms06['conclusion']}")
+        pdf.ln(2)
+
+        ms07 = p["metricas"]["MS-07"]
+        linea(f"MS-07 {ms07['nombre']}: {extraer_porcentaje(ms07['valor'])} ({ms07.get('estado_calculo', '')})")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(ms07["que_mide"])
+        archivos_con_secretos = ms07.get("archivos_con_secretos", [])
+        for archivo_secreto in archivos_con_secretos:
+            bullet(f"{archivo_secreto.get('archivo', '')} — {archivo_secreto.get('regla', '')}: {archivo_secreto.get('explicacion', '')}")
+        if not archivos_con_secretos:
+            linea("Ninguno.")
+        linea(f"Resultado: {ms07['resultado']}")
+        if ms07.get("conclusion"):
+            linea(f"Conclusion: {ms07['conclusion']}")
+        pdf.ln(2)
+
+        # --- HALLAZGOS ---
+        encabezado("Correcciones necesarias", 11)
+        correcciones = deduplicar_textos_estables(p.get("correcciones_necesarias", []))
+        for item in correcciones or ["Ninguna."]:
+            bullet(item) if correcciones else linea(item)
+
+        encabezado("Precisiones", 11)
+        precisiones = deduplicar_textos_estables(p.get("precisiones_necesarias", []))
+        for item in precisiones or ["Ninguna."]:
+            bullet(item) if precisiones else linea(item)
+
+        encabezado("Oportunidades de mejora", 11)
+        oportunidades = deduplicar_textos_estables(p.get("oportunidades_mejora", []))
+        for item in oportunidades or ["Ninguna."]:
+            bullet(item) if oportunidades else linea(item)
+
+        propuesta = p.get("propuesta_para_maximo", [])
+        if propuesta:
+            encabezado("Propuesta para alcanzar el maximo", 11)
+            for item in propuesta:
+                bullet(item)
+
+        # --- TRAZABILIDAD ---
+        encabezado("Trazabilidad de esta Codificacion", 11)
+        trz = p.get("trazabilidad", {})
+        implementados = trz.get("implementados", [])
+        no_confirmados = trz.get("no_confirmados", [])
+        no_evaluados = trz.get("no_evaluados", [])
+        linea(f"Implementados: {', '.join(implementados) if implementados else 'Ninguno.'}")
+        linea(f"Declarados sin confirmar: {', '.join(no_confirmados) if no_confirmados else 'Ninguno.'}")
+        if no_evaluados:
+            linea(f"No evaluados: {', '.join(no_evaluados)}")
+
+    pdf_bytes = pdf.output(dest='S')
+    return io.BytesIO(pdf_bytes)
+
+
+def generar_documento_formal_codificacion_docx(project_name: str, milestone: str, presentaciones: list, matriz_metadata: dict = None, filas_trazabilidad: list = None) -> io.BytesIO:
+    """
+    Documento Formal Consolidado de Codificación. Consume objetos de
+    construir_presentacion_resultado_codificacion(). NO es un reporte de
+    evaluación: no incluye porcentajes, índices ni estados orientativos.
+    Los hallazgos que requieren corrección se muestran como aspectos
+    pendientes de formalización, nunca como correcciones ya aplicadas.
+    """
+    from docx import Document
+    if not presentaciones:
+        raise ValueError("No existen Codificaciones completas para generar el DOCX.")
+
+    doc = Document()
+    doc.add_heading("Documento Formal Consolidado de Codificación", 0)
+    doc.add_paragraph(DECISION_SUPPORT_NOTICE)
+    doc.add_paragraph(f"Proyecto: {project_name}")
+    doc.add_paragraph(f"Milestone: {milestone}")
+    doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    doc.add_paragraph("Versión: 1.0")
+    if matriz_metadata:
+        doc.add_paragraph("Matriz de entrada (Diseño heredado):")
+        doc.add_paragraph(f"Versión: {matriz_metadata.get('coding_matrix_version', 'No informado')}")
+        doc.add_paragraph(f"Fuente: {matriz_metadata.get('coding_matrix_source', 'No informado')}")
+        doc.add_paragraph(f"Estado: {matriz_metadata.get('coding_matrix_status', 'No informado')}")
+    doc.add_page_break()
+
+    doc.add_heading("1. Introducción", 1)
+    doc.add_paragraph(
+        "El presente documento constituye el artefacto formal consolidado de "
+        "la etapa de Codificación. Integra las implementaciones declaradas, "
+        "los elementos de diseño que dicen implementar, los archivos y "
+        "módulos localizados, y las consideraciones de seguridad derivadas "
+        "de los Issues de Codificación analizados."
+    )
+
+    doc.add_heading("2. Alcance de la Codificación", 1)
+    doc.add_paragraph(
+        f"Este documento formaliza {len(presentaciones)} Issue(s) de Codificación: "
+        + ", ".join(p["codificacion_id"] for p in presentaciones) + "."
+    )
+
+    for p in presentaciones:
+        ctx = p.get("contexto_original", {})
+        central = p.get("central_result", {})
+        doc.add_page_break()
+        doc.add_heading(f"{p['codificacion_id']} — {p.get('titulo', '')}", 1)
+
+        # 3. Implementaciones realizadas
+        doc.add_heading("3. Implementaciones realizadas", 2)
+        doc.add_paragraph(ctx.get("descripcion") or "Sin descripción documentada.")
+        decisiones = ctx.get("decisiones") or []
+        if decisiones:
+            doc.add_paragraph("Decisiones de implementación:")
+            for decision in decisiones:
+                doc.add_paragraph(decision, style="List Bullet")
+
+        # 4. Elementos de Diseño implementados
+        doc.add_heading("4. Elementos de Diseño implementados", 2)
+        implementados = set(central.get("elementos_implementados") or [])
+        no_confirmados = set(central.get("elementos_no_confirmados") or [])
+        elementos_declarados = p.get("elementos_diseno_declarados") or []
+        if elementos_declarados:
+            table = doc.add_table(rows=1, cols=2)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "Elemento de Diseño"
+            hdr[1].text = "Estado"
+            for elemento_id in elementos_declarados:
+                row = table.add_row().cells
+                row[0].text = elemento_id
+                if elemento_id in implementados:
+                    row[1].text = "Implementado"
+                elif elemento_id in no_confirmados:
+                    row[1].text = "Declarado sin confirmar en el código"
+                else:
+                    row[1].text = "No evaluado"
+        else:
+            doc.add_paragraph("Ninguno declarado.")
+
+        # 5. Archivos y módulos de implementación
+        doc.add_heading("5. Archivos y módulos de implementación", 2)
+        archivos_consolidados = central.get("archivos_consolidados") or []
+        if archivos_consolidados:
+            table = doc.add_table(rows=1, cols=3)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "Archivo"
+            hdr[1].text = "Elementos de Diseño implementados"
+            hdr[2].text = "Evidencia"
+            for archivo in archivos_consolidados:
+                row = table.add_row().cells
+                row[0].text = archivo.get("ruta", "")
+                row[1].text = ", ".join(archivo.get("elementos_diseno_implementados") or [])
+                row[2].text = archivo.get("evidencia", "")
+        else:
+            doc.add_paragraph("Ningún archivo consolidado.")
+
+        # 6. Estructura técnica documentada
+        doc.add_heading("6. Estructura técnica documentada", 2)
+        coherencia = central.get("coherencia_declarado_vs_evidencia") or {}
+        doc.add_paragraph(f"Coherencia declarado vs. evidencia técnica: {coherencia.get('estado', 'No evaluada')}.")
+        if coherencia.get("justificacion"):
+            doc.add_paragraph(coherencia["justificacion"])
+        inconsistencias = central.get("inconsistencias_detectadas") or []
+        if inconsistencias:
+            doc.add_paragraph("Inconsistencias detectadas:")
+            for inconsistencia in inconsistencias:
+                doc.add_paragraph(
+                    f"{inconsistencia.get('tipo', '')}: {inconsistencia.get('descripcion', '')}",
+                    style="List Bullet",
+                )
+        else:
+            doc.add_paragraph("Ninguna inconsistencia detectada.")
+
+        # 7. Dependencias utilizadas
+        doc.add_heading("7. Dependencias utilizadas", 2)
+        ms06 = p["metricas"]["MS-06"]
+        doc.add_paragraph(ms06.get("resultado", "No se evaluaron dependencias."))
+        dependencias_inseguras = ms06.get("dependencias_inseguras") or []
+        if dependencias_inseguras:
+            doc.add_paragraph("Dependencias con hallazgos de seguridad (pip-audit):")
+            for dependencia in dependencias_inseguras:
+                doc.add_paragraph(
+                    f"{dependencia.get('nombre', '')} {dependencia.get('version', '')}",
+                    style="List Bullet",
+                )
+        else:
+            doc.add_paragraph("Sin dependencias con hallazgos de seguridad identificados.")
+
+        # 8. Consideraciones de seguridad documentadas
+        doc.add_heading("8. Consideraciones de seguridad documentadas", 2)
+        ms05 = p["metricas"]["MS-05"]
+        ms07 = p["metricas"]["MS-07"]
+        doc.add_heading("8.1 Vulnerabilidades críticas (Semgrep)", 3)
+        vulnerabilidades = ms05.get("vulnerabilidades_criticas") or []
+        if vulnerabilidades:
+            for vulnerabilidad in vulnerabilidades:
+                doc.add_paragraph(
+                    f"{vulnerabilidad.get('archivo', '')}: {vulnerabilidad.get('mensaje', '')}",
+                    style="List Bullet",
+                )
+        else:
+            doc.add_paragraph("Ninguna documentada.")
+        doc.add_heading("8.2 Secretos expuestos (Gitleaks)", 3)
+        archivos_con_secretos = ms07.get("archivos_con_secretos") or []
+        if archivos_con_secretos:
+            for archivo_secreto in archivos_con_secretos:
+                doc.add_paragraph(
+                    f"{archivo_secreto.get('archivo', '')}: {archivo_secreto.get('explicacion', '')}",
+                    style="List Bullet",
+                )
+        else:
+            doc.add_paragraph("Ninguno documentado.")
+
+        # 9. Aspectos pendientes de Codificación
+        doc.add_heading("9. Aspectos pendientes de Codificación", 2)
+        pendientes = deduplicar_textos_estables(
+            (p.get("correcciones_necesarias") or []) + (p.get("precisiones_necesarias") or [])
+        )
+        propuesta = p.get("propuesta_para_maximo") or []
+        if pendientes:
+            for indice, aspecto in enumerate(pendientes):
+                doc.add_paragraph("Aspecto pendiente:")
+                doc.add_paragraph(aspecto, style="List Bullet")
+                doc.add_paragraph("Propuesta de formalización:")
+                propuesta_texto = propuesta[indice] if indice < len(propuesta) else "Revisar y formalizar el aspecto señalado."
+                doc.add_paragraph(propuesta_texto, style="List Bullet")
+                doc.add_paragraph("Estado: Pendiente de revisión.")
+        else:
+            doc.add_paragraph("Sin aspectos pendientes identificados.")
+
+    # 10. Matriz de Trazabilidad evolucionada
+    doc.add_page_break()
+    doc.add_heading("10. Matriz de Trazabilidad evolucionada", 1)
+    columnas_trz = [
+        "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
+        "Descripción", "Diseño", "Elementos de Diseño",
+        "Estado de trazabilidad", "Estado de Diseño",
+        "Codificación", "Estado de implementación", "Ubicación de implementación",
+        "Estado de Codificación", "Observación de Codificación",
+    ]
+    if filas_trazabilidad:
+        table = doc.add_table(rows=1, cols=len(columnas_trz))
+        table.style = "Table Grid"
+        hdr = table.rows[0].cells
+        for i, col in enumerate(columnas_trz):
+            hdr[i].text = col
+        for fila in filas_trazabilidad:
+            row = table.add_row().cells
+            for i, col in enumerate(columnas_trz):
+                row[i].text = str(fila.get(col, ""))
+    else:
+        doc.add_paragraph("No se generaron filas de trazabilidad.")
+
+    # 11. Control del documento
+    doc.add_heading("11. Control del documento", 1)
     table = doc.add_table(rows=1, cols=3)
     table.style = "Table Grid"
     hdr = table.rows[0].cells

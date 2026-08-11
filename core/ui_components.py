@@ -178,7 +178,7 @@ def render_traceability_section(titulo: str, filas: list, columnas: list = None)
             columnas_disponibles = [col for col in columnas if col in df.columns]
             st.dataframe(
                 df[columnas_disponibles] if columnas_disponibles else df,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         else:

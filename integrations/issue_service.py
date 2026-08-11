@@ -13,7 +13,18 @@ from database.repository import calcular_hash_issue, guardar_cache, guardar_hist
 from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente
 from integrations.issue_mapper import mapear_issue_a_json, separar_entradas_para_analisis
 from integrations.design_issue_mapper import mapear_issue_diseno
+from integrations.coding_issue_mapper import mapear_issue_codificacion
 from integrations.traceability_issue_mapper import construir_markdown_matriz_trazabilidad, mapear_matriz_trazabilidad
+from integrations.design_traceability_issue_mapper import (
+    DESIGN_TRACEABILITY_COLUMNS,
+    construir_markdown_matriz_trazabilidad_diseno,
+    mapear_matriz_trazabilidad_diseno,
+)
+from integrations.coding_traceability_issue_mapper import (
+    CODING_TRACEABILITY_COLUMNS,
+    construir_markdown_matriz_trazabilidad_codificacion,
+    mapear_matriz_trazabilidad_codificacion,
+)
 
 logger = logging.getLogger(__name__)
 SCHEMA_VERSION = "v4-assisted-evaluation"
@@ -22,6 +33,8 @@ DECISION_SUPPORT_NOTICE = (
     "La decisión de aceptación corresponde al responsable del proyecto y requiere revisión humana."
 )
 TRZ_001_TITULO = "TRZ-001 - Matriz de Trazabilidad"
+TRZ_002_TITULO = "TRZ-002 - Matriz de Trazabilidad - Etapa Diseño"
+TRZ_003_TITULO = "TRZ-003 - Matriz de Trazabilidad - Etapa Codificación"
 
 
 def _lineas_metricas(metrics: dict) -> str:
@@ -203,6 +216,80 @@ def publicar_comentario_diseno(project_id, issue_iid, resumen_diseno: dict):
 
     adapter = GitLabAdapter(project_id=project_id)
     return adapter.agregar_comentario(issue_iid, comentario)
+
+
+def construir_comentario_codificacion(resumen_codificacion: dict) -> str:
+    """
+    Construye el comentario compacto de retroalimentación operativa para un
+    Issue de Codificación a partir de state["coding_summary"]. No repite las
+    métricas completas MC-05/MS-05/MS-06/MS-07: solo los índices, el estado
+    orientativo y los hallazgos ya clasificados por el Evaluador de Codificación.
+    """
+    codificacion_id = resumen_codificacion.get("codificacion_id", "")
+    estado = resumen_codificacion.get("estado_orientativo", "")
+    indice_calidad = extraer_porcentaje(resumen_codificacion.get("indice_calidad_codigo"))
+    indice_seguridad = extraer_porcentaje(resumen_codificacion.get("indice_seguridad_codigo"))
+
+    def _textos(campo):
+        valores = resumen_codificacion.get(campo)
+        if not isinstance(valores, list):
+            return []
+        return [texto.strip() for texto in valores if isinstance(texto, str) and texto.strip()]
+
+    correcciones = _textos("correcciones_necesarias")
+    precisiones = _textos("precisiones_necesarias")
+    oportunidades = _textos("oportunidades_mejora")
+
+    lineas = [
+        f"Resultado del análisis de Codificación — {codificacion_id}",
+        "",
+        f"Estado orientativo: {estado}",
+        f"Índice de Calidad del Código: {indice_calidad}",
+        f"Índice de Seguridad del Código: {indice_seguridad}",
+        "",
+        "Correcciones necesarias:",
+        *([f"- {item}" for item in correcciones] if correcciones else ["- Ninguna."]),
+        "",
+        "Precisiones:",
+        *([f"- {item}" for item in precisiones] if precisiones else ["- Ninguna."]),
+        "",
+        "Oportunidades de mejora:",
+        *([f"- {item}" for item in oportunidades] if oportunidades else ["- Ninguna."]),
+        "",
+        "Próxima acción:",
+        (
+            "Actualizar el Issue de Codificación con las correcciones necesarias y volver a marcarlo como Pendiente."
+            if correcciones else
+            "El Issue de Codificación queda marcado como Revisado y puede continuar con la siguiente etapa."
+        ),
+        "",
+        "Evaluación asistida para apoyar el control, seguimiento y trazabilidad. La decisión final corresponde al responsable del proyecto.",
+    ]
+
+    return "\n".join(lineas) + "\n"
+
+
+def publicar_comentario_codificacion(project_id, issue_iid, resumen_codificacion: dict):
+    """Publica en GitLab el comentario de retroalimentación operativa de Codificación (reutiliza GitLabAdapter.agregar_comentario, sin duplicar llamadas HTTP)."""
+    if not resumen_codificacion:
+        raise ValueError("No existe resumen de Codificación para publicar.")
+
+    if resumen_codificacion.get("estado_orientativo") == "ERROR":
+        raise ValueError(
+            "No se publica comentario de evaluación cuando existe error técnico."
+        )
+
+    comentario = construir_comentario_codificacion(resumen_codificacion)
+
+    adapter = GitLabAdapter(project_id=project_id)
+    return adapter.agregar_comentario(issue_iid, comentario)
+
+
+def obtener_issues_codificacion(project_id, milestone_title="Codificación"):
+    """Obtiene los Issues COD-xxx de GitLab y los estructura con coding_issue_mapper."""
+    adapter = GitLabAdapter(project_id=project_id)
+    issues = adapter.listar_issues_abiertos(milestone_title=milestone_title)
+    return [mapear_issue_codificacion(issue) for issue in issues]
 
 
 def _resultado_informacion_insuficiente(issue_data: dict) -> dict:
@@ -391,9 +478,9 @@ La historia quedará como **Requiere modificación**. Después de corregirla, vu
 
 
 def obtener_issues_diseno(project_id, milestone_title="Diseño"):
-    """Obtiene los Issues DIS-xxx de GitLab y los estructura con design_issue_mapper."""
+    """Obtiene los Issues de Diseño pendientes o que requieren modificación y los estructura."""
     adapter = GitLabAdapter(project_id=project_id)
-    issues = adapter.listar_issues_abiertos(milestone_title=milestone_title)
+    issues = adapter.listar_issues_pendientes(milestone_title=milestone_title)
     return [mapear_issue_diseno(issue) for issue in issues]
 
 
@@ -467,4 +554,97 @@ def crear_o_actualizar_issue_matriz_trazabilidad(project_id, filas_matriz, metad
     issue = adapter.buscar_issue_por_titulo("TRZ-001")
     if issue is None:
         return adapter.crear_issue(TRZ_001_TITULO, contenido)
+    return adapter.actualizar_descripcion_issue(issue.iid, contenido)
+
+
+def obtener_issue_matriz_trazabilidad_diseno(project_id):
+    """Recupera TRZ-002 y sus filas con el contrato oficial de 10 columnas."""
+    adapter = GitLabAdapter(project_id=project_id)
+    issue = adapter.buscar_issue_por_titulo(TRZ_002_TITULO)
+    if issue is None:
+        return None, None
+    return issue, mapear_matriz_trazabilidad_diseno(issue.description or "")
+
+
+def crear_o_actualizar_issue_matriz_trazabilidad_diseno(project_id, filas_matriz, metadata=None):
+    """Valida y persiste pasivamente en TRZ-002 las filas finales de Diseño."""
+    if not filas_matriz:
+        logger.warning("No hay filas de matriz de Diseño para publicar TRZ-002.")
+        return None
+
+    for indice, fila in enumerate(filas_matriz, start=1):
+        if set(fila) != set(DESIGN_TRACEABILITY_COLUMNS):
+            raise ValueError(f"La fila {indice} de TRZ-002 no respeta el contrato de 10 columnas.")
+
+    contenido = construir_markdown_matriz_trazabilidad_diseno(filas_matriz)
+    recuperadas = mapear_matriz_trazabilidad_diseno(contenido)
+
+    if len(recuperadas) != len(filas_matriz):
+        raise ValueError("El round-trip de TRZ-002 alteró la cantidad de filas.")
+    for indice, (original, recuperada) in enumerate(zip(filas_matriz, recuperadas), start=1):
+        for columna in DESIGN_TRACEABILITY_COLUMNS:
+            if recuperada[columna] != original.get(columna, ""):
+                raise ValueError(
+                    f"El round-trip de TRZ-002 alteró la fila {indice}, columna {columna!r}."
+                )
+
+    if metadata:
+        detalle = (
+            f"_Ejecución: {metadata.get('execution_id', 'No informado')} — "
+            f"Versión: {metadata.get('matriz_version', 'No informada')}._\n\n"
+        )
+        contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
+
+    adapter = GitLabAdapter(project_id=project_id)
+    issue = adapter.buscar_issue_por_titulo(TRZ_002_TITULO)
+    if issue is None:
+        return adapter.crear_issue(TRZ_002_TITULO, contenido)
+    return adapter.actualizar_descripcion_issue(issue.iid, contenido)
+
+
+def obtener_issue_matriz_trazabilidad_codificacion(project_id):
+    """Recupera TRZ-003 y sus filas con el contrato oficial de 15 columnas."""
+    adapter = GitLabAdapter(project_id=project_id)
+    issue = adapter.buscar_issue_por_titulo(TRZ_003_TITULO)
+    if issue is None:
+        return None, None
+    return issue, mapear_matriz_trazabilidad_codificacion(issue.description or "")
+
+
+def crear_o_actualizar_issue_matriz_trazabilidad_codificacion(project_id, filas_matriz, metadata=None):
+    """Valida y persiste pasivamente en TRZ-003 las filas finales de Codificación."""
+    if not filas_matriz:
+        logger.warning("No hay filas de matriz de Codificación para publicar TRZ-003.")
+        return None
+
+    for indice, fila in enumerate(filas_matriz, start=1):
+        columnas_fila = set(fila)
+        columnas_esperadas = set(CODING_TRACEABILITY_COLUMNS)
+        if not columnas_esperadas.issubset(columnas_fila):
+            faltantes = columnas_esperadas - columnas_fila
+            raise ValueError(f"La fila {indice} de TRZ-003 no tiene las columnas obligatorias: {faltantes}.")
+
+    contenido = construir_markdown_matriz_trazabilidad_codificacion(filas_matriz)
+    recuperadas = mapear_matriz_trazabilidad_codificacion(contenido)
+
+    if len(recuperadas) != len(filas_matriz):
+        raise ValueError("El round-trip de TRZ-003 alteró la cantidad de filas.")
+    for indice, (original, recuperada) in enumerate(zip(filas_matriz, recuperadas), start=1):
+        for columna in CODING_TRACEABILITY_COLUMNS:
+            if recuperada[columna] != str(original.get(columna, "")):
+                raise ValueError(
+                    f"El round-trip de TRZ-003 alteró la fila {indice}, columna {columna!r}."
+                )
+
+    if metadata:
+        detalle = (
+            f"_Ejecución: {metadata.get('execution_id', 'No informado')} — "
+            f"Versión: {metadata.get('coding_matrix_version', 'No informada')}._\n\n"
+        )
+        contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
+
+    adapter = GitLabAdapter(project_id=project_id)
+    issue = adapter.buscar_issue_por_titulo(TRZ_003_TITULO)
+    if issue is None:
+        return adapter.crear_issue(TRZ_003_TITULO, contenido)
     return adapter.actualizar_descripcion_issue(issue.iid, contenido)

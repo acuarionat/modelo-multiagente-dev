@@ -106,8 +106,16 @@ Para cada control aplicable, verifica si "seguridad.medidas_seguridad" ya
 lo documenta. Si sí, regístralo en "controles_definidos" indicando:
 - control
 - medida_documentada
-- elemento_responsable (ED existente)
+- elementos_responsables (lista de IDs ED existentes)
 - evidencia
+
+Reglas para elementos_responsables:
+- Debe ser siempre una lista JSON.
+- Si existe un único responsable, devolver una lista con un elemento: ["ED-02"].
+- Si existen varios responsables, devolver cada ID por separado: ["ED-02", "ED-04"].
+- No concatenar IDs como "ED-01, ED-02".
+- Si el control no está definido o no tiene responsable documentado, devolver [].
+- Solo pueden utilizarse IDs ED presentes en la entrada.
 
 Si no está definido, regístralo en "controles_faltantes" indicando:
 - control
@@ -178,7 +186,7 @@ Formula los controles de forma conceptual, por ejemplo:
           {{
             "control": "Control de acceso por autorización",
             "medida_documentada": "Medida real documentada.",
-            "elemento_responsable": "ED-02",
+            "elementos_responsables": ["ED-02"],
             "evidencia": "Evidencia real."
           }}
         ],

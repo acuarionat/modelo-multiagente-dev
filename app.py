@@ -13,6 +13,7 @@ from integrations.issue_service import procesar_flujo_lote
 from database.repository import limpiar_datos_seguimiento
 from project_config import load_project_config, save_project_config
 from core.design_ui import render_design_stage
+from core.coding_ui import render_coding_stage
 from core.ui_components import (
     _lista_ui as lista_ui,
     _texto_hallazgo_ui as texto_hallazgo_ui,
@@ -183,6 +184,36 @@ st.markdown("""
         border-color: var(--emi-yellow);
         background: var(--emi-blue-dark);
         color: var(--emi-yellow);
+    }
+
+    /* Streamlit renders form submitters in a separate component, so they
+       require their own selectors to retain the institutional palette. */
+    div[data-testid="stFormSubmitButton"] > button {
+        min-height: 2.85rem;
+        border: 2px solid var(--emi-blue) !important;
+        border-radius: 7px;
+        background: #FFFFFF !important;
+        color: var(--emi-blue-dark) !important;
+        font-weight: 750;
+    }
+
+    div[data-testid="stFormSubmitButton"] > button:hover {
+        border-color: var(--emi-yellow) !important;
+        background: var(--emi-yellow-soft) !important;
+        color: var(--emi-blue-dark) !important;
+    }
+
+    div[data-testid="stFormSubmitButton"] > button[kind="primary"] {
+        border-color: var(--emi-blue) !important;
+        background: var(--emi-blue) !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 5px 14px rgba(7, 84, 154, 0.2);
+    }
+
+    div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
+        border-color: var(--emi-yellow) !important;
+        background: var(--emi-blue-dark) !important;
+        color: var(--emi-yellow) !important;
     }
 
     [data-testid="stSidebar"] .stButton > button {
@@ -675,7 +706,7 @@ def render_stage_navigation():
                     icon,
                     key=f"stage_nav_{stage_id}_{state_suffix}",
                     help=full_name,
-                    use_container_width=False,
+                    width="content",
                 ):
                     st.session_state["etapa_actual"] = stage_id
                     st.rerun()
@@ -702,13 +733,13 @@ def render_coming_soon(stage_id):
     )
     _, center, _ = st.columns([1, 1.3, 1])
     with center:
-        if st.button("← Volver a Recepción de requerimientos", type="primary", use_container_width=True):
+        if st.button("← Volver a Recepción de requerimientos", type="primary", width="stretch"):
             st.session_state["etapa_actual"] = "requerimientos"
             st.rerun()
 
 logo_col, title_col = st.columns([1.05, 2.45])
 with logo_col:
-    st.image(EMI_LOGO_PATH, use_container_width=True)
+    st.image(EMI_LOGO_PATH, width="stretch")
 with title_col:
     st.markdown("""
     <div class="emi-header">
@@ -723,36 +754,33 @@ editing_config = st.session_state.get("editing_project_config", False)
 
 if saved_config is None or editing_config:
     st.subheader("Configuración del Proyecto")
-    st.caption("Define el contexto del proyecto y valida GitLab antes de acceder a las etapas.")
+    st.caption("Identifica el proyecto y valida la conexión con GitLab para habilitar las etapas.")
     defaults = saved_config or {}
     with st.form("project_configuration"):
-        st.markdown("### Información General")
-        left, right = st.columns(2)
-        with left:
-            cfg_name = st.text_input("Nombre del proyecto *", value=defaults.get("name", ""))
-            cfg_description = st.text_area("Descripción general *", value=defaults.get("description", ""))
-            cfg_general_objective = st.text_area("Objetivo general *", value=defaults.get("general_objective", ""))
-        with right:
-            cfg_specific_objectives = st.text_area("Objetivos específicos *", value=defaults.get("specific_objectives", ""))
-            cfg_scope = st.text_area("Alcance *", value=defaults.get("scope", ""))
-            cfg_actors = st.text_area("Actores principales *", value=defaults.get("actors", ""))
-
+        st.markdown("### Identificación")
+        cfg_name = st.text_input(
+            "Nombre del proyecto *",
+            value=defaults.get("name", ""),
+            placeholder="Ej.: Sistema de Gestión de Citas Médicas",
+        )
+        st.divider()
         st.markdown("### Integración con GitLab")
-        gitlab_url = st.text_input("URL del servidor GitLab *", value=defaults.get("gitlab_url", os.getenv("GITLAB_URL", "")))
-        gitlab_project = st.text_input("Proyecto GitLab *", value=defaults.get("gitlab_project", os.getenv("GITLAB_PROJECT_ID", "")), help="ID numérico o ruta namespace/proyecto")
+        st.caption("Estos datos se utilizan para consultar los issues y verificar los milestones del flujo.")
+        gitlab_col, project_col = st.columns([1.35, 1])
+        with gitlab_col:
+            gitlab_url = st.text_input("URL del servidor GitLab *", value=defaults.get("gitlab_url", os.getenv("GITLAB_URL", "")))
+        with project_col:
+            gitlab_project = st.text_input("Proyecto GitLab *", value=defaults.get("gitlab_project", os.getenv("GITLAB_PROJECT_ID", "")), help="ID numérico o ruta namespace/proyecto")
         gitlab_token = st.text_input("Token de acceso *", value=defaults.get("gitlab_token", os.getenv("GITLAB_TOKEN", "")), type="password")
 
         values = {
-            "name": cfg_name, "description": cfg_description,
-            "general_objective": cfg_general_objective,
-            "specific_objectives": cfg_specific_objectives, "scope": cfg_scope,
-            "actors": cfg_actors, "gitlab_url": gitlab_url,
+            "name": cfg_name, "gitlab_url": gitlab_url,
             "gitlab_project": gitlab_project, "gitlab_token": gitlab_token,
         }
         connection_signature = (gitlab_url.strip(), gitlab_project.strip(), gitlab_token.strip())
         test_col, save_col = st.columns([1, 2])
-        test_connection = test_col.form_submit_button("Probar conexión", use_container_width=True)
-        save_and_start = save_col.form_submit_button("Guardar configuración e iniciar proyecto", type="primary", use_container_width=True)
+        test_connection = test_col.form_submit_button("Probar conexión", width="stretch")
+        save_and_start = save_col.form_submit_button("Guardar configuración e iniciar proyecto", type="primary", width="stretch")
 
     if test_connection:
         if not all(connection_signature):
@@ -771,10 +799,9 @@ if saved_config is None or editing_config:
 
     verified = st.session_state.get("verified_gitlab") == connection_signature
     st.markdown("### Estado")
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     c1.metric("GitLab", "Conectado" if verified else "Pendiente")
     c2.metric("Milestones", "Verificados" if verified else "Pendientes")
-    c3.metric("Contexto", defaults.get("context_version", "v1.0"))
 
     if save_and_start:
         missing = [key for key, value in values.items() if not str(value).strip()]
@@ -797,14 +824,14 @@ st.info("Las métricas e indicadores son valoraciones asistidas basadas en la ev
 
 # Sidebar options
 with st.sidebar:
-    st.image(EMI_LOGO_PATH, use_container_width=True)
+    st.image(EMI_LOGO_PATH, width="stretch")
     st.markdown("### Sistema Multiagente")
     st.caption("Recepción y seguimiento de requerimientos")
     st.markdown(f"**Proyecto:** {project_config['name']}")
     st.markdown("**GitLab:** 🟢 Conectado")
     st.markdown(f"**Contexto:** {project_config['context_version']}")
     st.divider()
-    if st.button("Editar configuración", use_container_width=True):
+    if st.button("Editar configuración", width="stretch"):
         st.session_state["editing_project_config"] = True
         st.rerun()
     st.header("Administración")
@@ -827,11 +854,14 @@ milestone_val = MILESTONES_BY_STAGE[stage_id]
 st.subheader(next(stage[2] for stage in STAGES if stage[0] == stage_id))
 st.write(f"**Milestone asociado:** {milestone_val}")
 
-# La etapa de Diseño tiene su propio bloque, separado del de Requerimientos
-# (no comparte nodos ni lógica). Las demás etapas aún no implementadas
-# conservan el placeholder existente.
+# Las etapas de Diseño y Codificación tienen su propio bloque, separado del
+# de Requerimientos (no comparten nodos ni lógica). Las demás etapas aún no
+# implementadas conservan el placeholder existente.
 if stage_id == "diseno":
     render_design_stage(project_name, project_config, adapter)
+    st.stop()
+elif stage_id == "codificacion":
+    render_coding_stage(project_name, project_config, adapter)
     st.stop()
 elif stage_id != "requerimientos":
     render_coming_soon(stage_id)
@@ -845,7 +875,7 @@ if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
 if "issues_by_stage" not in st.session_state:
     st.session_state.issues_by_stage = {}
 refresh_col, analysis_col = st.columns(2)
-refresh_issues = refresh_col.button("Actualizar desde GitLab", use_container_width=True)
+refresh_issues = refresh_col.button("Actualizar desde GitLab", width="stretch")
 if refresh_issues or stage_id not in st.session_state.issues_by_stage:
     with st.spinner("Consultando issues del milestone..."):
         st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_pendientes(milestone_title=milestone_val)
@@ -858,7 +888,7 @@ if issues:
 else:
     st.info("No se encontraron issues abiertos en este milestone.")
 
-start_analysis = analysis_col.button("Iniciar análisis", type="primary", use_container_width=True, disabled=not issues)
+start_analysis = analysis_col.button("Iniciar análisis", type="primary", width="stretch", disabled=not issues)
 if start_analysis:
     for stale_key in ("last_batch_result", "batch_pdf", "batch_docx"):
         st.session_state.pop(stale_key, None)
@@ -1689,7 +1719,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                     if columnas_disponibles
                     else df
                 ),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -1731,7 +1761,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
 
         if st.button(
             "Generar Reporte Ejecutivo",
-            use_container_width=True,
+            width="stretch",
             key="generate_batch_pdf",
         ):
             st.session_state.batch_pdf = (
@@ -1746,7 +1776,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                 st.session_state.batch_pdf,
                 "Reporte_Ejecutivo_Lote.pdf",
                 "application/pdf",
-                use_container_width=True,
+                width="stretch",
             )
 
     with col_docx:
@@ -1759,7 +1789,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
 
         if st.button(
             "Generar Documento Formal",
-            use_container_width=True,
+            width="stretch",
             key="generate_batch_docx",
         ):
             st.session_state.batch_docx = (
@@ -1777,5 +1807,5 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                     "application/vnd.openxmlformats-"
                     "officedocument.wordprocessingml.document"
                 ),
-                use_container_width=True,
+                width="stretch",
             )

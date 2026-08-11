@@ -253,11 +253,12 @@ def _construir_ms04(ms04_summary, ms04_raw):
             continue
         nombre_control = item.get("control", "")
         definido_info = definidos_map.get(nombre_control)
+        responsables = definido_info.get("elementos_responsables", []) if definido_info else []
         controles.append({
             "control": nombre_control,
             "aspecto": item.get("aspecto_relacionado", ""),
             "definido": definido_info is not None,
-            "responsable": definido_info.get("elemento_responsable") if definido_info else None,
+            "responsables": ", ".join(responsables) if responsables else "",
             "medida_documentada": definido_info.get("medida_documentada") if definido_info else None,
         })
 

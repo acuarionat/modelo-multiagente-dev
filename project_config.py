@@ -4,7 +4,7 @@ import os
 import sqlite3
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database", "database.db")
-FIELDS = ("name", "description", "general_objective", "specific_objectives", "scope", "actors", "gitlab_url", "gitlab_project", "gitlab_token")
+FIELDS = ("name", "gitlab_url", "gitlab_project", "gitlab_token")
 
 
 def _connect():

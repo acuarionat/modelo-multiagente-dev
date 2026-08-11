@@ -13,6 +13,7 @@ from agents.design_quality_agent import analizar_calidad_diseno
 from agents.design_security_agent import analizar_seguridad_diseno
 from agents.design_evaluator_agent import analizar_evaluador_diseno
 from core.design_contract import (
+    normalizar_elementos_responsables,
     validar_salida_central_diseno, validar_salida_calidad_diseno,
     validar_salida_seguridad_diseno, validar_salida_evaluador_diseno,
 )
@@ -21,6 +22,24 @@ from core.design_metrics import (
     calcular_indice_calidad_diseno, calcular_indice_seguridad_diseno,
     determinar_estado_diseno,
 )
+from agents.coding_central_agent import procesar_codificacion_central
+from agents.coding_quality_agent import analizar_calidad_codificacion
+from agents.coding_security_agent import analizar_seguridad_codificacion
+from agents.coding_evaluator_agent import analizar_evaluador_codificacion
+from core.coding_contract import (
+    validar_salida_central_codificacion, validar_salida_calidad_codificacion,
+    validar_salida_seguridad_codificacion, validar_salida_evaluador_codificacion,
+)
+from core.coding_context import construir_contexto_codificacion
+from core.coding_metrics import (
+    calcular_mc05, calcular_ms05, calcular_ms06, calcular_ms07,
+    calcular_indice_calidad_codigo, calcular_indice_seguridad_codigo,
+    determinar_estado_codificacion,
+)
+from core.code_analysis.radon_analyzer import ejecutar_radon
+from core.code_analysis.semgrep_analyzer import ejecutar_semgrep
+from core.code_analysis.dependency_analyzer import ejecutar_pip_audit
+from core.code_analysis.secrets_analyzer import ejecutar_gitleaks
 import json
 from datetime import datetime
 from core.config import LOGS_DIR
@@ -1005,6 +1024,10 @@ def nodo_design_security(state: AgentState):
     parsed = analizar_respuesta_lote(respuesta, "Design_Security")
     resultado = parsed["resultados"][0]
 
+    for control in (resultado.get("cobertura_controles") or {}).get("controles_definidos", []):
+        control["elementos_responsables"] = normalizar_elementos_responsables(control)
+        control.pop("elemento_responsable", None)
+
     valid_element_ids = {
         elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
     }
@@ -1167,6 +1190,323 @@ def construir_grafo_diseno():
     workflow.add_edge("Design_Security", "Design_Evaluator")
     workflow.add_edge("Design_Evaluator", "Design_Central_Final")
     workflow.add_edge("Design_Central_Final", END)
+
+    app = workflow.compile()
+    return app
+
+
+# 1c. Definición de Nodos de Codificación (independientes de Requerimientos y de Diseño)
+
+def nodo_coding_prepare(state: AgentState):
+    """
+    Nodo de preparación de Codificación: ejecuta Radon, Semgrep, pip-audit y
+    Gitleaks sobre el código ya localizado (integrations/code_repository_service.py,
+    ejecutado antes del grafo) y ensambla el contexto completo del COD.
+    No es un agente LLM: solo herramientas locales y ensamblado determinístico.
+    """
+    logger.info("▶ Iniciando preparación de Codificación (herramientas de análisis)...")
+    registrar_evento_grafo("node_start", "Coding_Prepare")
+    start_time = time.time()
+
+    issue_codificacion = state["coding_issues"][0]
+    matriz_entrada = state["coding_matrix_input"]
+    codigo_localizado = state["coding_codigo_localizado"]
+    workspace = codigo_localizado["workspace"]
+
+    try:
+        evidencia_herramientas = {
+            "radon": ejecutar_radon(workspace),
+            "semgrep": ejecutar_semgrep(workspace),
+            "pip_audit": ejecutar_pip_audit(codigo_localizado["manifiesto_dependencias"], workspace),
+            "gitleaks": ejecutar_gitleaks(workspace),
+        }
+    finally:
+        import shutil
+        shutil.rmtree(workspace, ignore_errors=True)
+
+    registrar_evento_grafo(
+        "coding_tools_summary",
+        "Coding_Prepare",
+        radon_estado=evidencia_herramientas["radon"].get("estado"),
+        radon_funciones_analizadas=(
+            evidencia_herramientas["radon"].get("funciones_analizadas")
+            or len(evidencia_herramientas["radon"].get("funciones", []))
+        ),
+        semgrep_estado=evidencia_herramientas["semgrep"].get("estado"),
+        semgrep_hallazgos=len(
+            evidencia_herramientas["semgrep"].get("hallazgos", [])
+        ),
+        semgrep_criticos=(
+            evidencia_herramientas["semgrep"].get("vulnerabilidades_criticas")
+            or 0
+        ),
+        pip_audit_estado=evidencia_herramientas["pip_audit"].get("estado"),
+        pip_audit_dependencias_analizadas=(
+            evidencia_herramientas["pip_audit"].get("dependencias_analizadas")
+            or 0
+        ),
+        pip_audit_dependencias_vulnerables=len(
+            evidencia_herramientas["pip_audit"].get(
+                "dependencias_con_hallazgos", []
+            )
+        ),
+        gitleaks_estado=evidencia_herramientas["gitleaks"].get("estado"),
+        gitleaks_archivos_analizados=(
+            evidencia_herramientas["gitleaks"].get("archivos_analizados")
+            or 0
+        ),
+        gitleaks_hallazgos=len(
+            evidencia_herramientas["gitleaks"].get("hallazgos", [])
+        ),
+    )
+
+    contexto = construir_contexto_codificacion(
+        issue_codificacion, matriz_entrada, codigo_localizado, evidencia_herramientas,
+    )
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Preparación de Codificación completada en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Coding_Prepare", elapsed_seconds=round(elapsed, 4))
+
+    return {"coding_context": [contexto], "coding_tool_results": evidencia_herramientas}
+
+
+def nodo_coding_central(state: AgentState):
+    """Nodo Central de Codificación: valida coherencia declarado-vs-evidencia y relaciona COD con ED."""
+    logger.info("▶ Iniciando Agente Central de Codificación...")
+    registrar_evento_grafo("node_start", "Coding_Central")
+    start_time = time.time()
+
+    coding_context = state["coding_context"]
+    contexto = coding_context[0]
+
+    respuesta = procesar_codificacion_central(
+        project_name=state["project_name"],
+        coding_context_json_str=json.dumps(coding_context, ensure_ascii=False),
+        sprint_context=state["sprint_context"],
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Coding_Central")
+    resultado = parsed["resultados"][0]
+
+    valid_element_ids = {
+        item["elemento_id"] for item in contexto["elementos_diseno_contextualizados"]
+    }
+    valid_archivos = {
+        archivo["ruta"] for archivo in contexto["archivos_localizados"] if archivo.get("estado") == "OK"
+    }
+    validacion = validar_salida_central_codificacion(
+        resultado, [contexto["issue_iid"]], valid_element_ids, valid_archivos,
+    )
+    if not validacion["valido"]:
+        raise ValueError(f"Coding_Central: salida inválida: {validacion['errores']}")
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Central de Codificación completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Coding_Central", elapsed_seconds=round(elapsed, 4))
+
+    return {"coding_central_result": resultado}
+
+
+def nodo_coding_quality(state: AgentState):
+    """Nodo de Calidad de Codificación: MC-05 ya calculado por Python (Radon); el agente solo interpreta."""
+    logger.info("▶ Iniciando Agente de Calidad de Codificación...")
+    registrar_evento_grafo("node_start", "Coding_Quality")
+    start_time = time.time()
+
+    contexto = state["coding_context"][0]
+    evidencia_radon = state["coding_tool_results"]["radon"]
+    mc05_calculado = calcular_mc05(evidencia_radon)
+
+    entrada = {
+        "issue_iid": contexto["issue_iid"],
+        "codificacion_id": contexto["codificacion_id"],
+        "mc05": mc05_calculado,
+        "evidencia_radon": evidencia_radon,
+    }
+
+    respuesta = analizar_calidad_codificacion(
+        entrada_json_str=json.dumps([entrada], ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Coding_Quality")
+    resultado = parsed["resultados"][0]
+
+    validacion = validar_salida_calidad_codificacion(resultado)
+    if not validacion["valido"]:
+        raise ValueError(f"Coding_Quality: salida inválida: {validacion['errores']}")
+
+    coding_quality_result = {"raw": resultado, "mc05": mc05_calculado}
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Calidad de Codificación completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Coding_Quality", elapsed_seconds=round(elapsed, 4))
+
+    return {"coding_quality_result": coding_quality_result}
+
+
+def nodo_coding_security(state: AgentState):
+    """Nodo de Seguridad de Codificación: MS-05/MS-06/MS-07 ya calculados por Python; el agente solo interpreta."""
+    logger.info("▶ Iniciando Agente de Seguridad de Codificación...")
+    registrar_evento_grafo("node_start", "Coding_Security")
+    start_time = time.time()
+
+    contexto = state["coding_context"][0]
+    tool_results = state["coding_tool_results"]
+    ms05_calculado = calcular_ms05(tool_results["semgrep"])
+    ms06_calculado = calcular_ms06(tool_results["pip_audit"])
+    ms07_calculado = calcular_ms07(tool_results["gitleaks"])
+
+    entrada = {
+        "issue_iid": contexto["issue_iid"],
+        "codificacion_id": contexto["codificacion_id"],
+        "ms05": ms05_calculado,
+        "ms06": ms06_calculado,
+        "ms07": ms07_calculado,
+        "evidencia_semgrep": tool_results["semgrep"],
+        "evidencia_pip_audit": tool_results["pip_audit"],
+        "evidencia_gitleaks": tool_results["gitleaks"],
+    }
+
+    respuesta = analizar_seguridad_codificacion(
+        entrada_json_str=json.dumps([entrada], ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Coding_Security")
+    resultado = parsed["resultados"][0]
+
+    validacion = validar_salida_seguridad_codificacion(resultado)
+    if not validacion["valido"]:
+        raise ValueError(f"Coding_Security: salida inválida: {validacion['errores']}")
+
+    coding_security_result = {
+        "raw": resultado, "ms05": ms05_calculado, "ms06": ms06_calculado, "ms07": ms07_calculado,
+    }
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Seguridad de Codificación completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Coding_Security", elapsed_seconds=round(elapsed, 4))
+
+    return {"coding_security_result": coding_security_result}
+
+
+def nodo_coding_evaluator(state: AgentState):
+    """Nodo Evaluador de Codificación: consolida hallazgos a partir de métricas ya calculadas (solo lectura)."""
+    logger.info("▶ Iniciando Agente Evaluador de Codificación...")
+    registrar_evento_grafo("node_start", "Coding_Evaluator")
+    start_time = time.time()
+
+    contexto = state["coding_context"][0]
+    quality_result = state["coding_quality_result"]
+    security_result = state["coding_security_result"]
+
+    entrada_evaluador = {
+        "issue_iid": contexto["issue_iid"],
+        "codificacion_id": contexto["codificacion_id"],
+        "calidad": {"mc05": quality_result["mc05"]},
+        "seguridad": {
+            "ms05": security_result["ms05"],
+            "ms06": security_result["ms06"],
+            "ms07": security_result["ms07"],
+        },
+        "interpretacion_calidad": quality_result["raw"],
+        "interpretacion_seguridad": security_result["raw"],
+    }
+
+    respuesta = analizar_evaluador_codificacion(
+        issues_json_str=json.dumps([entrada_evaluador], ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Coding_Evaluator")
+    resultado = parsed["resultados"][0]
+
+    valid_element_ids = {
+        item["elemento_id"] for item in contexto["elementos_diseno_contextualizados"]
+    }
+    validacion = validar_salida_evaluador_codificacion(
+        resultado, contexto["issue_iid"], contexto["codificacion_id"], valid_element_ids,
+    )
+    if not validacion["valido"]:
+        raise ValueError(f"Coding_Evaluator: salida inválida: {validacion['errores']}")
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Evaluador de Codificación completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Coding_Evaluator", elapsed_seconds=round(elapsed, 4))
+
+    return {"coding_evaluator_result": resultado}
+
+
+def nodo_coding_central_final(state: AgentState):
+    """Nodo final de Codificación (determinístico, solo Python): índices, correcciones y estado orientativo."""
+    logger.info("▶ Iniciando Nodo de Consolidación de Codificación (Final, solo Python)...")
+    registrar_evento_grafo("node_start", "Coding_Central_Final")
+    start_time = time.time()
+
+    contexto = state["coding_context"][0]
+    mc05 = state["coding_quality_result"]["mc05"]
+    ms05 = state["coding_security_result"]["ms05"]
+    ms06 = state["coding_security_result"]["ms06"]
+    ms07 = state["coding_security_result"]["ms07"]
+    evaluador = state["coding_evaluator_result"]
+
+    indice_calidad = calcular_indice_calidad_codigo(mc05["valor"])
+    indice_seguridad = calcular_indice_seguridad_codigo(ms05["valor"], ms06["valor"], ms07["valor"])
+
+    estado = determinar_estado_codificacion(
+        correcciones_necesarias=evaluador["correcciones_necesarias"],
+        precisiones_necesarias=evaluador["precisiones_necesarias"],
+        oportunidades_mejora=evaluador["oportunidades_mejora"],
+    )
+
+    coding_summary = {
+        "issue_iid": contexto["issue_iid"],
+        "codificacion_id": contexto["codificacion_id"],
+        "metricas": {
+            "MC-05": mc05,
+            "MS-05": ms05,
+            "MS-06": ms06,
+            "MS-07": ms07,
+        },
+        "indice_calidad_codigo": indice_calidad,
+        "indice_seguridad_codigo": indice_seguridad,
+        "estado_orientativo": estado,
+        "correcciones_necesarias": evaluador["correcciones_necesarias"],
+        "precisiones_necesarias": evaluador["precisiones_necesarias"],
+        "oportunidades_mejora": evaluador["oportunidades_mejora"],
+        "matriz_metadata": {
+            "coding_matrix_version": state.get("coding_matrix_version"),
+            "coding_matrix_source": state.get("coding_matrix_source"),
+            "coding_matrix_status": state.get("coding_matrix_status"),
+        },
+    }
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Consolidación de Codificación completada en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Coding_Central_Final", elapsed_seconds=round(elapsed, 4))
+
+    return {"coding_summary": coding_summary}
+
+
+def construir_grafo_codificacion():
+    """Grafo independiente para el flujo de Codificación. No reutiliza los nodos de Requerimientos ni de Diseño."""
+    workflow = StateGraph(AgentState)
+
+    workflow.add_node("Coding_Prepare", nodo_coding_prepare)
+    workflow.add_node("Coding_Central", nodo_coding_central)
+    workflow.add_node("Coding_Quality", nodo_coding_quality)
+    workflow.add_node("Coding_Security", nodo_coding_security)
+    workflow.add_node("Coding_Evaluator", nodo_coding_evaluator)
+    workflow.add_node("Coding_Central_Final", nodo_coding_central_final)
+
+    workflow.set_entry_point("Coding_Prepare")
+
+    workflow.add_edge("Coding_Prepare", "Coding_Central")
+    # Quality y Security son independientes entre sí (ninguno usa la salida
+    # del otro), pero se encadenan en secuencia por el mismo motivo que
+    # Diseño: REMOTE_PACER espacia las llamadas remotas (Groq) para no
+    # agotar los tokens por minuto al ejecutarlas de forma concurrente.
+    workflow.add_edge("Coding_Central", "Coding_Quality")
+    workflow.add_edge("Coding_Quality", "Coding_Security")
+
+    workflow.add_edge("Coding_Security", "Coding_Evaluator")
+    workflow.add_edge("Coding_Evaluator", "Coding_Central_Final")
+    workflow.add_edge("Coding_Central_Final", END)
 
     app = workflow.compile()
     return app
