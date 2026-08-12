@@ -189,7 +189,7 @@ def obtener_llm_para_agente(
 ) -> LLMSelection:
 
     agent = agent_name.strip().casefold()
-    if agent in {"design_central", "coding_central"}:
+    if agent in {"design_central", "coding_central", "testing_central"}:
         # Arranca mapeado al mismo provider/modelo del Central de Requerimientos.
         agent = "central"
 

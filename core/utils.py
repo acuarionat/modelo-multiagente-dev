@@ -2502,6 +2502,7 @@ def generar_reporte_codificacion_pdf(project_name: str, milestone: str, presenta
         encabezado("CALIDAD", 12)
         mc05 = p["metricas"]["MC-05"]
         linea(f"MC-05 {mc05['nombre']}: {extraer_porcentaje(mc05['valor'])} ({mc05.get('estado_calculo', '')})")
+        linea(f"Herramienta: {mc05.get('herramienta', 'Analizador tecnico')}")
         pdf.ln(1)
         linea("Que mide esta metrica:")
         linea(mc05["que_mide"])
@@ -2799,6 +2800,403 @@ def generar_documento_formal_codificacion_docx(project_name: str, milestone: str
 
     # 11. Control del documento
     doc.add_heading("11. Control del documento", 1)
+    table = doc.add_table(rows=1, cols=3)
+    table.style = "Table Grid"
+    hdr = table.rows[0].cells
+    hdr[0].text = "Versión"
+    hdr[1].text = "Fecha"
+    hdr[2].text = "Estado"
+    row = table.add_row().cells
+    row[0].text = "1.0"
+    row[1].text = datetime.now().strftime("%Y-%m-%d")
+    row[2].text = "Pendiente de revisión"
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def generar_reporte_pruebas_pdf(project_name: str, milestone: str, presentaciones: list, resumen_trazabilidad: dict, matriz_metadata: dict = None) -> io.BytesIO:
+    """
+    Reporte Ejecutivo Consolidado de Pruebas. Consume objetos de
+    construir_presentacion_resultado_pruebas(). No recalcula nada.
+    """
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
+    if not presentaciones:
+        raise ValueError("No existen Pruebas completas para generar el PDF.")
+
+    def _valores_evaluados(codigo):
+        return [
+            p["metricas"][codigo]["valor"] for p in presentaciones
+            if p["metricas"][codigo].get("estado_calculo") == "EVALUADO" and p["metricas"][codigo].get("valor") is not None
+        ]
+
+    valores_mc07 = _valores_evaluados("MC-07")
+    valores_mc08 = _valores_evaluados("MC-08")
+    valores_ms08 = _valores_evaluados("MS-08")
+    valores_ms09 = _valores_evaluados("MS-09")
+    con_error = sum(1 for p in presentaciones if p.get("estado_orientativo") == "ERROR")
+
+    pdf = FPDF()
+    pdf.set_margins(20, 20, 20)
+    pdf.add_page()
+    kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
+
+    def encabezado(text, size=14):
+        pdf.set_font("Helvetica", style="B", size=size)
+        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
+
+    def linea(text):
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
+
+    def bullet(text):
+        linea(f"- {text}")
+
+    encabezado("Reporte Ejecutivo Consolidado — Pruebas", 16)
+    linea(DECISION_SUPPORT_NOTICE)
+    pdf.ln(2)
+    linea(f"Proyecto: {project_name}")
+    linea(f"Milestone: {milestone}")
+    linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    if matriz_metadata:
+        pdf.ln(2)
+        encabezado("Matriz de entrada (Codificación heredada)", 12)
+        linea(f"Fuente: {matriz_metadata.get('fuente', 'No informado')}")
+    pdf.ln(4)
+
+    encabezado("Resumen global", 13)
+    linea(f"Pruebas procesadas: {len(presentaciones)} | Con error: {con_error}")
+    linea(f"MC-07 Correccion Funcional promedio: {extraer_porcentaje(sum(valores_mc07) / len(valores_mc07) if valores_mc07 else None)}")
+    linea(f"MC-08 Correccion de Fallos promedio: {extraer_porcentaje(sum(valores_mc08) / len(valores_mc08) if valores_mc08 else None)}")
+    linea(f"MS-08 Cobertura de Verificacion de Controles promedio: {extraer_porcentaje(sum(valores_ms08) / len(valores_ms08) if valores_ms08 else None)}")
+    linea(f"MS-09 Pruebas de Seguridad Satisfactorias promedio: {extraer_porcentaje(sum(valores_ms09) / len(valores_ms09) if valores_ms09 else None)}")
+    linea(f"Codificaciones verificadas: {resumen_trazabilidad.get('verificadas', 0)}")
+    linea(f"Codificaciones con fallo pendiente: {resumen_trazabilidad.get('con_fallo_pendiente', 0)}")
+    linea(f"Codificaciones pendientes de revision: {resumen_trazabilidad.get('pendientes_revision', 0)}")
+    linea(f"Codificaciones no evaluadas: {resumen_trazabilidad.get('no_evaluadas', 0)}")
+
+    for p in presentaciones:
+        pdf.add_page()
+        encabezado(f"{p['prueba_id']} — {p.get('titulo', '')}", 13)
+        linea(f"Estado orientativo: {p['estado_orientativo']}")
+        linea(f"Codificaciones evaluadas: {', '.join(p.get('codificaciones_relacionadas', [])) or 'Ninguna.'}")
+        pdf.ln(2)
+
+        # --- CALIDAD ---
+        encabezado("CALIDAD", 12)
+        mc07 = p["metricas"]["MC-07"]
+        linea(f"MC-07 {mc07['nombre']}: {extraer_porcentaje(mc07['valor'])} ({mc07.get('estado_calculo', '')})")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(mc07["que_mide"])
+        pdf.ln(1)
+        linea("Funcionalidades con brecha:")
+        funcionalidades_con_brecha = mc07.get("funcionalidades_con_brecha", [])
+        for funcionalidad in funcionalidades_con_brecha:
+            bullet(f"{funcionalidad.get('funcionalidad', '')}: {funcionalidad.get('explicacion', '')}")
+        if not funcionalidades_con_brecha:
+            linea("Ninguna.")
+        linea(f"Resultado: {mc07['resultado']}")
+        if mc07.get("conclusion"):
+            linea(f"Conclusion: {mc07['conclusion']}")
+        pdf.ln(2)
+
+        mc08 = p["metricas"]["MC-08"]
+        linea(f"MC-08 {mc08['nombre']}: {extraer_porcentaje(mc08['valor'])} ({mc08.get('estado_calculo', '')})")
+        linea(f"Fallos detectados/corregidos/verificados: {mc08.get('fallos_detectados')}/{mc08.get('fallos_corregidos')}/{mc08.get('fallos_corregidos_verificados')}")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(mc08["que_mide"])
+        fallos_pendientes = mc08.get("fallos_pendientes", [])
+        for fallo in fallos_pendientes:
+            bullet(f"{fallo.get('fallo', '')}: {fallo.get('explicacion', '')}")
+        if not fallos_pendientes:
+            linea("Ninguno.")
+        linea(f"Resultado: {mc08['resultado']}")
+        if mc08.get("conclusion"):
+            linea(f"Conclusion: {mc08['conclusion']}")
+        pdf.ln(2)
+
+        # --- SEGURIDAD ---
+        encabezado("SEGURIDAD", 12)
+        ms08 = p["metricas"]["MS-08"]
+        linea(f"MS-08 {ms08['nombre']}: {extraer_porcentaje(ms08['valor'])} ({ms08.get('estado_calculo', '')})")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(ms08["que_mide"])
+        controles_no_verificados = ms08.get("controles_no_verificados", [])
+        for control in controles_no_verificados:
+            bullet(f"{control.get('control', '')}: {control.get('explicacion', '')}")
+        if not controles_no_verificados:
+            linea("Ninguno.")
+        linea(f"Resultado: {ms08['resultado']}")
+        if ms08.get("conclusion"):
+            linea(f"Conclusion: {ms08['conclusion']}")
+        pdf.ln(2)
+
+        ms09 = p["metricas"]["MS-09"]
+        linea(f"MS-09 {ms09['nombre']}: {extraer_porcentaje(ms09['valor'])} ({ms09.get('estado_calculo', '')})")
+        pdf.ln(1)
+        linea("Que mide esta metrica:")
+        linea(ms09["que_mide"])
+        pruebas_fallidas = ms09.get("pruebas_fallidas", [])
+        for prueba in pruebas_fallidas:
+            bullet(f"{prueba.get('prueba_realizada', '')}: {prueba.get('explicacion', '')}")
+        if not pruebas_fallidas:
+            linea("Ninguna.")
+        linea(f"Resultado: {ms09['resultado']}")
+        if ms09.get("conclusion"):
+            linea(f"Conclusion: {ms09['conclusion']}")
+        pdf.ln(2)
+
+        # --- HALLAZGOS ---
+        encabezado("Correcciones necesarias", 11)
+        correcciones = deduplicar_textos_estables(p.get("correcciones_necesarias", []))
+        for item in correcciones or ["Ninguna."]:
+            bullet(item) if correcciones else linea(item)
+
+        encabezado("Precisiones", 11)
+        precisiones = deduplicar_textos_estables(p.get("precisiones_necesarias", []))
+        for item in precisiones or ["Ninguna."]:
+            bullet(item) if precisiones else linea(item)
+
+        encabezado("Oportunidades de mejora", 11)
+        oportunidades = deduplicar_textos_estables(p.get("oportunidades_mejora", []))
+        for item in oportunidades or ["Ninguna."]:
+            bullet(item) if oportunidades else linea(item)
+
+        if p.get("recomendacion_revision"):
+            encabezado("Recomendacion de revision", 11)
+            linea(p["recomendacion_revision"])
+
+        # --- TRAZABILIDAD ---
+        encabezado("Trazabilidad heredada", 11)
+        trazabilidad = p.get("trazabilidad", {})
+        if trazabilidad:
+            for codificacion_id, datos in trazabilidad.items():
+                linea(f"{codificacion_id}:")
+                linea(f"  Elementos de Diseno: {', '.join(datos.get('elementos_diseno', [])) or 'Ninguno.'}")
+                linea(f"  Requisitos: {', '.join(datos.get('requisitos', [])) or 'Ninguno.'}")
+                linea(f"  Historias: {', '.join(datos.get('historias', [])) or 'Ninguna.'}")
+        else:
+            linea("Sin trazabilidad heredada resuelta.")
+
+    pdf_bytes = pdf.output(dest='S')
+    return io.BytesIO(pdf_bytes)
+
+
+def generar_documento_formal_pruebas_docx(project_name: str, milestone: str, presentaciones: list, matriz_metadata: dict = None, filas_trazabilidad: list = None) -> io.BytesIO:
+    """
+    Documento Formal Consolidado de Pruebas. Consume objetos de
+    construir_presentacion_resultado_pruebas(). NO es un reporte de
+    evaluación: no incluye porcentajes, índices ni estados orientativos.
+    Formaliza las pruebas realizadas, los resultados obtenidos, los
+    fallos y su verificación, la verificación de seguridad, las
+    evidencias registradas y los aspectos pendientes.
+    """
+    from docx import Document
+    if not presentaciones:
+        raise ValueError("No existen Pruebas completas para generar el DOCX.")
+
+    doc = Document()
+    doc.add_heading("Documento Formal Consolidado de Pruebas", 0)
+    doc.add_paragraph(DECISION_SUPPORT_NOTICE)
+    doc.add_paragraph(f"Proyecto: {project_name}")
+    doc.add_paragraph(f"Milestone: {milestone}")
+    doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    doc.add_paragraph("Versión: 1.0")
+    if matriz_metadata:
+        doc.add_paragraph("Matriz de entrada (Codificación heredada):")
+        doc.add_paragraph(f"Fuente: {matriz_metadata.get('fuente', 'No informado')}")
+    doc.add_page_break()
+
+    doc.add_heading("1. Información general", 1)
+    doc.add_paragraph(
+        "El presente documento constituye el artefacto formal consolidado de "
+        "la etapa de Pruebas. Registra las pruebas realizadas sobre las "
+        "implementaciones evaluadas, sus resultados, los fallos detectados "
+        "y su corrección, la verificación de los controles de seguridad "
+        "aplicables y las evidencias disponibles."
+    )
+
+    doc.add_heading("2. Implementaciones evaluadas", 1)
+    codificaciones = sorted({
+        codigo for p in presentaciones for codigo in p.get("codificaciones_relacionadas", [])
+    })
+    doc.add_paragraph(
+        f"Este documento formaliza {len(presentaciones)} Issue(s) de Pruebas, que evaluaron: "
+        + (", ".join(codificaciones) if codificaciones else "ninguna Codificación identificada") + "."
+    )
+
+    for p in presentaciones:
+        ctx = p.get("contexto_original", {})
+        doc.add_page_break()
+        doc.add_heading(f"{p['prueba_id']} — {p.get('titulo', '')}", 1)
+
+        # 3. Resumen de pruebas realizadas
+        doc.add_heading("3. Resumen de pruebas realizadas", 2)
+        doc.add_paragraph(ctx.get("descripcion") or "Sin descripción documentada.")
+        doc.add_paragraph(
+            "Implementaciones evaluadas: " + (", ".join(p.get("codificaciones_relacionadas", [])) or "Ninguna.")
+        )
+
+        # 4. Pruebas funcionales
+        doc.add_heading("4. Pruebas funcionales", 2)
+        pruebas_funcionales = ctx.get("pruebas_funcionales") or []
+        if pruebas_funcionales:
+            table = doc.add_table(rows=1, cols=4)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "Funcionalidad evaluada"
+            hdr[1].text = "Prueba realizada"
+            hdr[2].text = "Resultado obtenido"
+            hdr[3].text = "Estado"
+            for prueba in pruebas_funcionales:
+                row = table.add_row().cells
+                row[0].text = prueba.get("funcionalidad", "")
+                row[1].text = prueba.get("prueba_realizada", "")
+                row[2].text = prueba.get("resultado_obtenido", "")
+                row[3].text = prueba.get("estado", "") or "No reconocido"
+        else:
+            doc.add_paragraph("No se registraron pruebas funcionales.")
+
+        # 5. Fallos y correcciones
+        doc.add_heading("5. Fallos y correcciones", 2)
+        fallos = ctx.get("fallos") or []
+        if fallos:
+            table = doc.add_table(rows=1, cols=4)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "Fallo detectado"
+            hdr[1].text = "Detectado en"
+            hdr[2].text = "Corregido"
+            hdr[3].text = "Verificado"
+            for fallo in fallos:
+                row = table.add_row().cells
+                row[0].text = fallo.get("fallo", "")
+                row[1].text = fallo.get("detectado_en", "")
+                row[2].text = "Sí" if fallo.get("corregido") else "No"
+                row[3].text = "Sí" if fallo.get("verificado") else "No"
+        else:
+            doc.add_paragraph("No se detectaron fallos durante las pruebas realizadas.")
+
+        # 6. Verificación de seguridad
+        doc.add_heading("6. Verificación de seguridad", 2)
+        doc.add_heading("6.1 Controles de seguridad verificados", 3)
+        controles = ctx.get("controles_seguridad") or []
+        if controles:
+            table = doc.add_table(rows=1, cols=4)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "Control o medida de seguridad"
+            hdr[1].text = "Aplicable"
+            hdr[2].text = "Verificado"
+            hdr[3].text = "Resultado"
+            for control in controles:
+                row = table.add_row().cells
+                row[0].text = control.get("control", "")
+                row[1].text = "Sí" if control.get("aplica") else "No"
+                row[2].text = "Sí" if control.get("verificado") else "No"
+                row[3].text = control.get("resultado", "")
+        else:
+            doc.add_paragraph("No se identificaron controles de seguridad aplicables.")
+
+        doc.add_heading("6.2 Pruebas de seguridad realizadas", 3)
+        pruebas_seguridad = ctx.get("pruebas_seguridad") or []
+        if pruebas_seguridad:
+            table = doc.add_table(rows=1, cols=3)
+            table.style = "Table Grid"
+            hdr = table.rows[0].cells
+            hdr[0].text = "Prueba realizada"
+            hdr[1].text = "Resultado obtenido"
+            hdr[2].text = "Estado"
+            for prueba in pruebas_seguridad:
+                row = table.add_row().cells
+                row[0].text = prueba.get("prueba_realizada", "")
+                row[1].text = prueba.get("resultado_obtenido", "")
+                row[2].text = prueba.get("estado", "") or "No reconocido"
+        else:
+            doc.add_paragraph("No se realizaron pruebas de seguridad.")
+
+        # 7. Evidencias registradas
+        doc.add_heading("7. Evidencias registradas", 2)
+        evidencias = ctx.get("evidencias") or []
+        if evidencias:
+            for evidencia in evidencias:
+                doc.add_paragraph(
+                    f"{evidencia.get('tipo_evidencia', '')}: {evidencia.get('descripcion', '')}"
+                    f" (relacionada con {evidencia.get('prueba_o_fallo_relacionado', '')})",
+                    style="List Bullet",
+                )
+        else:
+            doc.add_paragraph("No se adjuntaron evidencias adicionales.")
+
+        # 8. Hallazgos
+        doc.add_heading("8. Hallazgos", 2)
+        correcciones = deduplicar_textos_estables(p.get("correcciones_necesarias") or [])
+        if correcciones:
+            for correccion in correcciones:
+                doc.add_paragraph(correccion, style="List Bullet")
+        else:
+            doc.add_paragraph("Sin hallazgos que requieran corrección.")
+
+        # 9. Aspectos pendientes
+        doc.add_heading("9. Aspectos pendientes", 2)
+        pendientes = ctx.get("pendientes") or []
+        precisiones = deduplicar_textos_estables(p.get("precisiones_necesarias") or [])
+        aspectos_pendientes = deduplicar_textos_estables(pendientes + precisiones)
+        if aspectos_pendientes:
+            for aspecto in aspectos_pendientes:
+                doc.add_paragraph(aspecto, style="List Bullet")
+                doc.add_paragraph("Estado: Pendiente de revisión.")
+        else:
+            doc.add_paragraph("Sin aspectos pendientes identificados.")
+
+        # 10. Recomendaciones
+        doc.add_heading("10. Recomendaciones", 2)
+        oportunidades = deduplicar_textos_estables(p.get("oportunidades_mejora") or [])
+        if p.get("recomendacion_revision"):
+            doc.add_paragraph(p["recomendacion_revision"])
+        for oportunidad in oportunidades:
+            doc.add_paragraph(oportunidad, style="List Bullet")
+        if not oportunidades and not p.get("recomendacion_revision"):
+            doc.add_paragraph("Sin recomendaciones adicionales.")
+
+        # 11. Observaciones
+        doc.add_heading("11. Observaciones", 2)
+        observaciones = ctx.get("observaciones") or []
+        if observaciones:
+            for observacion in observaciones:
+                doc.add_paragraph(observacion, style="List Bullet")
+        else:
+            doc.add_paragraph("Ninguna.")
+
+    # 12. Trazabilidad final
+    doc.add_page_break()
+    doc.add_heading("12. Trazabilidad final", 1)
+    columnas_trz = [
+        "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
+        "Elementos de Diseño", "Codificación", "Estado de Codificación",
+        "Pruebas", "Estado de Pruebas",
+    ]
+    if filas_trazabilidad:
+        table = doc.add_table(rows=1, cols=len(columnas_trz))
+        table.style = "Table Grid"
+        hdr = table.rows[0].cells
+        for i, col in enumerate(columnas_trz):
+            hdr[i].text = col
+        for fila in filas_trazabilidad:
+            row = table.add_row().cells
+            for i, col in enumerate(columnas_trz):
+                row[i].text = str(fila.get(col, ""))
+    else:
+        doc.add_paragraph("No se generaron filas de trazabilidad.")
+
+    # 13. Control del documento
+    doc.add_heading("13. Control del documento", 1)
     table = doc.add_table(rows=1, cols=3)
     table.style = "Table Grid"
     hdr = table.rows[0].cells

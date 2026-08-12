@@ -1,7 +1,10 @@
+import logging
 import os
 import unicodedata
 import gitlab
 from typing import List, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 PENDING_LABEL = "Pendiente"
 REVIEWED_LABEL = "Revisada"
@@ -187,10 +190,11 @@ class GitLabAdapter:
 
         Retorna lista de dicts: [{"nombre": "src", "ruta": "src", "tipo": "directorio"}, ...]
         """
+        ref = ref or self.project.default_branch
+        logger.info("default_branch=%s", ref)
         try:
-            ref = ref or self.obtener_rama_predeterminada()
             tree = self.project.repository_tree(ref=ref, recursive=True, get_all=True)
-            return [
+            resultado = [
                 {
                     "nombre": item["name"],
                     "ruta": item["path"],
@@ -198,8 +202,21 @@ class GitLabAdapter:
                 }
                 for item in tree
             ]
-        except Exception:
-            return []
+            logger.info(
+                "REPOSITORY_TREE_OK project_id=%s ref=%s items=%s",
+                self.project_id,
+                ref,
+                len(resultado),
+            )
+            return resultado
+        except Exception as exc:
+            logger.exception(
+                "No se pudo obtener el árbol del repositorio "
+                "project_id=%s ref=%s",
+                self.project_id,
+                ref,
+            )
+            raise
 
     def obtener_archivo_repositorio(self, ruta: str, *, ref: Optional[str] = None) -> bytes:
         """Obtiene el contenido de un archivo del repositorio.

@@ -1,0 +1,9 @@
+{
+  "name": "modelo-multiagente-dev-code-analysis-tools",
+  "private": true,
+  "description": "Dependencias de herramientas Node/JS usadas por core/code_analysis/ para analizar repositorios JavaScript/TypeScript (MC-05). No es una aplicación Node: solo fija las versiones de ESLint y su parser de TypeScript que invoca eslint_complexity_analyzer.py.",
+  "dependencies": {
+    "eslint": "^10.8.1",
+    "@typescript-eslint/parser": "^8.0.0"
+  }
+}

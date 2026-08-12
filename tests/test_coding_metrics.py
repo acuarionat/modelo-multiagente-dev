@@ -81,19 +81,29 @@ assert ms06_no_aplica["valor"] is None  # nunca 0 %
 # MS-07
 # ==========================================================
 
-evidencia_gitleaks_ok = {"estado": "OK", "datos": {
-    "archivos_analizados": ["a.py", "b.py", "c.py", "d.py"],
+evidencia_gitleaks_ok = {
+    "herramienta": "gitleaks",
+    "estado": "OK",
+    "secretos_detectados": 1,
     "archivos_con_secretos": ["b.py"],
-}}
-ms07 = calcular_ms07(evidencia_gitleaks_ok)
+    "total_archivos_con_secretos": 1,
+    "hallazgos": [],
+}
+ms07 = calcular_ms07(evidencia_gitleaks_ok, ["a.py", "b.py", "c.py", "d.py"])
 print("\nMS-07 (OK):", ms07)
 assert ms07["numerador"] == 3 and ms07["denominador"] == 4
 assert ms07["valor"] == 0.75
+assert ms07["archivos_con_secretos"] == 1
 
-ms07_error = calcular_ms07({"estado": "ERROR", "detalle_error": "gitleaks no encontrado"})
+ms07_error = calcular_ms07({"estado": "ERROR", "motivo": "gitleaks no encontrado"}, ["a.py"])
 print("MS-07 (ERROR):", ms07_error)
 assert ms07_error["estado_calculo"] == "no_evaluable"
 assert ms07_error["valor"] is None  # nunca 0 %, herramienta ausente ≠ 0 secretos
+
+ms07_sin_evidencia = calcular_ms07(evidencia_gitleaks_ok, [])
+print("MS-07 (SIN_EVIDENCIA):", ms07_sin_evidencia)
+assert ms07_sin_evidencia["estado_calculo"] == "sin_evidencia"
+assert ms07_sin_evidencia["valor"] is None
 
 
 # ==========================================================

@@ -43,13 +43,31 @@ class InvocationResult:
     used_fallback: bool = False
 
 
+def normalizar_json_llm(texto: str) -> str:
+    """
+    Normalización sintáctica MÍNIMA de una respuesta de LLM antes de
+    json.loads(): solo quita fences Markdown (```json ... ``` o ``` ... ```)
+    que no forman parte del JSON. NO repara JSON roto, NO agrega llaves,
+    NO elimina comas: si el contenido no es JSON válido después de esto,
+    debe seguir fallando en json.loads().
+    """
+    valor = str(texto or "").strip()
+    if valor.startswith("```json"):
+        valor = valor[len("```json"):].strip()
+    elif valor.startswith("```"):
+        valor = valor[3:].strip()
+    if valor.endswith("```"):
+        valor = valor[:-3].strip()
+    return valor
+
+
 def registrar_resumen_respuesta(
     agent_name: str, result: InvocationResult, content: str,
 ) -> dict[str, Any]:
     valid_json = False
     keys = []
     try:
-        parsed = json.loads(content)
+        parsed = json.loads(normalizar_json_llm(content))
         valid_json = True
         keys = sorted(parsed) if isinstance(parsed, dict) else []
     except (TypeError, json.JSONDecodeError):

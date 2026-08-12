@@ -8,6 +8,8 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
+from agents.llm_invocation import normalizar_json_llm
+
 logger = logging.getLogger(__name__)
 
 INVALID_TEXT_VALUES = {
@@ -2916,15 +2918,9 @@ def normalizar_iid(value: Any) -> int | None:
 
 def analizar_respuesta_lote(raw: Any, agent_name: str) -> Dict[str, Any]:
     if isinstance(raw, str):
-        text = raw.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        elif text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
+        text = normalizar_json_llm(raw)
         try:
-            data = json.loads(text.strip())
+            data = json.loads(text)
         except json.JSONDecodeError as first_error:
             # Recupera un objeto JSON completo aunque el modelo haya añadido prosa.
             data = None

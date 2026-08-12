@@ -82,4 +82,37 @@ assert resultado_vacio["descripcion"] == "Ninguna."
 assert resultado_vacio["elementos_diseno_declarados"] == []
 assert resultado_vacio["archivos_declarados"] == []
 
+
+# ---------------------------------------------------------
+# Rutas declaradas con formato de código inline (backticks)
+# ---------------------------------------------------------
+
+DESCRIPCION_COD_BACKTICKS = """
+## 3. Ubicación de la implementación
+
+| Archivo o módulo | Descripción |
+|---|---|
+| `src/App.tsx` | Componente principal |
+| `src/App.css` | Estilos |
+| `package.json` | Dependencias |
+"""
+
+issue_cod_backticks = SimpleNamespace(
+    iid=27,
+    title="COD-003 — Prueba de backticks",
+    description=DESCRIPCION_COD_BACKTICKS,
+    labels=["Pendiente"],
+)
+
+resultado_backticks = mapear_issue_codificacion(issue_cod_backticks)
+print("\n" + "=" * 70)
+print("mapear_issue_codificacion — rutas con backticks")
+print("=" * 70)
+print(resultado_backticks)
+
+assert resultado_backticks["archivos_declarados"][0]["ruta"] == "src/App.tsx"
+assert resultado_backticks["archivos_declarados"][1]["ruta"] == "src/App.css"
+assert resultado_backticks["archivos_declarados"][2]["ruta"] == "package.json"
+assert "`" not in resultado_backticks["archivos_declarados"][0]["ruta"]
+
 print("\nTodas las verificaciones de coding_issue_mapper pasaron.")

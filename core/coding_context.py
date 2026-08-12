@@ -13,6 +13,9 @@ No inventa ED, COD, archivos, RF/RNF ni resultados de herramientas: solo
 organiza lo que ya existe. No evalúa, no calcula métricas.
 """
 
+from core.code_analysis.orchestrator import obtener_evidencia_por_metrica
+from core.coding_context_files import preparar_archivos_para_llm
+
 
 def _indexar_elementos_diseno(matriz_diseno_entrada: list) -> dict:
     """
@@ -73,14 +76,19 @@ def construir_contexto_codificacion(
     salida de mapear_issue_codificacion; matriz_diseno_entrada es la matriz
     de Diseño vigente (ya confirmada); codigo_localizado es la salida de
     integrations.code_repository_service.obtener_codigo_codificacion;
-    evidencia_herramientas es {"radon": ..., "semgrep": ..., "pip_audit": ...,
-    "gitleaks": ...}, cada uno ya normalizado por core/code_analysis/
-    (estado OK/NO_APLICA/ERROR + datos).
+    evidencia_herramientas es la salida de
+    core/code_analysis/orchestrator.py::ejecutar_analizadores_seleccionados
+    ({"<adaptador>": ...}, una clave por cada herramienta realmente
+    ejecutada según la selección de tool_selector.py — p. ej. "radon" o
+    "eslint_complexity" para MC-05 según el lenguaje), cada uno ya
+    normalizado por core/code_analysis/ (estado OK/NO_APLICA/ERROR + datos).
     """
     indice_elementos = _indexar_elementos_diseno(matriz_diseno_entrada)
     elementos_contextualizados, referencias_validas, referencias_invalidas = _contextualizar_elementos_diseno(
         issue_codificacion.get("elementos_diseno_declarados", []), indice_elementos,
     )
+
+    preparacion_archivos = preparar_archivos_para_llm(codigo_localizado.get("archivos", []))
 
     return {
         **issue_codificacion,
@@ -91,14 +99,10 @@ def construir_contexto_codificacion(
             "referencias_invalidas": referencias_invalidas,
         },
 
-        "archivos_localizados": codigo_localizado.get("archivos", []),
+        "archivos_localizados": preparacion_archivos["archivos_para_llm"],
+        "archivos_omitidos_del_contexto": preparacion_archivos["archivos_omitidos_del_contexto"],
         "lenguaje_detectado": codigo_localizado.get("lenguaje"),
         "manifiesto_dependencias": codigo_localizado.get("manifiesto_dependencias"),
 
-        "evidencia_tecnica": {
-            "radon": evidencia_herramientas.get("radon"),
-            "semgrep": evidencia_herramientas.get("semgrep"),
-            "pip_audit": evidencia_herramientas.get("pip_audit"),
-            "gitleaks": evidencia_herramientas.get("gitleaks"),
-        },
+        "evidencia_tecnica": obtener_evidencia_por_metrica(evidencia_herramientas),
     }

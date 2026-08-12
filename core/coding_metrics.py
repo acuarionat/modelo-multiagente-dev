@@ -15,28 +15,38 @@ UMBRAL_MS07_SATISFACTORIO = 0.90
 
 
 def calcular_mc05(evidencia_radon: dict) -> dict:
-    """MC-05 Adecuación de la Complejidad Ciclomática = funciones con CC aceptable / funciones analizadas (Radon)."""
+    """
+    MC-05 Adecuación de la Complejidad Ciclomática = funciones con CC
+    aceptable / funciones analizadas, según la herramienta de complejidad
+    seleccionada para el lenguaje del repositorio (Radon o ESLint —
+    "herramienta" en la evidencia recibida se conserva para presentación).
+    """
+    herramienta = (evidencia_radon or {}).get("herramienta")
     estado_herramienta = (evidencia_radon or {}).get("estado")
     if estado_herramienta != "OK":
         return {
-            "codigo": "MC-05", "valor": None, "numerador": None, "denominador": None,
+            "codigo": "MC-05", "herramienta": herramienta,
+            "valor": None, "numerador": None, "denominador": None,
             "estado_calculo": "no_evaluable",
-            "motivo": (evidencia_radon or {}).get("detalle_error") or f"radon: estado {estado_herramienta!r}.",
+            "motivo": (evidencia_radon or {}).get("detalle_error") or f"{herramienta or 'analizador de complejidad'}: estado {estado_herramienta!r}.",
         }
 
     funciones = (evidencia_radon.get("datos") or {}).get("funciones") or []
     denominador = len(funciones)
     if denominador == 0:
         return {
-            "codigo": "MC-05", "valor": None, "numerador": None, "denominador": None,
-            "estado_calculo": "no_evaluable", "motivo": "Radon no reportó funciones evaluables.",
+            "codigo": "MC-05", "herramienta": herramienta,
+            "valor": None, "numerador": None, "denominador": None,
+            "estado_calculo": "no_evaluable",
+            "motivo": f"{herramienta or 'El analizador de complejidad'} no reportó funciones evaluables.",
         }
 
     numerador = sum(1 for funcion in funciones if funcion.get("aceptable") is True)
     valor = numerador / denominador
 
     return {
-        "codigo": "MC-05", "valor": valor, "numerador": numerador, "denominador": denominador,
+        "codigo": "MC-05", "herramienta": herramienta,
+        "valor": valor, "numerador": numerador, "denominador": denominador,
         "estado_calculo": "calculada",
         "satisfactorio": valor >= UMBRAL_MC05_SATISFACTORIO,
     }
@@ -95,32 +105,66 @@ def calcular_ms06(evidencia_pip_audit: dict) -> dict:
     }
 
 
-def calcular_ms07(evidencia_gitleaks: dict) -> dict:
-    """MS-07 Cobertura de Código sin Secretos Expuestos = archivos sin secretos / archivos analizados (Gitleaks)."""
+def calcular_ms07(evidencia_gitleaks: dict, archivos_analizados: list) -> dict:
+    """
+    MS-07 Cobertura de Código sin Secretos Expuestos =
+    archivos de código analizados sin secretos / archivos de código analizados.
+
+    NO es "cantidad de secretos": una métrica de cobertura de archivos.
+    "archivos_analizados" es el universo de archivos de código del COD
+    (core/code_analysis/secrets_analyzer.py::obtener_archivos_codigo_workspace
+    o el perfil del repositorio), NO el JSON de Gitleaks: Gitleaks solo
+    aporta qué archivos de ese universo tienen secretos.
+    """
     estado_herramienta = (evidencia_gitleaks or {}).get("estado")
+    base = {
+        "codigo": "MS-07",
+        "nombre": "Cobertura de Código sin Secretos Expuestos",
+        "umbral": UMBRAL_MS07_SATISFACTORIO,
+    }
+
     if estado_herramienta != "OK":
         return {
-            "codigo": "MS-07", "valor": None, "numerador": None, "denominador": None,
+            **base,
+            "estado": estado_herramienta,
+            "valor": None, "porcentaje": None, "numerador": None, "denominador": None,
+            "archivos_con_secretos": None, "secretos_detectados": None, "cumple": None,
             "estado_calculo": "no_evaluable",
-            "motivo": (evidencia_gitleaks or {}).get("detalle_error") or f"gitleaks: estado {estado_herramienta!r}.",
+            "motivo": (evidencia_gitleaks or {}).get("motivo") or f"gitleaks: estado {estado_herramienta!r}.",
         }
 
-    datos = evidencia_gitleaks.get("datos") or {}
-    denominador = len(datos.get("archivos_analizados") or [])
-    if denominador == 0:
+    analizados = {str(ruta).replace("\\", "/") for ruta in (archivos_analizados or [])}
+    total = len(analizados)
+    if total == 0:
         return {
-            "codigo": "MS-07", "valor": None, "numerador": None, "denominador": None,
-            "estado_calculo": "no_evaluable", "motivo": "Gitleaks no reportó archivos analizados.",
+            **base,
+            "estado": "OK",
+            "valor": None, "porcentaje": None, "numerador": None, "denominador": None,
+            "archivos_con_secretos": None,
+            "secretos_detectados": evidencia_gitleaks.get("secretos_detectados", 0),
+            "cumple": None,
+            "estado_calculo": "sin_evidencia",
+            "motivo": "No hay archivos de código analizados para calcular MS-07.",
         }
 
-    con_secretos = len(datos.get("archivos_con_secretos") or [])
-    numerador = denominador - con_secretos
-    valor = numerador / denominador
+    con_secretos_gitleaks = {
+        str(ruta).replace("\\", "/") for ruta in (evidencia_gitleaks.get("archivos_con_secretos") or [])
+    }
+    con_secretos = con_secretos_gitleaks & analizados
+    sin_secretos = total - len(con_secretos)
+    valor = sin_secretos / total
 
     return {
-        "codigo": "MS-07", "valor": valor, "numerador": numerador, "denominador": denominador,
+        **base,
+        "estado": "OK",
+        "valor": valor,
+        "porcentaje": round(valor * 100, 2),
+        "numerador": sin_secretos,
+        "denominador": total,
+        "archivos_con_secretos": len(con_secretos),
+        "secretos_detectados": evidencia_gitleaks.get("secretos_detectados", 0),
+        "cumple": valor >= UMBRAL_MS07_SATISFACTORIO,
         "estado_calculo": "calculada",
-        "satisfactorio": valor >= UMBRAL_MS07_SATISFACTORIO,
     }
 
 

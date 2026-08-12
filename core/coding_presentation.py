@@ -7,6 +7,8 @@ agentes y por Python (graph.py / coding_metrics.py). No recalcula nada.
 Consumidores: Streamlit (coding_ui.py) y documentos (utils.py).
 """
 
+from core.code_analysis.tool_labels import obtener_etiqueta_herramienta
+
 
 def construir_presentacion_resultado_codificacion(
     contexto,
@@ -83,6 +85,7 @@ def construir_presentacion_resultado_codificacion(
 def _construir_mc05(mc05_summary, interpretacion_mc05):
     n = mc05_summary.get("numerador")
     d = mc05_summary.get("denominador")
+    etiqueta_herramienta = obtener_etiqueta_herramienta(mc05_summary.get("herramienta"))
 
     return {
         "codigo": "MC-05",
@@ -91,16 +94,17 @@ def _construir_mc05(mc05_summary, interpretacion_mc05):
         "numerador": n,
         "denominador": d,
         "estado_calculo": mc05_summary.get("estado_calculo"),
+        "herramienta": etiqueta_herramienta,
         "que_mide": (
             "Evalúa si las funciones del código implementado tienen una "
-            "complejidad ciclomática aceptable (Radon), como indicador de "
-            "mantenibilidad."
+            f"complejidad ciclomática aceptable ({etiqueta_herramienta}), como "
+            "indicador de mantenibilidad."
         ),
         "funciones_criticas": interpretacion_mc05.get("funciones_criticas", []),
         "conclusion": interpretacion_mc05.get("conclusion", ""),
         "resultado": (
             f"{n} de {d} funciones analizadas tienen una complejidad ciclomática aceptable."
-            if d else "No se evaluaron funciones (Radon no aplicable o en error)."
+            if d else f"No se evaluaron funciones ({etiqueta_herramienta} no aplicable o en error)."
         ),
     }
 

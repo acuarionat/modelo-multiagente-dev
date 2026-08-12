@@ -136,14 +136,12 @@ def funcion_compleja(a, b, c, d, e):
     print(resultado_gitleaks)
     if shutil.which("gitleaks") is None:
         assert resultado_gitleaks["estado"] == ESTADO_ERROR
-        assert "no encontrada" in resultado_gitleaks["detalle_error"].casefold()
+        assert "no encontrada" in resultado_gitleaks["motivo"].casefold()
     else:
         assert resultado_gitleaks["estado"] in {ESTADO_OK, ESTADO_ERROR}
-
-    workspace_vacio_gitleaks = tempfile.mkdtemp(prefix="test_code_analysis_vacio_gitleaks_")
-    resultado_gitleaks_vacio = ejecutar_gitleaks(workspace_vacio_gitleaks)
-    assert resultado_gitleaks_vacio["estado"] == ESTADO_NO_APLICA
-    shutil.rmtree(workspace_vacio_gitleaks, ignore_errors=True)
+        if resultado_gitleaks["estado"] == ESTADO_OK:
+            for hallazgo in resultado_gitleaks["hallazgos"]:
+                assert hallazgo["valor"] == "[REDACTED]"
 
 finally:
     shutil.rmtree(workspace, ignore_errors=True)

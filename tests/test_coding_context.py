@@ -195,8 +195,11 @@ try:
     assert len(evidencia_radon["datos"]["funciones"]) == 2
     assert evidencia_semgrep["estado"] in {ESTADO_OK, ESTADO_ERROR}
     assert evidencia_pip_audit["estado"] in {ESTADO_OK, ESTADO_ERROR}
-    # gitleaks no está instalado en este entorno: debe ser ERROR, nunca 0 %.
-    assert evidencia_gitleaks["estado"] == ESTADO_ERROR
+    # Si gitleaks no está instalado en este entorno, debe ser ERROR, nunca 0 %.
+    if shutil.which("gitleaks") is None:
+        assert evidencia_gitleaks["estado"] == ESTADO_ERROR
+    else:
+        assert evidencia_gitleaks["estado"] == ESTADO_OK
 
     # ==========================================================
     # 5. Ensamblado final — core/coding_context.py
@@ -239,9 +242,11 @@ try:
     assert all(a["estado"] == "OK" for a in contexto["archivos_localizados"])
     assert contexto["lenguaje_detectado"] == "python"
 
-    # La evidencia de las 4 herramientas llega completa, con sus estados reales.
-    assert contexto["evidencia_tecnica"]["radon"]["estado"] == ESTADO_OK
-    assert contexto["evidencia_tecnica"]["gitleaks"]["estado"] == ESTADO_ERROR
+    # La evidencia de las 4 herramientas llega completa, con sus estados
+    # reales, indexada por métrica (MC-05 la resuelve Radon o ESLint según
+    # el lenguaje; aquí el fixture es Python, así que MC-05 = radon).
+    assert contexto["evidencia_tecnica"]["MC-05"]["estado"] == ESTADO_OK
+    assert contexto["evidencia_tecnica"]["MS-07"]["estado"] == evidencia_gitleaks["estado"]
 
     # Ningún secreto real puede llegar al contexto: no existe ninguna clave
     # "secreto" sin redactar en toda la estructura serializada.

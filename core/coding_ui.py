@@ -17,6 +17,7 @@ de Diseño vigente desde TRZ-002 o desde una carga de Excel.
 import copy
 from datetime import datetime
 
+from core.code_analysis.orchestrator import obtener_evidencia_por_metrica
 from core.coding_context import construir_contexto_codificacion
 from core.coding_contract import validar_entrada_codificacion
 from core.coding_matrix_input import (
@@ -60,7 +61,8 @@ SPRINT_CONTEXT_CODIFICACION = "Codificación"
 
 CODIFICACION_AVISO = (
     "El modelo multiagente apoya el control, seguimiento y trazabilidad de la codificación. "
-    "Las métricas provienen de herramientas reales (Radon, Semgrep, pip-audit, Gitleaks) y las "
+    "Las métricas provienen de herramientas reales (seleccionadas según la tecnología del "
+    "repositorio: Radon o ESLint, Semgrep, pip-audit o npm audit, Gitleaks) y las "
     "recomendaciones son orientativas: requieren revisión del responsable del proyecto."
 )
 
@@ -116,7 +118,7 @@ def _estado_herramientas_texto(evidencia_herramientas: dict) -> str:
     return " · ".join(partes)
 
 
-def _render_evidencia_tecnica(evidencia: dict) -> None:
+def _render_evidencia_tecnica(evidencia_herramientas: dict) -> None:
     import streamlit as st
 
     def _icono_estado(estado: str) -> str:
@@ -126,36 +128,28 @@ def _render_evidencia_tecnica(evidencia: dict) -> None:
             return "NO_APLICA"
         return "ERROR"
 
-    def _linea(nombre_herramienta: str, datos: dict, campos: list) -> str:
-        estado = datos.get("estado", "?")
-        icono = _icono_estado(estado)
-        detalle = " · ".join(
-            f"{etiqueta}: {datos.get(clave) or len(datos.get(clave_lista, []))}"
-            for etiqueta, clave, clave_lista in campos
-        )
-        return f"| {nombre_herramienta} | {icono} | {detalle} |"
+    evidencia_por_metrica = obtener_evidencia_por_metrica(evidencia_herramientas)
+    mc05 = evidencia_por_metrica["MC-05"] or {}
+    ms05 = evidencia_por_metrica["MS-05"] or {}
+    ms06 = evidencia_por_metrica["MS-06"] or {}
+    ms07 = evidencia_por_metrica["MS-07"] or {}
 
-    radon = evidencia.get("radon", {})
-    semgrep = evidencia.get("semgrep", {})
-    pip_audit = evidencia.get("pip_audit", {})
-    gitleaks = evidencia.get("gitleaks", {})
-
-    radon_funciones = radon.get("funciones_analizadas") or len(radon.get("funciones", []))
-    semgrep_hallazgos = len(semgrep.get("hallazgos", []))
-    semgrep_criticos = semgrep.get("vulnerabilidades_criticas") or 0
-    pip_dep = pip_audit.get("dependencias_analizadas") or 0
-    pip_vuln = len(pip_audit.get("dependencias_con_hallazgos", []))
-    gitleaks_arch = gitleaks.get("archivos_analizados") or 0
-    gitleaks_sec = len(gitleaks.get("hallazgos", []))
+    mc05_funciones = len((mc05.get("datos") or {}).get("funciones", []))
+    ms05_hallazgos = (ms05.get("datos") or {}).get("hallazgos", [])
+    ms05_criticos = sum(1 for hallazgo in ms05_hallazgos if hallazgo.get("critico"))
+    ms06_dependencias = (ms06.get("datos") or {}).get("dependencias", [])
+    ms06_vulnerables = sum(1 for dependencia in ms06_dependencias if dependencia.get("segura") is False)
+    ms07_archivos_con_secretos = ms07.get("total_archivos_con_secretos", 0)
+    ms07_secretos = ms07.get("secretos_detectados", 0)
 
     with st.expander("Evidencia técnica utilizada", expanded=False):
         md = (
-            "| Herramienta | Estado | Detalle |\n"
-            "|---|---|---|\n"
-            f"| Radon | {_icono_estado(radon.get('estado', '?'))} | {radon_funciones} funciones analizadas |\n"
-            f"| Semgrep | {_icono_estado(semgrep.get('estado', '?'))} | {semgrep_hallazgos} hallazgos · {semgrep_criticos} críticos |\n"
-            f"| pip-audit | {_icono_estado(pip_audit.get('estado', '?'))} | {pip_dep} dependencias analizadas · {pip_vuln} con vulnerabilidades |\n"
-            f"| Gitleaks | {_icono_estado(gitleaks.get('estado', '?'))} | {gitleaks_arch} archivos analizados · {gitleaks_sec} secretos detectados |\n"
+            "| Métrica | Herramienta | Estado | Detalle |\n"
+            "|---|---|---|---|\n"
+            f"| MC-05 | {mc05.get('herramienta', '—')} | {_icono_estado(mc05.get('estado', '?'))} | {mc05_funciones} funciones analizadas |\n"
+            f"| MS-05 | {ms05.get('herramienta', '—')} | {_icono_estado(ms05.get('estado', '?'))} | {len(ms05_hallazgos)} hallazgos · {ms05_criticos} críticos |\n"
+            f"| MS-06 | {ms06.get('herramienta', '—')} | {_icono_estado(ms06.get('estado', '?'))} | {len(ms06_dependencias)} dependencias analizadas · {ms06_vulnerables} con vulnerabilidades |\n"
+            f"| MS-07 | {ms07.get('herramienta', '—')} | {_icono_estado(ms07.get('estado', '?'))} | {ms07_archivos_con_secretos} archivos con secretos · {ms07_secretos} secretos detectados |\n"
         )
         st.markdown(md)
 
@@ -235,21 +229,25 @@ def render_coding_repository_info(session, adapter) -> None:
 
     st.markdown("### C. Información técnica del repositorio")
 
-    if "coding_repository_profile" not in session:
-        if st.button("Analizar repositorio", key="coding_analizar_repo"):
-            with st.spinner("Descubriendo estructura y tecnologías del repositorio..."):
-                initial_state = {
-                    "coding_issues": session.get("coding_issues_detectados", []),
-                    "coding_matrix_input": session.get("coding_matriz_carga", []),
-                }
-                result_state = descubrir_y_perfilar_repositorio(adapter, initial_state)
-                session["coding_repository_profile"] = result_state.get("coding_repository_profile", {})
-                session["coding_repository_tree"] = result_state.get("coding_repository_tree", [])
-                session["coding_detected_technologies"] = result_state.get("coding_detected_technologies", {})
-                session["coding_selected_tools"] = result_state.get("coding_selected_tools", {})
-                session["coding_repository_context"] = result_state.get("coding_repository_context", {})
-                session["coding_repository_discovery"] = result_state.get("coding_repository_discovery", {})
-            st.rerun()
+    ya_analizado = "coding_repository_profile" in session
+    etiqueta_boton = "Actualizar repositorio" if ya_analizado else "Analizar repositorio"
+
+    if st.button(etiqueta_boton, key="coding_analizar_repo"):
+        with st.spinner("Descubriendo estructura y tecnologías del repositorio..."):
+            initial_state = {
+                "coding_issues": session.get("coding_issues_detectados", []),
+                "coding_matrix_input": session.get("coding_matriz_carga", []),
+            }
+            result_state = descubrir_y_perfilar_repositorio(adapter, initial_state)
+            session["coding_repository_profile"] = result_state.get("coding_repository_profile", {})
+            session["coding_repository_tree"] = result_state.get("coding_repository_tree", [])
+            session["coding_detected_technologies"] = result_state.get("coding_detected_technologies", {})
+            session["coding_selected_tools"] = result_state.get("coding_selected_tools", {})
+            session["coding_repository_context"] = result_state.get("coding_repository_context", {})
+            session["coding_repository_discovery"] = result_state.get("coding_repository_discovery", {})
+        st.rerun()
+
+    if not ya_analizado:
         return
 
     descubrimiento = session.get("coding_repository_discovery", {})
@@ -346,14 +344,15 @@ def render_coding_repository_info(session, adapter) -> None:
             st.markdown(f"• **{problema['issue']}**: {problema['tipo']}")
 
     df_herramientas = []
-    for metrica_id, tool_info in herramientas.items():
-        df_herramientas.append({
-            "Métrica": metrica_id,
-            "Tipo": tool_info.get("tipo", ""),
-            "Herramienta": tool_info.get("herramienta", ""),
-            "Aplica a": ", ".join(tool_info.get("aplica_a", [])) if tool_info.get("aplica_a") else "Repositorio",
-            "Estado": "🟡 PENDIENTE"
-        })
+    for metrica_id, tools_info in herramientas.items():
+        for tool_info in tools_info:
+            df_herramientas.append({
+                "Métrica": metrica_id,
+                "Tipo": tool_info.get("tipo", ""),
+                "Herramienta": tool_info.get("herramienta", ""),
+                "Aplica a": ", ".join(tool_info.get("aplica_a", [])) if tool_info.get("aplica_a") else "Repositorio",
+                "Estado": "🟡 PENDIENTE"
+            })
 
     if df_herramientas:
         st.dataframe(df_herramientas, use_container_width=True)
@@ -585,6 +584,8 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
                     "coding_issues": [issue],
                     "coding_matrix_input": matriz_snapshot,
                     "coding_codigo_localizado": codigo_localizado,
+                    "coding_selected_tools": session["coding_repository_snapshot"]["selected_tools"],
+                    "coding_repository_profile": session["coding_repository_snapshot"]["repository_profile"],
                     **session["coding_matriz_snapshot_metadata"],
                 }
                 session["codificacion_resultados"][codificacion_id] = grafo.invoke(initial_state)
@@ -684,6 +685,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             with tab_calidad:
                 with st.expander(f"MC-05 — {mc05['nombre']} · {extraer_porcentaje(mc05['valor'])}", expanded=False):
                     st.metric(f"Resultado {mc05['codigo']}", extraer_porcentaje(mc05["valor"]))
+                    st.caption(f"Herramienta: {mc05.get('herramienta', 'Analizador técnico')}")
                     st.markdown(
                         f'<div class="metric-detail"><strong>Qué mide esta métrica:</strong><br>{mc05["que_mide"]}</div>',
                         unsafe_allow_html=True,

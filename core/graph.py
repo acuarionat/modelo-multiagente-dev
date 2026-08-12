@@ -36,10 +36,19 @@ from core.coding_metrics import (
     calcular_indice_calidad_codigo, calcular_indice_seguridad_codigo,
     determinar_estado_codificacion,
 )
-from core.code_analysis.radon_analyzer import ejecutar_radon
-from core.code_analysis.semgrep_analyzer import ejecutar_semgrep
-from core.code_analysis.dependency_analyzer import ejecutar_pip_audit
-from core.code_analysis.secrets_analyzer import ejecutar_gitleaks
+from core.code_analysis.orchestrator import ejecutar_analizadores_seleccionados, obtener_evidencia_por_metrica
+from core.code_analysis.secrets_analyzer import obtener_archivos_codigo_workspace
+from core.testing_validation import validar_entrada_pruebas
+from core.testing_metrics import calcular_metricas_pruebas, determinar_estado_pruebas, preparar_evidencia_pruebas
+from core.testing_context import construir_contexto_pruebas
+from core.testing_contract import (
+    validar_salida_central_pruebas, validar_salida_calidad_pruebas,
+    validar_salida_seguridad_pruebas, validar_salida_evaluador_pruebas,
+)
+from agents.testing_central_agent import procesar_pruebas_central
+from agents.testing_quality_agent import analizar_calidad_pruebas
+from agents.testing_security_agent import analizar_seguridad_pruebas
+from agents.testing_evaluator_agent import analizar_evaluador_pruebas
 import json
 from datetime import datetime
 from core.config import LOGS_DIR
@@ -1199,9 +1208,13 @@ def construir_grafo_diseno():
 
 def nodo_coding_prepare(state: AgentState):
     """
-    Nodo de preparación de Codificación: ejecuta Radon, Semgrep, pip-audit y
-    Gitleaks sobre el código ya localizado (integrations/code_repository_service.py,
-    ejecutado antes del grafo) y ensambla el contexto completo del COD.
+    Nodo de preparación de Codificación: ejecuta ÚNICAMENTE las
+    herramientas ya seleccionadas por
+    core/code_analysis/tool_selector.py (coding_selected_tools) sobre el
+    código ya localizado (integrations/code_repository_service.py,
+    ejecutado antes del grafo), vía
+    core/code_analysis/orchestrator.py::ejecutar_analizadores_seleccionados,
+    y ensambla el contexto completo del COD.
     No es un agente LLM: solo herramientas locales y ensamblado determinístico.
     """
     logger.info("▶ Iniciando preparación de Codificación (herramientas de análisis)...")
@@ -1212,14 +1225,19 @@ def nodo_coding_prepare(state: AgentState):
     matriz_entrada = state["coding_matrix_input"]
     codigo_localizado = state["coding_codigo_localizado"]
     workspace = codigo_localizado["workspace"]
+    herramientas_seleccionadas = state.get("coding_selected_tools") or {}
+    repository_profile = state.get("coding_repository_profile") or {}
 
     try:
-        evidencia_herramientas = {
-            "radon": ejecutar_radon(workspace),
-            "semgrep": ejecutar_semgrep(workspace),
-            "pip_audit": ejecutar_pip_audit(codigo_localizado["manifiesto_dependencias"], workspace),
-            "gitleaks": ejecutar_gitleaks(workspace),
-        }
+        evidencia_herramientas = ejecutar_analizadores_seleccionados(
+            workspace, herramientas_seleccionadas, repository_profile,
+            manifiesto_dependencias=codigo_localizado.get("manifiesto_dependencias"),
+        )
+        # Universo de archivos de código para MS-07 (calcular_ms07): debe
+        # obtenerse aquí, mientras el workspace todavía existe, porque
+        # nodo_coding_security (que calcula MS-07) corre después de que
+        # este workspace temporal ya fue borrado.
+        archivos_codigo_workspace = obtener_archivos_codigo_workspace(workspace)
     finally:
         import shutil
         shutil.rmtree(workspace, ignore_errors=True)
@@ -1227,37 +1245,10 @@ def nodo_coding_prepare(state: AgentState):
     registrar_evento_grafo(
         "coding_tools_summary",
         "Coding_Prepare",
-        radon_estado=evidencia_herramientas["radon"].get("estado"),
-        radon_funciones_analizadas=(
-            evidencia_herramientas["radon"].get("funciones_analizadas")
-            or len(evidencia_herramientas["radon"].get("funciones", []))
-        ),
-        semgrep_estado=evidencia_herramientas["semgrep"].get("estado"),
-        semgrep_hallazgos=len(
-            evidencia_herramientas["semgrep"].get("hallazgos", [])
-        ),
-        semgrep_criticos=(
-            evidencia_herramientas["semgrep"].get("vulnerabilidades_criticas")
-            or 0
-        ),
-        pip_audit_estado=evidencia_herramientas["pip_audit"].get("estado"),
-        pip_audit_dependencias_analizadas=(
-            evidencia_herramientas["pip_audit"].get("dependencias_analizadas")
-            or 0
-        ),
-        pip_audit_dependencias_vulnerables=len(
-            evidencia_herramientas["pip_audit"].get(
-                "dependencias_con_hallazgos", []
-            )
-        ),
-        gitleaks_estado=evidencia_herramientas["gitleaks"].get("estado"),
-        gitleaks_archivos_analizados=(
-            evidencia_herramientas["gitleaks"].get("archivos_analizados")
-            or 0
-        ),
-        gitleaks_hallazgos=len(
-            evidencia_herramientas["gitleaks"].get("hallazgos", [])
-        ),
+        herramientas_ejecutadas={
+            adaptador: resultado.get("estado")
+            for adaptador, resultado in evidencia_herramientas.items()
+        },
     )
 
     contexto = construir_contexto_codificacion(
@@ -1268,7 +1259,11 @@ def nodo_coding_prepare(state: AgentState):
     logger.info(f"✔ Preparación de Codificación completada en {elapsed:.2f} segundos.")
     registrar_evento_grafo("node_end", "Coding_Prepare", elapsed_seconds=round(elapsed, 4))
 
-    return {"coding_context": [contexto], "coding_tool_results": evidencia_herramientas}
+    return {
+        "coding_context": [contexto],
+        "coding_tool_results": evidencia_herramientas,
+        "coding_archivos_codigo_workspace": archivos_codigo_workspace,
+    }
 
 
 def nodo_coding_central(state: AgentState):
@@ -1279,6 +1274,27 @@ def nodo_coding_central(state: AgentState):
 
     coding_context = state["coding_context"]
     contexto = coding_context[0]
+
+    def medir(valor):
+        texto = json.dumps(valor, ensure_ascii=False, default=str)
+        return {
+            "chars": len(texto),
+            "bytes": len(texto.encode("utf-8")),
+        }
+
+    print("\n=== CODING_CONTEXT_SIZE ===")
+    for campo, valor in contexto.items():
+        medicion = medir(valor)
+        print(f"{campo:35s} {medicion['chars']} chars / {medicion['bytes']} bytes")
+    medicion_total = medir(coding_context)
+    print(f"{'TOTAL coding_context':35s} {medicion_total['chars']} chars / {medicion_total['bytes']} bytes")
+
+    archivos_localizados = contexto.get("archivos_localizados", [])
+    rutas = [archivo["ruta"] for archivo in archivos_localizados]
+    print("\n=== DIAGNOSTICO DE DUPLICACION ===")
+    print("ARCHIVOS_LOCALIZADOS:", len(archivos_localizados))
+    print("RUTAS_TOTALES:", len(rutas))
+    print("RUTAS_UNICAS:", len(set(rutas)))
 
     respuesta = procesar_codificacion_central(
         project_name=state["project_name"],
@@ -1308,20 +1324,20 @@ def nodo_coding_central(state: AgentState):
 
 
 def nodo_coding_quality(state: AgentState):
-    """Nodo de Calidad de Codificación: MC-05 ya calculado por Python (Radon); el agente solo interpreta."""
+    """Nodo de Calidad de Codificación: MC-05 ya calculado por Python (Radon o ESLint, según lenguaje); el agente solo interpreta."""
     logger.info("▶ Iniciando Agente de Calidad de Codificación...")
     registrar_evento_grafo("node_start", "Coding_Quality")
     start_time = time.time()
 
     contexto = state["coding_context"][0]
-    evidencia_radon = state["coding_tool_results"]["radon"]
-    mc05_calculado = calcular_mc05(evidencia_radon)
+    evidencia_mc05 = obtener_evidencia_por_metrica(state["coding_tool_results"])["MC-05"]
+    mc05_calculado = calcular_mc05(evidencia_mc05)
 
     entrada = {
         "issue_iid": contexto["issue_iid"],
         "codificacion_id": contexto["codificacion_id"],
         "mc05": mc05_calculado,
-        "evidencia_radon": evidencia_radon,
+        "evidencia_mc05": evidencia_mc05,
     }
 
     respuesta = analizar_calidad_codificacion(
@@ -1343,6 +1359,101 @@ def nodo_coding_quality(state: AgentState):
     return {"coding_quality_result": coding_quality_result}
 
 
+def compactar_ms05_para_agente(evidencia: dict) -> dict:
+    """
+    Compacta la evidencia de Semgrep (MS-05) para el contexto del agente
+    de Seguridad: el cálculo determinístico (calcular_ms05, en
+    coding_tool_results) ya usó la evidencia completa; aquí solo se
+    reduce lo que se ENVÍA al LLM a un resumen + una muestra acotada de
+    hallazgos, para no exceder el límite de tokens del proveedor.
+    """
+    evidencia = evidencia or {}
+    datos = evidencia.get("datos") or {}
+    hallazgos = datos.get("hallazgos") or []
+    criticas = sum(1 for hallazgo in hallazgos if hallazgo.get("critico"))
+
+    resumen = {
+        "herramienta": evidencia.get("herramienta", "semgrep"),
+        "estado": evidencia.get("estado"),
+        "vulnerabilidades_criticas": criticas,
+        "total_hallazgos": len(hallazgos),
+        "hallazgos_relevantes": [],
+        "motivo_error": evidencia.get("detalle_error"),
+    }
+
+    for item in hallazgos[:8]:
+        resumen["hallazgos_relevantes"].append({
+            "archivo": item.get("archivo"),
+            "regla": item.get("regla"),
+            "severidad": item.get("severidad"),
+            "descripcion": item.get("mensaje"),
+        })
+
+    return resumen
+
+
+def compactar_ms06_para_agente(evidencia: dict) -> dict:
+    """Compacta la evidencia de dependencias (MS-06, pip-audit o npm audit) para el contexto del agente de Seguridad."""
+    evidencia = evidencia or {}
+    datos = evidencia.get("datos") or {}
+    dependencias = datos.get("dependencias") or []
+    vulnerables = [dependencia for dependencia in dependencias if dependencia.get("segura") is False]
+
+    severidades = {
+        "critical": 0, "high": 0, "moderate": 0, "medium": 0, "low": 0, "unknown": 0,
+    }
+    for dependencia in vulnerables:
+        severidad = str(dependencia.get("severidad") or "unknown").lower()
+        if severidad not in severidades:
+            severidad = "unknown"
+        severidades[severidad] += 1
+
+    def _advisory(dependencia: dict):
+        primera_vulnerabilidad = (dependencia.get("vulnerabilidades") or [{}])[0]
+        return primera_vulnerabilidad.get("id")
+
+    return {
+        "herramienta": evidencia.get("herramienta", "npm-audit"),
+        "estado": evidencia.get("estado"),
+        "dependencias_analizadas": len(dependencias),
+        "dependencias_seguras": len(dependencias) - len(vulnerables),
+        "dependencias_vulnerables": len(vulnerables),
+        "resumen_por_severidad": severidades,
+        "muestras_relevantes": [
+            {
+                "nombre": dependencia.get("nombre"),
+                "severidad": dependencia.get("severidad"),
+                "advisory": _advisory(dependencia),
+            }
+            for dependencia in vulnerables[:8]
+        ],
+        "motivo_error": evidencia.get("detalle_error"),
+    }
+
+
+def compactar_ms07_para_agente(evidencia: dict) -> dict:
+    """Compacta la evidencia de Gitleaks (MS-07) para el contexto del agente de Seguridad. NUNCA envía el secreto real."""
+    evidencia = evidencia or {}
+    hallazgos = evidencia.get("hallazgos") or []
+
+    return {
+        "herramienta": evidencia.get("herramienta", "gitleaks"),
+        "estado": evidencia.get("estado"),
+        "archivos_con_secretos": evidencia.get("total_archivos_con_secretos", 0),
+        "secretos_detectados": evidencia.get("secretos_detectados", len(hallazgos)),
+        "hallazgos_relevantes": [
+            {
+                "archivo": item.get("archivo"),
+                "tipo": item.get("regla"),
+                "linea": item.get("linea"),
+                "valor": "[REDACTED]",
+            }
+            for item in hallazgos[:8]
+        ],
+        "motivo_error": evidencia.get("motivo"),
+    }
+
+
 def nodo_coding_security(state: AgentState):
     """Nodo de Seguridad de Codificación: MS-05/MS-06/MS-07 ya calculados por Python; el agente solo interpreta."""
     logger.info("▶ Iniciando Agente de Seguridad de Codificación...")
@@ -1350,10 +1461,24 @@ def nodo_coding_security(state: AgentState):
     start_time = time.time()
 
     contexto = state["coding_context"][0]
-    tool_results = state["coding_tool_results"]
-    ms05_calculado = calcular_ms05(tool_results["semgrep"])
-    ms06_calculado = calcular_ms06(tool_results["pip_audit"])
-    ms07_calculado = calcular_ms07(tool_results["gitleaks"])
+    evidencia_por_metrica = obtener_evidencia_por_metrica(state["coding_tool_results"])
+    evidencia_semgrep = evidencia_por_metrica["MS-05"]
+    evidencia_ms06 = evidencia_por_metrica["MS-06"]
+    evidencia_gitleaks = evidencia_por_metrica["MS-07"]
+    ms05_calculado = calcular_ms05(evidencia_semgrep)
+    ms06_calculado = calcular_ms06(evidencia_ms06)
+
+    # Universo de archivos de código para MS-07: preferir el perfil del
+    # repositorio si ya trae la lista; si no, usar el escaneo del
+    # workspace ya hecho en Coding_Prepare (el workspace en sí ya no
+    # existe para este nodo, por eso no se puede volver a recorrer aquí).
+    repository_profile = state.get("coding_repository_profile") or {}
+    archivos_codigo = (
+        repository_profile.get("archivos_codigo")
+        or state.get("coding_archivos_codigo_workspace")
+        or []
+    )
+    ms07_calculado = calcular_ms07(evidencia_gitleaks, archivos_codigo)
 
     entrada = {
         "issue_iid": contexto["issue_iid"],
@@ -1361,9 +1486,9 @@ def nodo_coding_security(state: AgentState):
         "ms05": ms05_calculado,
         "ms06": ms06_calculado,
         "ms07": ms07_calculado,
-        "evidencia_semgrep": tool_results["semgrep"],
-        "evidencia_pip_audit": tool_results["pip_audit"],
-        "evidencia_gitleaks": tool_results["gitleaks"],
+        "evidencia_ms05": compactar_ms05_para_agente(evidencia_semgrep),
+        "evidencia_ms06": compactar_ms06_para_agente(evidencia_ms06),
+        "evidencia_ms07": compactar_ms07_para_agente(evidencia_gitleaks),
     }
 
     respuesta = analizar_seguridad_codificacion(
@@ -1507,6 +1632,265 @@ def construir_grafo_codificacion():
     workflow.add_edge("Coding_Security", "Coding_Evaluator")
     workflow.add_edge("Coding_Evaluator", "Coding_Central_Final")
     workflow.add_edge("Coding_Central_Final", END)
+
+    app = workflow.compile()
+    return app
+
+
+# 1d. Definición de Nodos de Pruebas (independientes de Requerimientos,
+# Diseño y Codificación)
+
+def nodo_testing_prepare(state: AgentState):
+    """
+    Nodo de preparación de Pruebas: valida el PRU-xxx, valida los COD
+    declarados contra testing_input_matrix (Matriz de Trazabilidad —
+    Etapa Codificación, entrada formal del state, no session_state),
+    resuelve la trazabilidad heredada (PRU -> COD -> ED -> RF/RNF -> HU),
+    prepara la evidencia y calcula MC-07/MC-08/MS-08/MS-09. No es un
+    agente LLM: solo cálculo determinístico en Python.
+    """
+    logger.info("▶ Iniciando preparación de Pruebas (validación + métricas)...")
+    registrar_evento_grafo("node_start", "Testing_Prepare")
+    start_time = time.time()
+
+    issue_pruebas = state["testing_issues"][0]
+    matriz_entrada = state["testing_input_matrix"]
+
+    validacion = validar_entrada_pruebas(issue_pruebas, matriz_entrada)
+    evidencia = preparar_evidencia_pruebas(issue_pruebas)
+    metricas = calcular_metricas_pruebas(evidencia)
+    contexto = construir_contexto_pruebas(
+        issue_pruebas, evidencia, metricas, validacion["trazabilidad_heredada"],
+    )
+    contexto["validacion_entrada"] = validacion
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Preparación de Pruebas completada en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Testing_Prepare", elapsed_seconds=round(elapsed, 4))
+
+    return {
+        "testing_evidence": evidencia,
+        "testing_metrics": metricas,
+        "testing_context": [contexto],
+    }
+
+
+def nodo_testing_central(state: AgentState):
+    """Nodo Central de Pruebas: contextualiza el PRU y confirma la trazabilidad heredada."""
+    logger.info("▶ Iniciando Agente Central de Pruebas...")
+    registrar_evento_grafo("node_start", "Testing_Central")
+    start_time = time.time()
+
+    testing_context = state["testing_context"]
+    contexto = testing_context[0]
+
+    respuesta = procesar_pruebas_central(
+        project_name=state["project_name"],
+        testing_context_json_str=json.dumps(testing_context, ensure_ascii=False),
+        sprint_context=state["sprint_context"],
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Testing_Central")
+    resultado = parsed["resultados"][0]
+
+    valid_codificaciones = set(contexto["trazabilidad"])
+    validacion = validar_salida_central_pruebas(
+        resultado, [contexto["issue_iid"]], valid_codificaciones,
+    )
+    if not validacion["valido"]:
+        raise ValueError(f"Testing_Central: salida inválida: {validacion['errores']}")
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Central de Pruebas completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Testing_Central", elapsed_seconds=round(elapsed, 4))
+
+    return {"testing_central_result": resultado}
+
+
+def nodo_testing_quality(state: AgentState):
+    """Nodo de Calidad de Pruebas: MC-07/MC-08 ya calculados por Python; el agente solo interpreta."""
+    logger.info("▶ Iniciando Agente de Calidad de Pruebas...")
+    registrar_evento_grafo("node_start", "Testing_Quality")
+    start_time = time.time()
+
+    contexto = state["testing_context"][0]
+    metricas = contexto["metricas"]
+    evidencia = contexto["evidencia"]
+
+    entrada = {
+        "issue_iid": contexto["issue_iid"],
+        "prueba_id": contexto["prueba_id"],
+        "mc07": metricas["MC-07"],
+        "mc08": metricas["MC-08"],
+        "evidencia_mc07": evidencia.get("pruebas_funcionales", []),
+        "evidencia_mc08": evidencia.get("fallos", []),
+    }
+
+    respuesta = analizar_calidad_pruebas(
+        entrada_json_str=json.dumps([entrada], ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Testing_Quality")
+    resultado = parsed["resultados"][0]
+
+    validacion = validar_salida_calidad_pruebas(resultado)
+    if not validacion["valido"]:
+        raise ValueError(f"Testing_Quality: salida inválida: {validacion['errores']}")
+
+    testing_quality_result = {"raw": resultado, "mc07": metricas["MC-07"], "mc08": metricas["MC-08"]}
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Calidad de Pruebas completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Testing_Quality", elapsed_seconds=round(elapsed, 4))
+
+    return {"testing_quality_result": testing_quality_result}
+
+
+def nodo_testing_security(state: AgentState):
+    """Nodo de Seguridad de Pruebas: MS-08/MS-09 ya calculados por Python; el agente solo interpreta."""
+    logger.info("▶ Iniciando Agente de Seguridad de Pruebas...")
+    registrar_evento_grafo("node_start", "Testing_Security")
+    start_time = time.time()
+
+    contexto = state["testing_context"][0]
+    metricas = contexto["metricas"]
+    evidencia = contexto["evidencia"]
+
+    entrada = {
+        "issue_iid": contexto["issue_iid"],
+        "prueba_id": contexto["prueba_id"],
+        "ms08": metricas["MS-08"],
+        "ms09": metricas["MS-09"],
+        "evidencia_ms08": evidencia.get("controles_seguridad", []),
+        "evidencia_ms09": evidencia.get("pruebas_seguridad", []),
+    }
+
+    respuesta = analizar_seguridad_pruebas(
+        entrada_json_str=json.dumps([entrada], ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Testing_Security")
+    resultado = parsed["resultados"][0]
+
+    validacion = validar_salida_seguridad_pruebas(resultado)
+    if not validacion["valido"]:
+        raise ValueError(f"Testing_Security: salida inválida: {validacion['errores']}")
+
+    testing_security_result = {"raw": resultado, "ms08": metricas["MS-08"], "ms09": metricas["MS-09"]}
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente de Seguridad de Pruebas completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Testing_Security", elapsed_seconds=round(elapsed, 4))
+
+    return {"testing_security_result": testing_security_result}
+
+
+def nodo_testing_evaluator(state: AgentState):
+    """Nodo Evaluador de Pruebas: consolida hallazgos a partir de métricas ya calculadas (solo lectura)."""
+    logger.info("▶ Iniciando Agente Evaluador de Pruebas...")
+    registrar_evento_grafo("node_start", "Testing_Evaluator")
+    start_time = time.time()
+
+    contexto = state["testing_context"][0]
+    quality_result = state["testing_quality_result"]
+    security_result = state["testing_security_result"]
+
+    entrada_evaluador = {
+        "issue_iid": contexto["issue_iid"],
+        "prueba_id": contexto["prueba_id"],
+        "calidad": {"mc07": quality_result["mc07"], "mc08": quality_result["mc08"]},
+        "seguridad": {"ms08": security_result["ms08"], "ms09": security_result["ms09"]},
+        "interpretacion_calidad": quality_result["raw"],
+        "interpretacion_seguridad": security_result["raw"],
+    }
+
+    respuesta = analizar_evaluador_pruebas(
+        issues_json_str=json.dumps([entrada_evaluador], ensure_ascii=False),
+    )
+    parsed = analizar_respuesta_lote(respuesta, "Testing_Evaluator")
+    resultado = parsed["resultados"][0]
+
+    valid_codificaciones = set(contexto["trazabilidad"])
+    validacion = validar_salida_evaluador_pruebas(
+        resultado, contexto["issue_iid"], contexto["prueba_id"], valid_codificaciones,
+    )
+    if not validacion["valido"]:
+        raise ValueError(f"Testing_Evaluator: salida inválida: {validacion['errores']}")
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Agente Evaluador de Pruebas completado en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Testing_Evaluator", elapsed_seconds=round(elapsed, 4))
+
+    return {"testing_evaluator_result": resultado}
+
+
+def nodo_testing_central_final(state: AgentState):
+    """Nodo final de Pruebas (determinístico, solo Python): estado orientativo y consolidación."""
+    logger.info("▶ Iniciando Nodo de Consolidación de Pruebas (Final, solo Python)...")
+    registrar_evento_grafo("node_start", "Testing_Central_Final")
+    start_time = time.time()
+
+    contexto = state["testing_context"][0]
+    metricas = contexto["metricas"]
+    evaluador = state["testing_evaluator_result"]
+    quality_result = state["testing_quality_result"]
+    security_result = state["testing_security_result"]
+
+    estado = determinar_estado_pruebas(metricas)
+
+    testing_summary = {
+        "prueba_id": contexto["prueba_id"],
+        "issue_iid": contexto["issue_iid"],
+        "codificaciones_relacionadas": contexto["codificaciones_relacionadas"],
+        "estado_orientativo": estado,
+        "metricas": metricas,
+        "calidad": {
+            "mc07": metricas["MC-07"],
+            "mc08": metricas["MC-08"],
+            "interpretacion": quality_result["raw"],
+            "conclusion": evaluador.get("conclusion_calidad", ""),
+        },
+        "seguridad": {
+            "ms08": metricas["MS-08"],
+            "ms09": metricas["MS-09"],
+            "interpretacion": security_result["raw"],
+            "conclusion": evaluador.get("conclusion_seguridad", ""),
+        },
+        "correcciones_necesarias": evaluador["correcciones_necesarias"],
+        "precisiones": evaluador["precisiones_necesarias"],
+        "oportunidades_mejora": evaluador["oportunidades_mejora"],
+        "trazabilidad": contexto["trazabilidad"],
+        "conclusion": evaluador.get("recomendacion_revision", ""),
+    }
+
+    elapsed = time.time() - start_time
+    logger.info(f"✔ Consolidación de Pruebas completada en {elapsed:.2f} segundos.")
+    registrar_evento_grafo("node_end", "Testing_Central_Final", elapsed_seconds=round(elapsed, 4))
+
+    return {"testing_summary": testing_summary}
+
+
+def construir_grafo_pruebas():
+    """Grafo independiente para el flujo de Pruebas. No reutiliza los nodos de Requerimientos, Diseño ni Codificación."""
+    workflow = StateGraph(AgentState)
+
+    workflow.add_node("Testing_Prepare", nodo_testing_prepare)
+    workflow.add_node("Testing_Central", nodo_testing_central)
+    workflow.add_node("Testing_Quality", nodo_testing_quality)
+    workflow.add_node("Testing_Security", nodo_testing_security)
+    workflow.add_node("Testing_Evaluator", nodo_testing_evaluator)
+    workflow.add_node("Testing_Central_Final", nodo_testing_central_final)
+
+    workflow.set_entry_point("Testing_Prepare")
+
+    workflow.add_edge("Testing_Prepare", "Testing_Central")
+    # Quality y Security son independientes entre sí, pero se encadenan en
+    # secuencia por el mismo motivo que Diseño y Codificación: REMOTE_PACER
+    # espacia las llamadas remotas (Groq) para no agotar los tokens por
+    # minuto al ejecutarlas de forma concurrente.
+    workflow.add_edge("Testing_Central", "Testing_Quality")
+    workflow.add_edge("Testing_Quality", "Testing_Security")
+
+    workflow.add_edge("Testing_Security", "Testing_Evaluator")
+    workflow.add_edge("Testing_Evaluator", "Testing_Central_Final")
+    workflow.add_edge("Testing_Central_Final", END)
 
     app = workflow.compile()
     return app

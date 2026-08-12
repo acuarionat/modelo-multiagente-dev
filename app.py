@@ -14,6 +14,7 @@ from database.repository import limpiar_datos_seguimiento
 from project_config import load_project_config, save_project_config
 from core.design_ui import render_design_stage
 from core.coding_ui import render_coding_stage
+from core.testing_ui import render_testing_stage
 from core.ui_components import (
     _lista_ui as lista_ui,
     _texto_hallazgo_ui as texto_hallazgo_ui,
@@ -862,6 +863,9 @@ if stage_id == "diseno":
     st.stop()
 elif stage_id == "codificacion":
     render_coding_stage(project_name, project_config, adapter)
+    st.stop()
+elif stage_id == "pruebas":
+    render_testing_stage(project_name, project_config, adapter)
     st.stop()
 elif stage_id != "requerimientos":
     render_coming_soon(stage_id)

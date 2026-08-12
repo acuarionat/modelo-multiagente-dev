@@ -16,6 +16,19 @@ from typing import Dict, List, Any
 from core.coding_matrix_input import extraer_elementos_diseno_validos
 
 
+def normalizar_ruta(ruta: str) -> str:
+    valor = str(ruta or "").strip()
+
+    if len(valor) >= 2 and valor.startswith("`") and valor.endswith("`"):
+        valor = valor[1:-1].strip()
+
+    return (
+        valor
+        .replace("\\", "/")
+        .lstrip("./")
+    )
+
+
 def construir_contexto_repository_codificacion(
     coding_issues: List[Dict[str, Any]],
     repository_profile: Dict[str, Any],
@@ -54,7 +67,12 @@ def construir_contexto_repository_codificacion(
             "estado_global": "OK" | "CON_ADVERTENCIAS" | "BLOQUEADO"
         }
     """
-    archivos_repo = {item["ruta"] for item in repository_tree if item["tipo"] == "archivo"}
+    archivos_repo = {
+        normalizar_ruta(item.get("ruta", ""))
+        for item in repository_tree
+        if item.get("tipo") == "archivo"
+    }
+
     elementos_diseno_vigentes = extraer_elementos_diseno_validos(matriz_diseno)
 
     issues_validas = []
@@ -67,7 +85,7 @@ def construir_contexto_repository_codificacion(
         elementos_diseno_declarados = issue.get("elementos_diseno_declarados", [])
 
         rutas_declaradas = [
-            item.get("ruta") if isinstance(item, dict) else item
+            normalizar_ruta(item.get("ruta") if isinstance(item, dict) else item)
             for item in archivos_declarados
         ]
 

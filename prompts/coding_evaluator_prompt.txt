@@ -103,3 +103,16 @@ FORMA JSON REQUERIDA
 El 999 es solamente un ejemplo del tipo de dato.
 Reemplázalo por cada ID GitLab obligatorio real y por el codificacion_id
 real de cada Issue.
+
+FORMATO DE SALIDA OBLIGATORIO
+
+Responde exclusivamente con un objeto JSON válido.
+No incluyas:
+- bloques Markdown;
+- explicaciones antes del JSON;
+- explicaciones después del JSON;
+- comentarios;
+- texto fuera del objeto JSON.
+
+La primera letra de la respuesta debe ser {{ y el último carácter debe ser }}.
+Respeta exactamente los nombres de las claves indicadas. No agregues claves no solicitadas.

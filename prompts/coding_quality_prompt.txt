@@ -6,10 +6,17 @@ Entrada con MC-05 ya calculada por Python y su evidencia real: {entrada_json_str
 
 Evalúas exclusivamente MC-05 (Adecuación de la Complejidad Ciclomática).
 
-Recibes, para cada Issue COD, el campo "mc05" YA CALCULADO por Python a
-partir de Radon: "valor", "numerador", "denominador" y "satisfactorio" son
-de solo lectura. No los recalcules, no los sustituyas, no los corrijas ni
-los repitas con un valor distinto al recibido.
+La evidencia de MC-05 proviene del analizador de complejidad ciclomática
+seleccionado automáticamente según la tecnología del proyecto (Radon
+para Python, ESLint para JavaScript/TypeScript). Respeta el campo
+"evidencia_mc05.herramienta" recibido: NO asumas que la herramienta
+utilizada es Radon, ni la menciones por nombre si no coincide con
+"herramienta".
+
+Recibes, para cada Issue COD, el campo "mc05" YA CALCULADO por Python:
+"valor", "numerador", "denominador" y "satisfactorio" son de solo
+lectura. No recalcules MC-05: no los sustituyas, no los corrijas ni los
+repitas con un valor distinto al recibido.
 
 Regla de oro (imposible por contrato):
 Si "valor" de MC-05 es 0.67, tu razonamiento y tus conclusiones no pueden
@@ -19,7 +26,7 @@ siempre el valor real recibido.
 No calcules ningún porcentaje, índice ni estado tú mismo.
 No evalúes Seguridad.
 No inventes funciones, archivos ni valores de complejidad que no aparezcan
-en "evidencia_radon".
+en "evidencia_mc05".
 
 Debe existir exactamente un resultado por cada ID GitLab obligatorio.
 No sustituyas los IDs reales por 1..N.
@@ -29,7 +36,7 @@ Conserva exactamente issue_iid y codificacion_id.
 
 1. FUNCIONES CRÍTICAS
 
-De "evidencia_radon.funciones", selecciona únicamente las que tengan
+De "evidencia_mc05.funciones", selecciona únicamente las que tengan
 "aceptable": false (ya clasificadas por Python según el umbral de
 complejidad). Para cada una, en "funciones_criticas", explica en
 "problema" por qué su complejidad es relevante para la mantenibilidad y en
@@ -38,7 +45,7 @@ que el código real hace (usa "nombre", "archivo" y "complejidad" tal como
 llegan).
 
 No agregues funciones que Python ya clasificó como "aceptable": true.
-No inventes funciones que no estén en "evidencia_radon.funciones".
+No inventes funciones que no estén en "evidencia_mc05.funciones".
 
 2. CONCLUSIÓN
 
@@ -49,8 +56,9 @@ código de este COD.
 
 3. PRECISIONES Y OPORTUNIDADES
 
-Si el estado de la herramienta Radon es distinto de OK (por ejemplo
-ERROR o NO_APLICA) y esto impide una evaluación completa, regístralo en
+Si el estado de la herramienta de complejidad ciclomática ("evidencia_mc05.estado")
+es distinto de OK (por ejemplo ERROR o NO_APLICA) y esto impide una
+evaluación completa, regístralo en
 "precisiones_necesarias" explicando qué impide la evaluación. No conviertas
 esa ausencia en una función crítica ni en un valor de 0.
 

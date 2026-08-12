@@ -8,10 +8,55 @@ Contexto de Codificación: {coding_context_json_str}
 Analiza únicamente el contexto de Codificación recibido: el Issue COD ya
 mapeado, los Elementos de Diseño (ED) que declara implementar (ya
 contextualizados contra la matriz de Diseño heredada, en
-"elementos_diseno_contextualizados"), el contenido real de los archivos
-declarados y localizados ("archivos_localizados"), y el estado ya
-normalizado de la evidencia técnica de Radon, Semgrep, pip-audit y
-Gitleaks ("evidencia_tecnica").
+"elementos_diseno_contextualizados"), los archivos declarados y
+localizados ("archivos_localizados" — ver REGLAS SOBRE ARCHIVOS
+LOCALIZADOS: no todos incluyen contenido legible), y el estado ya
+normalizado de la evidencia técnica por métrica ("evidencia_tecnica":
+MC-05, MS-05, MS-06, MS-07), calculada con la herramienta ya seleccionada
+según el lenguaje/ecosistema real del repositorio (Radon o ESLint,
+Semgrep, pip-audit o npm audit, Gitleaks).
+
+REGLAS SOBRE ARCHIVOS LOCALIZADOS
+
+1. "estado": "OK" indica que el archivo fue localizado correctamente en
+   el repositorio. NO significa necesariamente que su contenido haya
+   sido incluido en el contexto.
+
+2. Solo puede analizarse directamente el contenido de un archivo cuando:
+   - "incluido_en_prompt" == true
+   - y existe el campo "contenido" (o "contenido_resumido") con la
+     representación textual real del archivo.
+
+3. Cuando "incluido_en_prompt" == false:
+   - reconoce únicamente que el archivo existe;
+   - usa su metadata ("ruta", "tipo", "motivo" de exclusión);
+   - NO infieras su contenido;
+   - NO afirmes haberlo revisado directamente;
+   - NO inventes clases, funciones, configuraciones, dependencias ni
+     comportamiento contenidos en ese archivo.
+
+4. Los archivos excluidos del contexto pueden haber sido reservados para
+   análisis por herramientas técnicas (Radon, Semgrep, pip-audit,
+   Gitleaks u otras).
+
+5. Los resultados de esas herramientas ("evidencia_tecnica") constituyen
+   la evidencia autorizada para evaluar esos archivos cuando corresponda,
+   no tu propia lectura de su contenido.
+
+Ejemplo — "package-lock.json" con "incluido_en_prompt": false y "motivo":
+"Analizado por herramienta de dependencias": puedes decir que existe,
+pero NUNCA afirmar algo como "el package-lock.json contiene la
+dependencia X vulnerable", salvo que esa evidencia venga de
+"evidencia_tecnica".
+
+Ejemplo — "src/assets/logo.jpg" o "public/logo elanvita.jpeg" con
+"incluido_en_prompt": false y "motivo": "Archivo no textual": solo puedes
+reconocer que es un archivo binario/recurso gráfico existente, no
+inspeccionado textualmente. Nada más.
+
+Que "incluido_en_prompt" sea false NO es evidencia faltante ni un error
+de la implementación: es una exclusión intencional del contexto para no
+sobrecargar el prompt con contenido no útil (lockfiles, binarios).
 
 No evalúes Calidad ni Seguridad.
 No calcules MC-05, MS-05, MS-06 ni MS-07, ni ningún porcentaje, índice o estado.
@@ -29,8 +74,10 @@ Conserva exactamente issue_iid y codificacion_id.
 1. RELACIÓN COD → ELEMENTO DE DISEÑO
 
 Usa "elementos_diseno_contextualizados" para confirmar, con el contenido
-real de "archivos_localizados", si el código efectivamente implementa la
-responsabilidad de cada ED declarado.
+real de los archivos de "archivos_localizados" que tengan
+"incluido_en_prompt" == true (ver REGLAS SOBRE ARCHIVOS LOCALIZADOS), si
+el código efectivamente implementa la responsabilidad de cada ED
+declarado.
 
 Clasifica cada ED declarado exactamente una vez:
 - "elementos_implementados": existe evidencia concreta en el código real
@@ -56,12 +103,15 @@ Registra el resultado en "coherencia_declarado_vs_evidencia" con:
 
 3. CONSOLIDACIÓN DE ARCHIVOS
 
-Para cada archivo de "archivos_localizados" con estado "OK", regístralo en
+Para cada archivo de "archivos_localizados" con "incluido_en_prompt" ==
+true (ver REGLAS SOBRE ARCHIVOS LOCALIZADOS), regístralo en
 "archivos_consolidados" indicando qué ED declarado implementa según el
 contenido real del archivo, con evidencia concreta (nombres de función,
 clases o lógica real presentes en el archivo).
 
-No incluyas en "archivos_consolidados" archivos cuyo estado no sea "OK".
+No incluyas en "archivos_consolidados" archivos cuyo "incluido_en_prompt"
+sea false, aunque su "estado" sea "OK": no tienes su contenido real para
+sustentar evidencia concreta.
 
 4. INCONSISTENCIAS
 
@@ -111,3 +161,16 @@ modifiques relaciones que no estén ya en el contexto recibido.
 El 999 es solamente un ejemplo del tipo de dato.
 Reemplázalo por cada ID GitLab obligatorio real y por el codificacion_id
 real de cada Issue.
+
+FORMATO DE SALIDA OBLIGATORIO
+
+Responde exclusivamente con un objeto JSON válido.
+No incluyas:
+- bloques Markdown;
+- explicaciones antes del JSON;
+- explicaciones después del JSON;
+- comentarios;
+- texto fuera del objeto JSON.
+
+La primera letra de la respuesta debe ser {{ y el último carácter debe ser }}.
+Respeta exactamente los nombres de las claves indicadas. No agregues claves no solicitadas.

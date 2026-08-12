@@ -48,6 +48,7 @@ class AgentState(TypedDict):
     coding_context: List[Dict[str, Any]]         # Contexto construido (coding_context.py): issue + matriz + código + evidencia de herramientas
 
     coding_tool_results: Optional[Dict[str, Any]]       # Evidencia normalizada {"radon","semgrep","pip_audit","gitleaks"}
+    coding_archivos_codigo_workspace: Optional[List[str]]  # Universo de archivos de código del workspace (para MS-07), calculado en Coding_Prepare antes de borrar el workspace
     coding_central_result: Optional[Dict[str, Any]]     # Resultado del Central de Codificación
     coding_quality_result: Optional[Dict[str, Any]]     # {"raw", "mc05"}
     coding_security_result: Optional[Dict[str, Any]]    # {"raw", "ms05", "ms06", "ms07"}
@@ -71,5 +72,22 @@ class AgentState(TypedDict):
     coding_repository_discovery: Optional[Dict[str, Any]]    # {"rama", "lenguajes", "archivos", "manifiestos", "lockfiles", ...}
     coding_repository_profile: Optional[Dict[str, Any]]      # Perfil técnico consolidado (para UI/PDF/DOCX)
     coding_detected_technologies: Optional[Dict[str, Any]]   # {"lenguajes", "ecosistemas", "tecnologias_detectadas"}
-    coding_selected_tools: Optional[Dict[str, Dict[str, Any]]]  # Herramientas seleccionadas por métrica (MC-05, MS-05, MS-06, MS-07)
+    coding_selected_tools: Optional[Dict[str, List[Dict[str, Any]]]]  # Herramientas seleccionadas por métrica (listas: MC-05, MS-05, MS-06, MS-07 pueden tener más de una si el repo combina lenguajes/ecosistemas)
     coding_repository_context: Optional[Dict[str, Any]]      # Contexto combinado pre-análisis (issues + matriz + rutas + herramientas)
+
+    # --- Pruebas (independiente de Requerimientos, Diseño y Codificación;
+    # no reutiliza coding_summary, coding_matrix_input, quality_report, etc.) ---
+    testing_issues: List[Dict[str, Any]]         # Issues PRU-xxx mapeados (testing_issue_mapper)
+    testing_input_matrix: Optional[List[Dict[str, Any]]]           # Matriz de Trazabilidad — Etapa Codificación (TRZ-003) vigente, entrada formal de Pruebas
+    testing_input_matrix_metadata: Optional[Dict[str, Any]]        # {"fuente", ...} de testing_input_matrix
+    testing_evidence: Optional[Dict[str, Any]]   # Salida de preparar_evidencia_pruebas (conteos + listas normalizadas)
+    testing_metrics: Optional[Dict[str, Any]]    # {"MC-07", "MC-08", "MS-08", "MS-09"} ya calculadas (core/testing_metrics.py)
+    testing_context: List[Dict[str, Any]]        # Contexto construido para los agentes (core/testing_context.py)
+
+    testing_central_result: Optional[Dict[str, Any]]    # Resultado del Central de Pruebas
+    testing_quality_result: Optional[Dict[str, Any]]    # {"raw", "mc07", "mc08"}
+    testing_security_result: Optional[Dict[str, Any]]   # {"raw", "ms08", "ms09"}
+    testing_evaluator_result: Optional[Dict[str, Any]]  # Hallazgos del Evaluador de Pruebas
+
+    testing_summary: Optional[Dict[str, Any]]           # Consolidación determinística final
+    testing_traceability: Optional[List[Dict[str, Any]]]  # Matriz evolucionada HU→RF/RNF→ED→COD→PRU

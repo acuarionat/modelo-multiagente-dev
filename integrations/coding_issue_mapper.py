@@ -58,12 +58,21 @@ def _parsear_tabla_markdown(text: str) -> list:
     return filas_datos
 
 
+def _limpiar_codigo_inline(texto: str) -> str:
+    valor = str(texto or "").strip()
+
+    if len(valor) >= 2 and valor.startswith("`") and valor.endswith("`"):
+        valor = valor[1:-1].strip()
+
+    return valor
+
+
 def _extraer_archivos_declarados(text: str) -> list:
     archivos = []
     for celdas in _parsear_tabla_markdown(text):
         if len(celdas) < 2:
             continue
-        ruta = celdas[0].strip()
+        ruta = _limpiar_codigo_inline(celdas[0])
         if not ruta or ruta.casefold() in VALORES_DESCONOCIDOS:
             continue
         archivos.append({
