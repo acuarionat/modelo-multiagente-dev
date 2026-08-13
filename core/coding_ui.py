@@ -43,6 +43,7 @@ from core.utils import (
     generar_documento_formal_codificacion_docx,
     generar_reporte_codificacion_pdf,
 )
+from database.repository import cargar_estado_etapa, guardar_estado_etapa
 from integrations.code_repository_service import obtener_codigo_codificacion
 from integrations.issue_service import (
     crear_o_actualizar_issue_matriz_trazabilidad_codificacion,
@@ -371,7 +372,26 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     st.warning(CODIFICACION_AVISO)
 
     session = st.session_state
-    session.setdefault("codificacion_resultados", {})
+    if "codificacion_resultados" not in session:
+        persisted = cargar_estado_etapa("codificacion")
+        session["codificacion_resultados"] = (persisted or {}).get("codificacion_resultados", {})
+        if persisted:
+            session["coding_matriz_snapshot"] = persisted.get("coding_matriz_snapshot")
+            session["coding_matriz_snapshot_metadata"] = persisted.get("coding_matriz_snapshot_metadata")
+            session["coding_repository_snapshot"] = persisted.get("coding_repository_snapshot")
+            session["coding_issue_snapshot"] = persisted.get("coding_issue_snapshot")
+    elif (
+        session["codificacion_resultados"] and session.get("coding_matriz_snapshot")
+        and cargar_estado_etapa("codificacion") is None
+    ):
+        # Resultados ya en memoria de una ejecución anterior a esta persistencia: respaldarlos ahora.
+        guardar_estado_etapa("codificacion", {
+            "codificacion_resultados": session["codificacion_resultados"],
+            "coding_matriz_snapshot": session["coding_matriz_snapshot"],
+            "coding_matriz_snapshot_metadata": session.get("coding_matriz_snapshot_metadata"),
+            "coding_repository_snapshot": session.get("coding_repository_snapshot"),
+            "coding_issue_snapshot": session.get("coding_issue_snapshot"),
+        })
     session.setdefault("coding_matriz_confirmada", False)
 
     # ============================================================
@@ -589,6 +609,13 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
                     **session["coding_matriz_snapshot_metadata"],
                 }
                 session["codificacion_resultados"][codificacion_id] = grafo.invoke(initial_state)
+        guardar_estado_etapa("codificacion", {
+            "codificacion_resultados": session["codificacion_resultados"],
+            "coding_matriz_snapshot": session["coding_matriz_snapshot"],
+            "coding_matriz_snapshot_metadata": session["coding_matriz_snapshot_metadata"],
+            "coding_repository_snapshot": session["coding_repository_snapshot"],
+            "coding_issue_snapshot": session["coding_issue_snapshot"],
+        })
         st.success(f"Análisis completado para: {', '.join(codificaciones_validas)}.")
 
     # ============================================================

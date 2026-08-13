@@ -34,6 +34,7 @@ from core.utils import (
     generar_documento_formal_pruebas_docx,
     generar_reporte_pruebas_pdf,
 )
+from database.repository import cargar_estado_etapa, guardar_estado_etapa
 from integrations.issue_service import obtener_issue_matriz_trazabilidad_codificacion
 from integrations.testing_service import (
     crear_o_actualizar_issue_matriz_trazabilidad_pruebas,
@@ -138,7 +139,24 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
     st.warning(PRUEBAS_AVISO)
 
     session = st.session_state
-    session.setdefault("pruebas_resultados", {})
+    if "pruebas_resultados" not in session:
+        persisted = cargar_estado_etapa("pruebas")
+        session["pruebas_resultados"] = (persisted or {}).get("pruebas_resultados", {})
+        if persisted:
+            session["pruebas_matriz_snapshot"] = persisted.get("pruebas_matriz_snapshot")
+            session["pruebas_matriz_snapshot_metadata"] = persisted.get("pruebas_matriz_snapshot_metadata")
+            session["pruebas_issue_snapshot"] = persisted.get("pruebas_issue_snapshot")
+    elif (
+        session["pruebas_resultados"] and session.get("pruebas_matriz_snapshot")
+        and cargar_estado_etapa("pruebas") is None
+    ):
+        # Resultados ya en memoria de una ejecución anterior a esta persistencia: respaldarlos ahora.
+        guardar_estado_etapa("pruebas", {
+            "pruebas_resultados": session["pruebas_resultados"],
+            "pruebas_matriz_snapshot": session["pruebas_matriz_snapshot"],
+            "pruebas_matriz_snapshot_metadata": session.get("pruebas_matriz_snapshot_metadata"),
+            "pruebas_issue_snapshot": session.get("pruebas_issue_snapshot"),
+        })
     session.setdefault("pruebas_matriz_confirmada", False)
 
     # ============================================================
@@ -260,6 +278,12 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
                     "testing_input_matrix_metadata": metadata_matriz,
                 }
                 session["pruebas_resultados"][prueba_id] = grafo.invoke(initial_state)
+        guardar_estado_etapa("pruebas", {
+            "pruebas_resultados": session["pruebas_resultados"],
+            "pruebas_matriz_snapshot": session["pruebas_matriz_snapshot"],
+            "pruebas_matriz_snapshot_metadata": session["pruebas_matriz_snapshot_metadata"],
+            "pruebas_issue_snapshot": session["pruebas_issue_snapshot"],
+        })
         st.success(f"Análisis completado para: {', '.join(pruebas_validas)}.")
 
     # ============================================================

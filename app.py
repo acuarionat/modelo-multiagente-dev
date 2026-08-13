@@ -10,7 +10,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from integrations.gitlab_adapter import GitLabAdapter
 from integrations.issue_service import procesar_flujo_lote
-from database.repository import limpiar_datos_seguimiento
+from database.repository import (
+    cargar_estado_etapa,
+    guardar_estado_etapa,
+    limpiar_datos_seguimiento,
+    limpiar_estado_etapas,
+)
 from project_config import load_project_config, save_project_config
 from core.design_ui import render_design_stage
 from core.coding_ui import render_coding_stage
@@ -815,6 +820,7 @@ if saved_config is None or editing_config:
             st.session_state["editing_project_config"] = False
             for key in ("issues_by_stage", "last_batch_result", "milestones"):
                 st.session_state.pop(key, None)
+            limpiar_estado_etapas()
             st.rerun()
     st.stop()
 
@@ -995,10 +1001,15 @@ if start_analysis:
             st.session_state.last_batch_result = construir_resultado_lote(
                 project_name, milestone_val or "Personalizado", run_results
             )
+            st.session_state.last_project_name = project_name
+            st.session_state.last_milestone = milestone_val or "Personalizado"
+            guardar_estado_etapa("requerimientos", {
+                "last_batch_result": st.session_state.last_batch_result,
+                "last_project_name": st.session_state.last_project_name,
+                "last_milestone": st.session_state.last_milestone,
+            })
         else:
             st.info("No se generó un resumen ni documentos porque el lote no produjo resultados consolidados.")
-        st.session_state.last_project_name = project_name
-        st.session_state.last_milestone = milestone_val or "Personalizado"
             
     if failed_batches or incomplete_stories:
         st.error("El análisis del Sprint terminó con errores.")
@@ -1124,6 +1135,23 @@ def _explicar_estado_ui(result):
 
 
 # Resultados y documentos consolidados del último lote
+if "last_batch_result" not in st.session_state:
+    persisted_requerimientos = cargar_estado_etapa("requerimientos")
+    if persisted_requerimientos:
+        st.session_state.last_batch_result = persisted_requerimientos.get("last_batch_result")
+        st.session_state.last_project_name = persisted_requerimientos.get("last_project_name")
+        st.session_state.last_milestone = persisted_requerimientos.get("last_milestone")
+elif (
+    st.session_state.get("last_batch_result", {}).get("issues")
+    and cargar_estado_etapa("requerimientos") is None
+):
+    # Resultados ya en memoria de una ejecución anterior a esta persistencia: respaldarlos ahora.
+    guardar_estado_etapa("requerimientos", {
+        "last_batch_result": st.session_state.last_batch_result,
+        "last_project_name": st.session_state.get("last_project_name"),
+        "last_milestone": st.session_state.get("last_milestone"),
+    })
+
 if st.session_state.get("last_batch_result", {}).get("issues"):
     st.divider()
     from core.utils import (

@@ -49,7 +49,15 @@ def inicializar_bd():
             eval_json TEXT
         )
     ''')
-    
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stage_snapshots (
+            stage TEXT PRIMARY KEY,
+            payload TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -60,6 +68,37 @@ def limpiar_datos_seguimiento():
     cursor.execute('DELETE FROM issues')
     cursor.execute('DELETE FROM history')
     cursor.execute('DELETE FROM cache_results')
+    conn.commit()
+    conn.close()
+    limpiar_estado_etapas()
+
+def guardar_estado_etapa(stage: str, payload: dict):
+    """Persiste el último resultado de análisis de una etapa (Requerimientos, Diseño, Codificación, Pruebas)."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO stage_snapshots (stage, payload, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+    ''', (stage, json.dumps(payload, ensure_ascii=False, default=str)))
+    conn.commit()
+    conn.close()
+
+def cargar_estado_etapa(stage: str):
+    """Recupera el último resultado de análisis persistido de una etapa, o None si no existe."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT payload FROM stage_snapshots WHERE stage = ?', (stage,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return json.loads(row[0])
+    return None
+
+def limpiar_estado_etapas():
+    """Borra los resultados de análisis persistidos de todas las etapas."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM stage_snapshots')
     conn.commit()
     conn.close()
 

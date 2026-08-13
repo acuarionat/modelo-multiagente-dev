@@ -33,6 +33,7 @@ from core.ui_components import (
     render_human_decision_notice,
 )
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
+from database.repository import cargar_estado_etapa, guardar_estado_etapa
 from integrations.issue_service import (
     crear_o_actualizar_issue_matriz_trazabilidad_diseno,
     construir_matriz_requerimientos_original,
@@ -272,7 +273,19 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     st.warning(DISENO_AVISO)
 
     session = st.session_state
-    session.setdefault("diseno_resultados", {})
+    if "diseno_resultados" not in session:
+        persisted = cargar_estado_etapa("diseno")
+        session["diseno_resultados"] = (persisted or {}).get("diseno_resultados", {})
+        if persisted:
+            session["matriz_snapshot"] = persisted.get("matriz_snapshot")
+            session["matriz_snapshot_metadata"] = persisted.get("matriz_snapshot_metadata")
+    elif session["diseno_resultados"] and session.get("matriz_snapshot") and cargar_estado_etapa("diseno") is None:
+        # Resultados ya en memoria de una ejecución anterior a esta persistencia: respaldarlos ahora.
+        guardar_estado_etapa("diseno", {
+            "diseno_resultados": session["diseno_resultados"],
+            "matriz_snapshot": session["matriz_snapshot"],
+            "matriz_snapshot_metadata": session.get("matriz_snapshot_metadata"),
+        })
     session.setdefault("matriz_confirmada", False)
 
     # ============================================================
@@ -480,6 +493,11 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                     **session["matriz_snapshot_metadata"],
                 }
                 session["diseno_resultados"][diseno_id] = grafo.invoke(initial_state)
+        guardar_estado_etapa("diseno", {
+            "diseno_resultados": session["diseno_resultados"],
+            "matriz_snapshot": session["matriz_snapshot"],
+            "matriz_snapshot_metadata": session["matriz_snapshot_metadata"],
+        })
         st.success(f"Análisis completado para: {', '.join(disenos_validos)}.")
 
     # ============================================================
