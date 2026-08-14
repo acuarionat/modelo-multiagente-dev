@@ -667,7 +667,8 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         resultado_grafo = resultados[codificacion_id]
         expander_title = f"{p['codificacion_id']} — {p['titulo']} · {p['estado_orientativo']}"
 
-        with st.expander(expander_title, expanded=True):
+        # Mantener el detalle bajo demanda facilita comparar varios resultados.
+        with st.expander(expander_title, expanded=False):
             render_evaluation_header(
                 titulo="Resultado de evaluación asistida",
                 estado=p["estado_orientativo"],

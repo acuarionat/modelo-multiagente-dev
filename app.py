@@ -27,11 +27,18 @@ from core.ui_components import (
     render_gitlab_feedback,
     render_state_badge,
 )
+from core.ui_theme import (
+    inject_global_styles,
+    render_brand_header,
+    render_sidebar_brand,
+    render_stage_context,
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EMI_LOGO_PATH = os.path.join(BASE_DIR, "assets", "emi_logo.png")
+TRACEDEV_LOGO_PATH = os.path.join(BASE_DIR, "assets", "tracedev_logo.svg")
 
-st.set_page_config(page_title="EMI | Recepción de Requerimientos", page_icon="🏛️", layout="wide")
+st.set_page_config(page_title="TraceDev | Control y Trazabilidad", page_icon="◈", layout="wide")
 
 st.markdown("""
 <style>
@@ -680,6 +687,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Capa visual TraceDev. Se inyecta después de los estilos heredados para conservar
+# compatibilidad con todos los componentes ya existentes en las cuatro etapas.
+inject_global_styles()
+
 STAGES = (
     ("requerimientos", "Requerimientos", "Recepción de requerimientos", "☷"),
     ("diseno", "Diseño", "Diseño", "◇"),
@@ -743,17 +754,7 @@ def render_coming_soon(stage_id):
             st.session_state["etapa_actual"] = "requerimientos"
             st.rerun()
 
-logo_col, title_col = st.columns([1.05, 2.45])
-with logo_col:
-    st.image(EMI_LOGO_PATH, width="stretch")
-with title_col:
-    st.markdown("""
-    <div class="emi-header">
-        <div class="emi-eyebrow">Escuela Militar de Ingeniería</div>
-        <h1>Modelo Multiagente de Control y Seguimiento</h1>
-        <p>Proceso adaptativo para el desarrollo y la trazabilidad de software.</p>
-    </div>
-    """, unsafe_allow_html=True)
+render_brand_header(EMI_LOGO_PATH, TRACEDEV_LOGO_PATH)
 
 saved_config = load_project_config()
 editing_config = st.session_state.get("editing_project_config", False)
@@ -831,12 +832,7 @@ st.info("Las métricas e indicadores son valoraciones asistidas basadas en la ev
 
 # Sidebar options
 with st.sidebar:
-    st.image(EMI_LOGO_PATH, width="stretch")
-    st.markdown("### Sistema Multiagente")
-    st.caption("Recepción y seguimiento de requerimientos")
-    st.markdown(f"**Proyecto:** {project_config['name']}")
-    st.markdown("**GitLab:** 🟢 Conectado")
-    st.markdown(f"**Contexto:** {project_config['context_version']}")
+    render_sidebar_brand(TRACEDEV_LOGO_PATH, project_config)
     st.divider()
     if st.button("Editar configuración", width="stretch"):
         st.session_state["editing_project_config"] = True
@@ -858,8 +854,8 @@ except Exception as e:
 project_name = project_config["name"]
 stage_id = st.session_state["etapa_actual"]
 milestone_val = MILESTONES_BY_STAGE[stage_id]
-st.subheader(next(stage[2] for stage in STAGES if stage[0] == stage_id))
-st.write(f"**Milestone asociado:** {milestone_val}")
+stage_name = next(stage[2] for stage in STAGES if stage[0] == stage_id)
+render_stage_context(stage_name, milestone_val)
 
 # Las etapas de Diseño y Codificación tienen su propio bloque, separado del
 # de Requerimientos (no comparten nodos ni lógica). Las demás etapas aún no

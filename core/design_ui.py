@@ -548,7 +548,9 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         resultado_grafo = resultados[diseno_id]
         expander_title = f"{p['diseno_id']} — {p['titulo']} · {p['estado_orientativo']}"
 
-        with st.expander(expander_title, expanded=True):
+        # Cada resultado se presenta como una ficha resumida y desplegable para
+        # evitar una página excesivamente larga cuando existen varios diseños.
+        with st.expander(expander_title, expanded=False):
             render_evaluation_header(
                 titulo="Resultado de evaluación asistida",
                 estado=p["estado_orientativo"],

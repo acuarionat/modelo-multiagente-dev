@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 144" role="img" aria-labelledby="title desc">
+  <title id="title">TraceDev</title>
+  <desc id="desc">Identidad visual de TraceDev, plataforma multiagente de desarrollo y trazabilidad</desc>
+  <defs>
+    <linearGradient id="mark" x1="16" y1="18" x2="126" y2="126" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8D532"/>
+      <stop offset="1" stop-color="#F2C300"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M31 71 54 39l35 13 24-28M31 71l23 33 35-13 24 28M54 39v65M89 52v39" stroke="#FFFFFF" stroke-width="7" opacity=".94"/>
+    <circle cx="31" cy="71" r="12" fill="url(#mark)" stroke="#FFFFFF" stroke-width="5"/>
+    <circle cx="54" cy="39" r="10" fill="#FFFFFF" stroke="#F2C300" stroke-width="4"/>
+    <circle cx="54" cy="104" r="10" fill="#FFFFFF" stroke="#F2C300" stroke-width="4"/>
+    <circle cx="89" cy="52" r="10" fill="#F2C300" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="89" cy="91" r="10" fill="#F2C300" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="113" cy="24" r="10" fill="#FFFFFF" stroke="#F2C300" stroke-width="4"/>
+    <circle cx="113" cy="119" r="10" fill="#FFFFFF" stroke="#F2C300" stroke-width="4"/>
+  </g>
+  <text x="151" y="87" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="61" font-weight="800" letter-spacing="1">Trace</text>
+  <text x="305" y="87" fill="#F2C300" font-family="Segoe UI, Arial, sans-serif" font-size="61" font-weight="800" letter-spacing="1">Dev</text>
+  <rect x="155" y="106" width="318" height="4" rx="2" fill="#F2C300"/>
+  <text x="155" y="131" fill="#DCEAF6" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="650" letter-spacing="1.8">DESARROLLO · TRAZABILIDAD · DECISIÓN</text>
+</svg>

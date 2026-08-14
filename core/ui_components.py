@@ -7,6 +7,8 @@ Extraídos del patrón de Recepción de Requerimientos para que Diseño
 Solo presentación: no recalcula métricas ni modifica datos.
 """
 
+from html import escape
+
 import streamlit as st
 
 
@@ -121,46 +123,47 @@ def render_findings_section(
     precisiones: list,
     oportunidades: list,
 ) -> None:
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Correcciones necesarias", len(correcciones))
-    c2.metric("Precisiones necesarias", len(precisiones))
-    c3.metric("Oportunidades de mejora", len(oportunidades))
+    panels = (
+        (
+            "Correcciones necesarias",
+            correcciones,
+            "finding-correction",
+            "No se identificaron correcciones necesarias.",
+        ),
+        (
+            "Precisiones necesarias",
+            precisiones,
+            "finding-precision",
+            "No se identificaron precisiones necesarias.",
+        ),
+        (
+            "Oportunidades de mejora",
+            oportunidades,
+            "finding-opportunity",
+            "No se identificaron oportunidades adicionales.",
+        ),
+    )
 
-    st.markdown("#### Correcciones necesarias")
-    if correcciones:
-        for item in correcciones:
-            text = _texto_hallazgo_ui(item)
-            if text:
-                st.markdown(
-                    f'<div class="finding-block finding-correction">{text}</div>',
-                    unsafe_allow_html=True,
-                )
-    else:
-        st.success("No se identificaron correcciones necesarias.")
-
-    st.markdown("#### Precisiones necesarias")
-    if precisiones:
-        for item in precisiones:
-            text = _texto_hallazgo_ui(item)
-            if text:
-                st.markdown(
-                    f'<div class="finding-block finding-precision">{text}</div>',
-                    unsafe_allow_html=True,
-                )
-    else:
-        st.caption("No se identificaron precisiones necesarias.")
-
-    st.markdown("#### Oportunidades de mejora")
-    if oportunidades:
-        for item in oportunidades:
-            text = _texto_hallazgo_ui(item)
-            if text:
-                st.markdown(
-                    f'<div class="finding-block finding-opportunity">{text}</div>',
-                    unsafe_allow_html=True,
-                )
-    else:
-        st.caption("No se identificaron oportunidades adicionales.")
+    columns = st.columns(3)
+    for index, (column, panel) in enumerate(zip(columns, panels)):
+        title, items, css_class, empty_message = panel
+        with column:
+            # El conteo funciona como cabecera visual de cada categoría y el
+            # detalle queda alineado inmediatamente debajo, en la misma columna.
+            st.metric(title, len(items))
+            if items:
+                for item in items:
+                    text = _texto_hallazgo_ui(item)
+                    if text:
+                        safe_text = escape(text).replace("\n", "<br>")
+                        st.markdown(
+                            f'<div class="finding-block {css_class}">{safe_text}</div>',
+                            unsafe_allow_html=True,
+                        )
+            elif index == 0:
+                st.success(empty_message)
+            else:
+                st.caption(empty_message)
 
 
 # ---------------------------------------------------------

@@ -333,7 +333,8 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         resultado_grafo = resultados[prueba_id]
         expander_title = f"{p['prueba_id']} — {p['titulo']} · {p['estado_orientativo']}"
 
-        with st.expander(expander_title, expanded=True):
+        # Mantener el detalle bajo demanda facilita comparar varios resultados.
+        with st.expander(expander_title, expanded=False):
             st.subheader("Resultado de evaluación asistida")
             render_state_badge(p["estado_orientativo"])
             m1, m2, m3, m4 = st.columns(4)
