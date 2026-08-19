@@ -16,6 +16,7 @@ from integrations.testing_traceability_issue_mapper import (
     construir_markdown_matriz_trazabilidad_pruebas,
     mapear_matriz_trazabilidad_pruebas,
 )
+from core.batch_contract import construir_etiquetas_resultado_evaluacion_tecnica
 from core.utils import extraer_porcentaje
 
 logger = logging.getLogger(__name__)
@@ -98,7 +99,13 @@ def publicar_comentario_pruebas(project_id, issue_iid, testing_summary: dict):
     comentario = construir_comentario_pruebas(testing_summary)
 
     adapter = GitLabAdapter(project_id=project_id)
-    return adapter.agregar_comentario(issue_iid, comentario)
+    nota = adapter.agregar_comentario(issue_iid, comentario)
+    issue = adapter.obtener_issue(issue_iid)
+    nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
+        issue.labels, testing_summary.get("estado_orientativo"),
+    )
+    adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
+    return nota
 
 
 def obtener_issue_matriz_trazabilidad_pruebas(project_id):

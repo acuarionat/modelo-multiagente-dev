@@ -38,6 +38,78 @@ def _texto_hallazgo_ui(item):
 
 
 # ---------------------------------------------------------
+# Navegación interna de una etapa
+# ---------------------------------------------------------
+
+def create_stage_step_panels(stage_prefix: str, resultados_presentes: bool = False):
+    """Crea las tres vistas progresivas comunes sin alterar su contenido.
+
+    El panel abierto se rastrea con un único índice en `st.session_state`
+    (`<stage_prefix>_active_step`), recalculado en cada ejecución igual que
+    antes lo hacía `resultados_presentes`. Esto permite que
+    `render_next_phase_button` avance de panel sin depender del `key` nativo
+    de `st.expander`, que no admite reabrirse/cerrarse por programación.
+    """
+    step_key = f"{stage_prefix}_active_step"
+    if step_key not in st.session_state:
+        st.session_state[step_key] = 2 if resultados_presentes else 0
+    elif resultados_presentes:
+        st.session_state[step_key] = 2
+    active_step = st.session_state[step_key]
+
+    paso_entrada = st.expander("A. Revisión de entradas", expanded=active_step == 0)
+    paso_analisis = st.expander("B. Ejecución del análisis", expanded=active_step == 1)
+    paso_resultados = st.expander("C. Resultados y artefactos", expanded=active_step == 2)
+    return paso_entrada, paso_analisis, paso_resultados, step_key
+
+
+def create_coding_step_panels(stage_prefix: str, resultados_presentes: bool = False):
+    """Crea la navegación progresiva propia de la etapa de Codificación.
+
+    Ver `create_stage_step_panels` para el propósito del índice de paso activo.
+    """
+    step_key = f"{stage_prefix}_active_step"
+    if step_key not in st.session_state:
+        st.session_state[step_key] = 3 if resultados_presentes else 0
+    elif resultados_presentes:
+        st.session_state[step_key] = 3
+    active_step = st.session_state[step_key]
+
+    paso_entrada = st.expander("A. Entrada de codificación", expanded=active_step == 0)
+    paso_repositorio = st.expander("B. Información técnica del repositorio", expanded=active_step == 1)
+    paso_analisis = st.expander("C. Ejecución del análisis", expanded=active_step == 2)
+    paso_resultados = st.expander("D. Resultados y artefactos", expanded=active_step == 3)
+    return paso_entrada, paso_repositorio, paso_analisis, paso_resultados, step_key
+
+
+# ---------------------------------------------------------
+# Navegación entre fases (botón discreto de avance)
+# ---------------------------------------------------------
+
+def render_next_phase_button(
+    container,
+    step_key: str,
+    target_step: int,
+    label: str = "Siguiente fase →",
+) -> None:
+    """Botón discreto que cierra el panel actual y abre el siguiente.
+
+    Solo afecta el estado visual (abierto/cerrado) de los expanders creados por
+    `create_stage_step_panels` / `create_coding_step_panels`; no altera datos ni
+    lógica de la etapa.
+    """
+    container.divider()
+    _, col_button = container.columns([5, 1.4])
+    if col_button.button(
+        label,
+        key=f"next_phase__{step_key}__{target_step}",
+        width="stretch",
+    ):
+        st.session_state[step_key] = target_step
+        st.rerun()
+
+
+# ---------------------------------------------------------
 # Badge de estado
 # ---------------------------------------------------------
 

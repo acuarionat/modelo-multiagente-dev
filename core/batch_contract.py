@@ -2906,6 +2906,18 @@ def construir_etiquetas_resultado(old_labels: list, estado_evaluacion: str, qual
     return list(dict.fromkeys(labels))
 
 
+def construir_etiquetas_resultado_evaluacion_tecnica(old_labels: list, estado_orientativo: str) -> list:
+    """Traduce el estado orientativo de Diseño/Codificación (CONFORME,
+    CONFORME CON MEJORAS, CORREGIR, ERROR) y de Pruebas (APROBADO, REVISAR,
+    CORREGIR, ERROR) al mismo ciclo de etiquetas Pendiente/Revisada/Requiere
+    modificación que usa Requerimientos, reutilizando construir_etiquetas_resultado."""
+    if estado_orientativo in {"CONFORME", "CONFORME CON MEJORAS", "APROBADO"}:
+        return construir_etiquetas_resultado(old_labels, "APROBADO")
+    if estado_orientativo in {"CORREGIR", "REVISAR"}:
+        return construir_etiquetas_resultado(old_labels, "CORREGIR")
+    return list(dict.fromkeys(old_labels))
+
+
 def normalizar_iid(value: Any) -> int | None:
     if isinstance(value, bool):
         return None

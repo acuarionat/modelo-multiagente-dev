@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from core.graph import construir_grafo
 from core.config import ALLOW_INCOMPLETE_STORIES, OLLAMA_MODEL
-from core.batch_contract import construir_etiquetas_resultado
+from core.batch_contract import construir_etiquetas_resultado, construir_etiquetas_resultado_evaluacion_tecnica
 from core.performance_audit import obtener_contadores, reiniciar_contadores
 from core.utils import construir_filas_trazabilidad, construir_resultado_lote, extraer_porcentaje
 from database.repository import calcular_hash_issue, guardar_cache, guardar_historial, insertar_o_actualizar_issue
@@ -215,7 +215,13 @@ def publicar_comentario_diseno(project_id, issue_iid, resumen_diseno: dict):
     comentario = construir_comentario_diseno(resumen_diseno)
 
     adapter = GitLabAdapter(project_id=project_id)
-    return adapter.agregar_comentario(issue_iid, comentario)
+    nota = adapter.agregar_comentario(issue_iid, comentario)
+    issue = adapter.obtener_issue(issue_iid)
+    nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
+        issue.labels, resumen_diseno.get("estado_orientativo"),
+    )
+    adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
+    return nota
 
 
 def construir_comentario_codificacion(resumen_codificacion: dict) -> str:
@@ -282,7 +288,13 @@ def publicar_comentario_codificacion(project_id, issue_iid, resumen_codificacion
     comentario = construir_comentario_codificacion(resumen_codificacion)
 
     adapter = GitLabAdapter(project_id=project_id)
-    return adapter.agregar_comentario(issue_iid, comentario)
+    nota = adapter.agregar_comentario(issue_iid, comentario)
+    issue = adapter.obtener_issue(issue_iid)
+    nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
+        issue.labels, resumen_codificacion.get("estado_orientativo"),
+    )
+    adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
+    return nota
 
 
 def obtener_issues_codificacion(project_id, milestone_title="Codificación"):

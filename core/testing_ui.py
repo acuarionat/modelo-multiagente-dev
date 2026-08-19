@@ -24,9 +24,11 @@ from core.testing_traceability import (
 from core.testing_validation import validar_entrada_pruebas
 from core.traceability_export import exportar_filas_xlsx
 from core.ui_components import (
+    create_stage_step_panels,
     render_findings_section,
     render_gitlab_feedback,
     render_human_decision_notice,
+    render_next_phase_button,
     render_state_badge,
 )
 from core.utils import (
@@ -129,6 +131,18 @@ def _explicar_estado_pruebas(p: dict) -> str:
     )
 
 
+def _indicador_general_pruebas(presentacion: dict, codigos: tuple[str, ...]):
+    """Promedia solo métricas evaluadas para el indicador visual de la categoría."""
+    valores = []
+    metricas = presentacion.get("metricas") or {}
+    for codigo in codigos:
+        metrica = metricas.get(codigo) or {}
+        valor = metrica.get("valor")
+        if metrica.get("estado_calculo") == "EVALUADO" and isinstance(valor, (int, float)):
+            valores.append(valor)
+    return sum(valores) / len(valores) if valores else None
+
+
 # ---------------------------------------------------------
 # Vista Streamlit
 # ---------------------------------------------------------
@@ -159,16 +173,21 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         })
     session.setdefault("pruebas_matriz_confirmada", False)
 
+    paso_entrada, paso_analisis, paso_resultados, step_key = create_stage_step_panels(
+        "pruebas",
+        bool(session["pruebas_resultados"]),
+    )
+
     # ============================================================
     # A. Entrada de Pruebas — TRZ-003
     # ============================================================
 
-    st.markdown("### A. Entrada de Pruebas")
-    st.markdown("#### Matriz de Trazabilidad — Etapa Codificación")
+    paso_entrada.markdown("### Entrada de Pruebas")
+    paso_entrada.markdown("#### Matriz de Trazabilidad — Etapa Codificación")
 
-    actualizar_gitlab = st.button("Actualizar desde GitLab", key="pruebas_actualizar_trz003")
+    actualizar_gitlab = paso_entrada.button("Actualizar desde GitLab", key="pruebas_actualizar_trz003")
     if "pruebas_matriz_carga" not in session or actualizar_gitlab:
-        with st.spinner("Consultando TRZ-003 en GitLab..."):
+        with paso_entrada.spinner("Consultando TRZ-003 en GitLab..."):
             issue_trz003, matriz_trz003 = obtener_issue_matriz_trazabilidad_codificacion(adapter.project_id)
         if matriz_trz003 is not None:
             session["pruebas_matriz_carga"] = matriz_trz003
@@ -177,40 +196,40 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             session["pruebas_matriz_confirmada"] = False
 
     if "pruebas_matriz_carga" not in session:
-        st.info(
+        paso_entrada.info(
             "TRZ-003 no está disponible en GitLab todavía. Ejecute primero la etapa de "
             "Codificación para generarla."
         )
         return
 
     matriz_codificacion = session["pruebas_matriz_carga"]
-    st.write(f"**Fuente vigente:** {session.get('pruebas_matriz_fuente', 'GitLab — TRZ-003')}")
-    st.write(f"**Filas de trazabilidad heredadas:** {len(matriz_codificacion)}")
-    st.dataframe(matriz_codificacion, width="stretch")
+    paso_entrada.write(f"**Fuente vigente:** {session.get('pruebas_matriz_fuente', 'GitLab — TRZ-003')}")
+    paso_entrada.write(f"**Filas de trazabilidad heredadas:** {len(matriz_codificacion)}")
+    paso_entrada.dataframe(matriz_codificacion, width="stretch")
 
     issue_trz003 = session.get("pruebas_issue_trz003")
     if issue_trz003 is not None:
-        st.markdown(f"[Ver TRZ-003 en GitLab]({issue_trz003.web_url})")
+        paso_entrada.markdown(f"[Ver TRZ-003 en GitLab]({issue_trz003.web_url})")
 
     # ============================================================
     # B. Issues de Pruebas detectados
     # ============================================================
 
-    st.markdown("### B. Issues de Pruebas detectados")
+    paso_entrada.markdown("### Issues de Pruebas detectados")
     if "pruebas_issues_detectados" not in session:
-        with st.spinner("Consultando Issues de Pruebas en GitLab..."):
+        with paso_entrada.spinner("Consultando Issues de Pruebas en GitLab..."):
             session["pruebas_issues_detectados"] = obtener_issues_pruebas(
                 adapter.project_id, milestone_title="Pruebas",
             )
     issues_pruebas = session["pruebas_issues_detectados"]
 
-    if st.button("Actualizar issues", key="pruebas_actualizar_issues"):
+    if paso_entrada.button("Actualizar issues", key="pruebas_actualizar_issues"):
         session.pop("pruebas_issues_detectados", None)
         st.rerun()
 
-    st.write(f"**Issues encontrados:** {len(issues_pruebas)}")
+    paso_entrada.write(f"**Issues encontrados:** {len(issues_pruebas)}")
     if not issues_pruebas:
-        st.info("No se encontraron Issues de Pruebas en el milestone.")
+        paso_entrada.info("No se encontraron Issues de Pruebas en el milestone.")
         return
 
     validaciones = preparar_prevalidacion_pruebas(issues_pruebas, matriz_codificacion)
@@ -223,7 +242,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         pid for pid, v in validaciones.items() if not v["entrada_valida"]
     ]
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3 = paso_entrada.columns(3)
     c1.metric("Issues de Pruebas", len(issues_pruebas))
     c2.metric("Válidos", len(pruebas_validas))
     c3.metric("Bloqueados", len(bloqueadas))
@@ -232,28 +251,30 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         prueba_id = issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"
         validacion = validaciones[prueba_id]
         icono = "🟢" if validacion["entrada_valida"] else "🔴"
-        st.markdown(f"{icono} **{prueba_id}** — {validacion['estado']}")
+        paso_entrada.markdown(f"{icono} **{prueba_id}** — {validacion['estado']}")
         if validacion["campos_faltantes"]:
-            st.caption(f"Campos faltantes: {', '.join(validacion['campos_faltantes'])}")
+            paso_entrada.caption(f"Campos faltantes: {', '.join(validacion['campos_faltantes'])}")
         if validacion["referencias_invalidas"]:
-            st.caption(
+            paso_entrada.caption(
                 f"Codificaciones inexistentes en TRZ-003: {', '.join(validacion['referencias_invalidas'])}"
             )
+
+    render_next_phase_button(paso_entrada, step_key, 1)
 
     # ============================================================
     # C. Ejecución del análisis
     # ============================================================
 
-    st.markdown("### C. Ejecución del análisis")
+    paso_analisis.markdown("### Ejecución del análisis")
 
-    session["pruebas_matriz_confirmada"] = st.checkbox(
+    session["pruebas_matriz_confirmada"] = paso_analisis.checkbox(
         "Confirmo que la Matriz de Trazabilidad — Etapa Codificación mostrada corresponde a la "
         "versión vigente que debe considerarse en la etapa de Pruebas.",
         value=session["pruebas_matriz_confirmada"], key="pruebas_matriz_confirmada_check",
     )
 
     puede_ejecutar = session["pruebas_matriz_confirmada"] and bool(pruebas_validas)
-    ejecutar = st.button(
+    ejecutar = paso_analisis.button(
         "Iniciar análisis de Pruebas", type="primary", disabled=not puede_ejecutar, key="pruebas_ejecutar",
     )
     if ejecutar:
@@ -265,7 +286,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
 
         grafo = construir_grafo_pruebas()
         for prueba_id in pruebas_validas:
-            with st.spinner(f"Ejecutando el análisis multiagente para {prueba_id}..."):
+            with paso_analisis.spinner(f"Ejecutando el análisis multiagente para {prueba_id}..."):
                 issue = next(
                     i for i in issues_pruebas
                     if (i.get("prueba_id") or f"issue-{i.get('issue_iid')}") == prueba_id
@@ -284,7 +305,9 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             "pruebas_matriz_snapshot_metadata": session["pruebas_matriz_snapshot_metadata"],
             "pruebas_issue_snapshot": session["pruebas_issue_snapshot"],
         })
-        st.success(f"Análisis completado para: {', '.join(pruebas_validas)}.")
+        paso_analisis.success(f"Análisis completado para: {', '.join(pruebas_validas)}.")
+
+    render_next_phase_button(paso_analisis, step_key, 2)
 
     # ============================================================
     # D. Resultados y artefactos
@@ -292,10 +315,10 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
 
     resultados = session["pruebas_resultados"]
     if not resultados:
-        st.info("Ejecuta el análisis para ver resultados.")
+        paso_resultados.info("Ejecuta el análisis para ver resultados.")
         return
 
-    st.divider()
+    paso_resultados.divider()
     issues_por_id = {
         (issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"): issue
         for issue in session.get("pruebas_issue_snapshot", issues_pruebas)
@@ -322,26 +345,45 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             metadata=session.get("pruebas_matriz_snapshot_metadata"),
         )
 
-    st.subheader("Resultado de evaluación asistida")
-
-    render_human_decision_notice(
-        "Los resultados constituyen apoyo al control y seguimiento de las pruebas. "
-        "La aceptación final requiere revisión humana."
+    resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
+        ["Resumen general", "Detalle por prueba", "Matriz y documentos"]
     )
+
+    resumen_general.subheader("Resumen general de resultados")
+
+    total_pruebas = len(presentaciones)
+    requieren_correccion = sum(
+        1 for p in presentaciones.values() if p.get("estado_orientativo") == "CORREGIR"
+    )
+    con_error = sum(
+        1 for p in presentaciones.values() if p.get("estado_orientativo") == "ERROR"
+    )
+    rg1, rg2, rg3 = resumen_general.columns(3)
+    rg1.metric("Pruebas evaluadas", total_pruebas)
+    rg2.metric("Requieren corrección", requieren_correccion)
+    rg3.metric("Con error", con_error)
+
+    with resumen_general:
+        render_human_decision_notice(
+            "Los resultados constituyen apoyo al control y seguimiento de las pruebas. "
+            "La aceptación final requiere revisión humana."
+        )
+
+    detalle_resultados.subheader("Resultado de evaluación asistida")
 
     for prueba_id, p in presentaciones.items():
         resultado_grafo = resultados[prueba_id]
         expander_title = f"{p['prueba_id']} — {p['titulo']} · {p['estado_orientativo']}"
 
         # Mantener el detalle bajo demanda facilita comparar varios resultados.
-        with st.expander(expander_title, expanded=False):
+        with detalle_resultados.expander(expander_title, expanded=False):
             st.subheader("Resultado de evaluación asistida")
             render_state_badge(p["estado_orientativo"])
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("MC-07", extraer_porcentaje(p["metricas"]["MC-07"]["valor"]))
-            m2.metric("MC-08", extraer_porcentaje(p["metricas"]["MC-08"]["valor"]))
-            m3.metric("MS-08", extraer_porcentaje(p["metricas"]["MS-08"]["valor"]))
-            m4.metric("MS-09", extraer_porcentaje(p["metricas"]["MS-09"]["valor"]))
+            m1, m2 = st.columns(2)
+            indicador_calidad = _indicador_general_pruebas(p, ("MC-07", "MC-08"))
+            indicador_seguridad = _indicador_general_pruebas(p, ("MS-08", "MS-09"))
+            m1.metric("Indicador general de Calidad", extraer_porcentaje(indicador_calidad))
+            m2.metric("Indicador general de Seguridad", extraer_porcentaje(indicador_seguridad))
             st.info(f"**¿Por qué este estado?**\n\n{_explicar_estado_pruebas(p)}")
 
             tab_resumen, tab_calidad, tab_seguridad, tab_formalizacion = st.tabs(
@@ -437,7 +479,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
                     st.info("Sin trazabilidad heredada resuelta.")
 
     # ---- Matriz de Trazabilidad Evolucionada ----
-    with st.expander("Matriz de Trazabilidad Evolucionada — Pruebas", expanded=False):
+    with artefactos.expander("Matriz de Trazabilidad Evolucionada — Pruebas", expanded=False):
         import pandas as pd
         columnas_trz = [
             "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
@@ -465,7 +507,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             )
 
     # ---- Documentos consolidados ----
-    st.subheader("Documentos consolidados")
+    artefactos.subheader("Documentos consolidados")
     matriz_metadata_documentos = session.get("pruebas_matriz_snapshot_metadata", {})
     lista_presentaciones = list(presentaciones.values())
 
@@ -477,7 +519,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         filas_trazabilidad=filas_matriz,
     )
 
-    col_pdf, col_docx = st.columns(2)
+    col_pdf, col_docx = artefactos.columns(2)
 
     with col_pdf:
         st.markdown("### Reporte Ejecutivo")

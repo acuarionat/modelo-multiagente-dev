@@ -33,10 +33,12 @@ from core.coding_traceability import (
 from core.graph import construir_grafo_codificacion
 from core.traceability_export import exportar_filas_xlsx, importar_matriz_csv, importar_matriz_xlsx
 from core.ui_components import (
+    create_coding_step_panels,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
     render_human_decision_notice,
+    render_next_phase_button,
 )
 from core.utils import (
     extraer_porcentaje,
@@ -228,7 +230,7 @@ def render_coding_repository_info(session, adapter) -> None:
     """Muestra información técnica del repositorio descubierto."""
     import streamlit as st
 
-    st.markdown("### C. Información técnica del repositorio")
+    st.markdown("### Información técnica del repositorio")
 
     ya_analizado = "coding_repository_profile" in session
     etiqueta_boton = "Actualizar repositorio" if ya_analizado else "Analizar repositorio"
@@ -394,16 +396,21 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         })
     session.setdefault("coding_matriz_confirmada", False)
 
+    paso_entrada, paso_repositorio, paso_analisis, paso_resultados, step_key = create_coding_step_panels(
+        "codificacion",
+        bool(session["codificacion_resultados"]),
+    )
+
     # ============================================================
     # A. Entrada de Codificación — TRZ-002
     # ============================================================
 
-    st.markdown("### A. Entrada de Codificación")
-    st.markdown("#### Matriz de Trazabilidad — Etapa Diseño")
+    paso_entrada.markdown("### Entrada de Codificación")
+    paso_entrada.markdown("#### Matriz de Trazabilidad — Etapa Diseño")
 
-    actualizar_gitlab = st.button("Actualizar desde GitLab", key="coding_actualizar_trz002")
+    actualizar_gitlab = paso_entrada.button("Actualizar desde GitLab", key="coding_actualizar_trz002")
     if "coding_matriz_carga" not in session or actualizar_gitlab:
-        with st.spinner("Consultando TRZ-002 en GitLab..."):
+        with paso_entrada.spinner("Consultando TRZ-002 en GitLab..."):
             issue_trz002, matriz_trz002 = obtener_issue_matriz_trazabilidad_diseno(adapter.project_id)
         if matriz_trz002 is not None:
             session["coding_matriz_carga"] = matriz_trz002
@@ -415,11 +422,11 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             session["coding_matriz_confirmada"] = False
 
     if "coding_matriz_carga" not in session:
-        st.info(
+        paso_entrada.info(
             "TRZ-002 no está disponible en GitLab. Ejecute primero la etapa de Diseño "
             "o cargue la matriz de trazabilidad exportada desde Diseño."
         )
-        archivo_matriz = st.file_uploader(
+        archivo_matriz = paso_entrada.file_uploader(
             "Cargar matriz de Diseño (Excel)", type=["xlsx", "csv"], key="coding_matriz_upload_inicial",
         )
         if archivo_matriz is None:
@@ -438,29 +445,29 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         session["coding_matriz_original"], matriz_entrada, session.get("coding_matriz_fuente", "Diseño"),
     )
 
-    st.write(f"**Fuente vigente:** {preparacion_matriz['coding_matrix_source']}")
-    st.write(f"**Estado:** {preparacion_matriz['coding_matrix_status']}")
-    st.write(f"**Versión:** {preparacion_matriz['coding_matrix_version']}")
-    st.write(f"**Elementos de Diseño vigentes:** {len(preparacion_matriz['elementos_diseno_validos'])}")
+    paso_entrada.write(f"**Fuente vigente:** {preparacion_matriz['coding_matrix_source']}")
+    paso_entrada.write(f"**Estado:** {preparacion_matriz['coding_matrix_status']}")
+    paso_entrada.write(f"**Versión:** {preparacion_matriz['coding_matrix_version']}")
+    paso_entrada.write(f"**Elementos de Diseño vigentes:** {len(preparacion_matriz['elementos_diseno_validos'])}")
 
     if preparacion_matriz["coding_matrix_status"] == ESTADO_MATRIZ_INVALIDA:
-        st.error("Estado: INVÁLIDA. Se encontraron errores estructurales:")
+        paso_entrada.error("Estado: INVÁLIDA. Se encontraron errores estructurales:")
         for error in preparacion_matriz["coding_matrix_changes"]["errores_estructura"]:
-            st.markdown(f"• {error}")
+            paso_entrada.markdown(f"• {error}")
     elif preparacion_matriz["coding_matrix_changes"]["hay_cambios"]:
         cambios = preparacion_matriz["coding_matrix_changes"]
-        st.markdown(
+        paso_entrada.markdown(
             f"**Cambios respecto a la carga inicial:** "
             f"+{len(cambios['agregados'])} agregados · "
             f"~{len(cambios['modificados'])} modificados · "
             f"-{len(cambios['retirados'])} retirados"
         )
     else:
-        st.info("Estado: Original. No se detectaron modificaciones respecto a la carga inicial de esta sesión.")
+        paso_entrada.info("Estado: Original. No se detectaron modificaciones respecto a la carga inicial de esta sesión.")
 
-    st.dataframe(matriz_entrada, width="stretch")
+    paso_entrada.dataframe(matriz_entrada, width="stretch")
 
-    col_gitlab, col_excel = st.columns(2)
+    col_gitlab, col_excel = paso_entrada.columns(2)
     issue_trz002 = session.get("coding_issue_trz002")
     if issue_trz002 is not None:
         col_gitlab.markdown(f"[Editar en GitLab]({issue_trz002.web_url})")
@@ -478,11 +485,11 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             key="coding_descargar_excel",
         )
 
-    archivo_modificado = st.file_uploader(
+    archivo_modificado = paso_entrada.file_uploader(
         "Cargar matriz de Diseño modificada", type=["xlsx", "csv"], key="coding_matriz_upload",
     )
     if archivo_modificado is not None and session.get("coding_matriz_upload_nombre") != archivo_modificado.name:
-        with st.spinner("Validando la matriz cargada..."):
+        with paso_entrada.spinner("Validando la matriz cargada..."):
             matriz_excel = (
                 importar_matriz_xlsx(archivo_modificado) if archivo_modificado.name.lower().endswith(".xlsx")
                 else importar_matriz_csv(archivo_modificado)
@@ -500,9 +507,9 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     # B. Issues de Codificación detectados
     # ============================================================
 
-    st.markdown("### B. Issues de Codificación detectados")
+    paso_entrada.markdown("### Issues de Codificación detectados")
     if "coding_issues_detectados" not in session:
-        with st.spinner("Consultando Issues de Codificación en GitLab..."):
+        with paso_entrada.spinner("Consultando Issues de Codificación en GitLab..."):
             session["coding_issues_detectados"] = obtener_issues_codificacion(
                 adapter.project_id, milestone_title="Codificación",
             )
@@ -513,42 +520,47 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         matriz_entrada, {fila["codificacion_id"]: estado_entrada["validaciones"][fila["codificacion_id"]] for fila in estado_entrada["filas"]},
     )
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3 = paso_entrada.columns(3)
     c1.metric("Elementos de Diseño vigentes", prevalidacion["elementos_diseno_vigentes"])
     c2.metric("Issues de Codificación válidos", len(prevalidacion["issues_validos"]))
     c3.metric("Issues bloqueados", len(prevalidacion["issues_bloqueados"]))
 
-    if st.button("Actualizar issues", key="coding_actualizar_issues"):
+    if paso_entrada.button("Actualizar issues", key="coding_actualizar_issues"):
         session.pop("coding_issues_detectados", None)
         st.rerun()
 
     if not estado_entrada["filas"]:
-        st.info("No se encontraron Issues de Codificación en el milestone.")
+        paso_entrada.info("No se encontraron Issues de Codificación en el milestone.")
         return
 
     for fila in estado_entrada["filas"]:
         icono = "🟢" if fila["entrada_valida"] else "🔴"
-        st.markdown(f"{icono} **{fila['codificacion_id']}** — {fila['estado_entrada']}")
+        paso_entrada.markdown(f"{icono} **{fila['codificacion_id']}** — {fila['estado_entrada']}")
         if fila["campos_faltantes"]:
-            st.caption(f"Campos faltantes: {', '.join(fila['campos_faltantes'])}")
+            paso_entrada.caption(f"Campos faltantes: {', '.join(fila['campos_faltantes'])}")
         if fila["referencias_invalidas"]:
-            st.caption(f"Elementos de Diseño inexistentes en la matriz heredada: {', '.join(fila['referencias_invalidas'])}")
+            paso_entrada.caption(f"Elementos de Diseño inexistentes en la matriz heredada: {', '.join(fila['referencias_invalidas'])}")
 
     codificaciones_validas = [fila["codificacion_id"] for fila in estado_entrada["filas"] if fila["entrada_valida"]]
 
-    # ============================================================
-    # C. Información técnica del repositorio (descubrimiento previo)
-    # ============================================================
-
-    render_coding_repository_info(session, adapter)
+    render_next_phase_button(paso_entrada, step_key, 1)
 
     # ============================================================
-    # D. Ejecución del análisis
+    # B. Información técnica del repositorio (descubrimiento previo)
     # ============================================================
 
-    st.markdown("### D. Ejecución del análisis")
+    with paso_repositorio:
+        render_coding_repository_info(session, adapter)
 
-    session["coding_matriz_confirmada"] = st.checkbox(
+    render_next_phase_button(paso_repositorio, step_key, 2)
+
+    # ============================================================
+    # C. Ejecución del análisis
+    # ============================================================
+
+    paso_analisis.markdown("### Ejecución del análisis")
+
+    session["coding_matriz_confirmada"] = paso_analisis.checkbox(
         "Confirmo que la Matriz de Trazabilidad — Etapa Diseño mostrada corresponde a la versión vigente "
         "que debe considerarse en la etapa de Codificación.",
         value=session["coding_matriz_confirmada"], key="coding_matriz_confirmada_check", disabled=not matriz_valida,
@@ -566,7 +578,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         and descubrimiento_valido
         and sin_bloqueos
     )
-    ejecutar = st.button(
+    ejecutar = paso_analisis.button(
         "Iniciar análisis de Codificación", type="primary", disabled=not puede_ejecutar, key="coding_ejecutar",
     )
     if ejecutar:
@@ -590,7 +602,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         session["coding_issue_snapshot"] = copy.deepcopy(issues_codificacion)
         grafo = construir_grafo_codificacion()
         for codificacion_id in codificaciones_validas:
-            with st.spinner(f"Localizando código y ejecutando herramientas para {codificacion_id}..."):
+            with paso_analisis.spinner(f"Localizando código y ejecutando herramientas para {codificacion_id}..."):
                 issue = next(
                     i for i in issues_codificacion
                     if (i.get("codificacion_id") or f"issue-{i.get('issue_iid')}") == codificacion_id
@@ -616,19 +628,21 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             "coding_repository_snapshot": session["coding_repository_snapshot"],
             "coding_issue_snapshot": session["coding_issue_snapshot"],
         })
-        st.success(f"Análisis completado para: {', '.join(codificaciones_validas)}.")
+        paso_analisis.success(f"Análisis completado para: {', '.join(codificaciones_validas)}.")
+
+    render_next_phase_button(paso_analisis, step_key, 3)
 
     # ============================================================
     # ============================================================
-    # E. Resultados y artefactos
+    # D. Resultados y artefactos
     # ============================================================
 
     resultados = session["codificacion_resultados"]
     if not resultados:
-        st.info("Ejecuta el análisis para ver resultados.")
+        paso_resultados.info("Ejecuta el análisis para ver resultados.")
         return
 
-    st.divider()
+    paso_resultados.divider()
     resultados_central = [
         {"issue_iid": res["coding_context"][0]["issue_iid"], "codificacion_id": codificacion_id, **res["coding_central_result"]}
         for codificacion_id, res in resultados.items()
@@ -656,19 +670,32 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         for codificacion_id, resultado_grafo in resultados.items()
     }
 
-    st.subheader("Resultado de evaluación asistida")
-
-    render_human_decision_notice(
-        "Los resultados constituyen apoyo al control y seguimiento de la codificación. "
-        "La aceptación final requiere revisión humana."
+    resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
+        ["Resumen general", "Detalle por codificación", "Matriz y documentos"]
     )
+    resumen_general.subheader("Resultado de evaluación asistida")
+    resumen_cols = resumen_general.columns(3)
+    resumen_cols[0].metric("Codificaciones evaluadas", len(presentaciones))
+    resumen_cols[1].metric(
+        "Requieren corrección",
+        sum(p.get("estado_orientativo") == "CORREGIR" for p in presentaciones.values()),
+    )
+    resumen_cols[2].metric(
+        "Con error",
+        sum(p.get("estado_orientativo") == "ERROR" for p in presentaciones.values()),
+    )
+    with resumen_general:
+        render_human_decision_notice(
+            "Los resultados constituyen apoyo al control y seguimiento de la codificación. "
+            "La aceptación final requiere revisión humana."
+        )
 
     for codificacion_id, p in presentaciones.items():
         resultado_grafo = resultados[codificacion_id]
         expander_title = f"{p['codificacion_id']} — {p['titulo']} · {p['estado_orientativo']}"
 
         # Mantener el detalle bajo demanda facilita comparar varios resultados.
-        with st.expander(expander_title, expanded=False):
+        with detalle_resultados.expander(expander_title, expanded=False):
             render_evaluation_header(
                 titulo="Resultado de evaluación asistida",
                 estado=p["estado_orientativo"],
@@ -814,7 +841,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
                 st.markdown(f"**Declarados sin confirmar:** {', '.join(no_confirmados) if no_confirmados else 'Ninguno.'}")
 
     # ---- Matriz de Trazabilidad Evolucionada ----
-    with st.expander("Matriz de Trazabilidad Evolucionada", expanded=False):
+    with artefactos.expander("Matriz de Trazabilidad Evolucionada", expanded=False):
         import pandas as pd
         columnas_trz = [
             "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
@@ -841,7 +868,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             )
 
     # ---- Documentos consolidados ----
-    st.subheader("Documentos consolidados")
+    artefactos.subheader("Documentos consolidados")
     matriz_metadata_documentos = session.get("coding_matriz_snapshot_metadata", {})
     lista_presentaciones = list(presentaciones.values())
 
@@ -853,7 +880,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         filas_trazabilidad=filas_matriz,
     )
 
-    col_pdf, col_docx = st.columns(2)
+    col_pdf, col_docx = artefactos.columns(2)
 
     with col_pdf:
         st.markdown("### Reporte Ejecutivo")

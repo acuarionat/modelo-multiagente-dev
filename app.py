@@ -23,8 +23,10 @@ from core.testing_ui import render_testing_stage
 from core.ui_components import (
     _lista_ui as lista_ui,
     _texto_hallazgo_ui as texto_hallazgo_ui,
+    create_stage_step_panels,
     render_findings_section,
     render_gitlab_feedback,
+    render_next_phase_button,
     render_state_badge,
 )
 from core.ui_theme import (
@@ -873,6 +875,18 @@ elif stage_id != "requerimientos":
     render_coming_soon(stage_id)
     st.stop()
 
+if "last_batch_result" not in st.session_state:
+    persisted_requerimientos = cargar_estado_etapa("requerimientos")
+    if persisted_requerimientos:
+        st.session_state.last_batch_result = persisted_requerimientos.get("last_batch_result")
+        st.session_state.last_project_name = persisted_requerimientos.get("last_project_name")
+        st.session_state.last_milestone = persisted_requerimientos.get("last_milestone")
+
+paso_entrada, paso_analisis, paso_resultados, _req_step_key = create_stage_step_panels(
+    "req",
+    bool(st.session_state.get("last_batch_result", {}).get("issues")),
+)
+
 ISSUE_FILTER_VERSION = "pending-or-rework-v1"
 if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
     st.session_state.pop("issues_by_stage", None)
@@ -880,39 +894,40 @@ if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
 
 if "issues_by_stage" not in st.session_state:
     st.session_state.issues_by_stage = {}
-refresh_col, analysis_col = st.columns(2)
-refresh_issues = refresh_col.button("Actualizar desde GitLab", width="stretch")
+refresh_issues = paso_entrada.button("Actualizar desde GitLab", width="stretch")
 if refresh_issues or stage_id not in st.session_state.issues_by_stage:
-    with st.spinner("Consultando issues del milestone..."):
+    with paso_entrada.spinner("Consultando issues del milestone..."):
         st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_pendientes(milestone_title=milestone_val)
 issues = st.session_state.issues_by_stage[stage_id]
-st.write(f"**Issues encontrados:** {len(issues)}")
+paso_entrada.write(f"**Issues encontrados:** {len(issues)}")
 if issues:
-    with st.expander("Lista de issues", expanded=True):
+    with paso_entrada.expander("Lista de issues", expanded=True):
         for issue in issues:
             st.markdown(f"- **#{issue.iid}** — {issue.title}")
 else:
-    st.info("No se encontraron issues abiertos en este milestone.")
+    paso_entrada.info("No se encontraron issues abiertos en este milestone.")
 
-start_analysis = analysis_col.button("Iniciar análisis", type="primary", width="stretch", disabled=not issues)
+render_next_phase_button(paso_entrada, _req_step_key, 1)
+
+start_analysis = paso_analisis.button("Iniciar análisis", type="primary", width="stretch", disabled=not issues)
 if start_analysis:
     for stale_key in ("last_batch_result", "batch_pdf", "batch_docx"):
         st.session_state.pop(stale_key, None)
     if not project_name:
-        st.warning("Debes ingresar el Nombre del Proyecto.")
+        paso_analisis.warning("Debes ingresar el Nombre del Proyecto.")
         st.stop()
         
     issues_to_process = issues
         
-    st.markdown(f"### Milestone {milestone_val}")
-    st.write(f"**{len(issues_to_process)} issues encontrados.**")
+    paso_analisis.markdown(f"### Milestone {milestone_val}")
+    paso_analisis.write(f"**{len(issues_to_process)} issues encontrados.**")
     
     # Construir Contexto del Sprint
     sprint_context = f"Proyecto: {project_name}\nSprint: {milestone_val or 'Sin milestone'}\nHistorias a analizar: {len(issues_to_process)}\n"
     sprint_context += "Títulos:\n" + "\n".join([f"- {i.title}" for i in issues_to_process])
     
-    status_container = st.container()
-    metrics_container = st.container()
+    status_container = paso_analisis.container()
+    metrics_container = paso_analisis.container()
     
     start_time_total = time.time()
     
@@ -1005,12 +1020,14 @@ if start_analysis:
                 "last_milestone": st.session_state.last_milestone,
             })
         else:
-            st.info("No se generó un resumen ni documentos porque el lote no produjo resultados consolidados.")
+            paso_analisis.info("No se generó un resumen ni documentos porque el lote no produjo resultados consolidados.")
             
     if failed_batches or incomplete_stories:
-        st.error("El análisis del Sprint terminó con errores.")
+        paso_analisis.error("El análisis del Sprint terminó con errores.")
     else:
-        st.success("¡Análisis del Sprint finalizado!")
+        paso_analisis.success("¡Análisis del Sprint finalizado!")
+
+render_next_phase_button(paso_analisis, _req_step_key, 2)
 
 
 _texto_hallazgo_ui = texto_hallazgo_ui
@@ -1131,13 +1148,7 @@ def _explicar_estado_ui(result):
 
 
 # Resultados y documentos consolidados del último lote
-if "last_batch_result" not in st.session_state:
-    persisted_requerimientos = cargar_estado_etapa("requerimientos")
-    if persisted_requerimientos:
-        st.session_state.last_batch_result = persisted_requerimientos.get("last_batch_result")
-        st.session_state.last_project_name = persisted_requerimientos.get("last_project_name")
-        st.session_state.last_milestone = persisted_requerimientos.get("last_milestone")
-elif (
+if (
     st.session_state.get("last_batch_result", {}).get("issues")
     and cargar_estado_etapa("requerimientos") is None
 ):
@@ -1148,8 +1159,11 @@ elif (
         "last_milestone": st.session_state.get("last_milestone"),
     })
 
+if not st.session_state.get("last_batch_result", {}).get("issues"):
+    paso_resultados.info("Ejecuta el análisis para ver resultados.")
+
 if st.session_state.get("last_batch_result", {}).get("issues"):
-    st.divider()
+    paso_resultados.divider()
     from core.utils import (
         construir_filas_trazabilidad, generar_documento_formal_lote_docx,
         generar_reporte_lote_pdf,
@@ -1158,12 +1172,16 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
     results = batch_result["issues"]
     summary = batch_result["summary"]
 
-    st.subheader("Resumen global")
-    st.caption(
+    resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
+        ["Resumen general", "Detalle por historia", "Matriz y documentos"]
+    )
+
+    resumen_general.subheader("Resumen global")
+    resumen_general.caption(
         f"Milestone: {st.session_state.last_milestone}"
     )
 
-    r1, r2, r3 = st.columns(3)
+    r1, r2, r3 = resumen_general.columns(3)
 
     r1.metric(
         "Historias procesadas",
@@ -1180,7 +1198,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         summary["requieren_correccion"],
     )
 
-    r4, r5, r6 = st.columns(3)
+    r4, r5, r6 = resumen_general.columns(3)
 
     r4.metric(
         "Calidad promedio",
@@ -1217,7 +1235,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         else "N/D"
     )
 
-    st.caption(
+    resumen_general.caption(
         f"Calidad mínima: {quality_min} · "
         f"Seguridad mínima: {security_min} · "
         f"Información insuficiente: "
@@ -1225,13 +1243,13 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         f"Historias bajo meta: {summary['historias_bajo_meta']}"
     )
 
-    st.subheader("Resultados por historia")
+    detalle_resultados.subheader("Resultados por historia")
     for result in results:
         if result.get("estado_procesamiento") == "informacion_insuficiente":
-            st.warning(f"HU-{result['issue_iid']:03d} — Información insuficiente: {', '.join(result['validacion_entrada']['campos_faltantes'])}")
+            detalle_resultados.warning(f"HU-{result['issue_iid']:03d} — Información insuficiente: {', '.join(result['validacion_entrada']['campos_faltantes'])}")
             continue
         if result["status"] != "ok":
-            st.error(f"HU-{result['issue_iid']:03d} — {' '.join(result['errors'])}")
+            detalle_resultados.error(f"HU-{result['issue_iid']:03d} — {' '.join(result['errors'])}")
             continue
 
         central = result.get("central") or {}
@@ -1262,7 +1280,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             f"{historia_id} — {titulo} · {estado}"
         )
 
-        with st.expander(
+        with detalle_resultados.expander(
             expander_title,
             expanded=False,
         ):
@@ -1704,7 +1722,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                                 if text:
                                     st.markdown(f"- {text}")
 
-    with st.expander(
+    with artefactos.expander(
         "Matriz de trazabilidad",
         expanded=False,
     ):
@@ -1776,9 +1794,9 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         except ValueError as exc:
             st.error(str(exc))
 
-    st.subheader("Documentos consolidados")
+    artefactos.subheader("Documentos consolidados")
 
-    col_pdf, col_docx = st.columns(2)
+    col_pdf, col_docx = artefactos.columns(2)
 
     with col_pdf:
         st.markdown("### Reporte Ejecutivo")

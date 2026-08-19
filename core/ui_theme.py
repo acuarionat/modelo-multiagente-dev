@@ -430,6 +430,27 @@ def inject_global_styles() -> None:
 
         button:disabled { opacity: .55 !important; transform: none !important; box-shadow: none !important; }
 
+        /* Botón "Siguiente fase": discreto, al cierre de cada sección */
+        [class*="st-key-next_phase__"] button {
+            min-height: 2.15rem !important;
+            padding: .3rem .8rem !important;
+            border: 1px solid var(--nexo-line) !important;
+            border-radius: 999px !important;
+            background: var(--nexo-surface-muted) !important;
+            color: var(--nexo-muted) !important;
+            font-size: .76rem !important;
+            font-weight: 640 !important;
+            box-shadow: none !important;
+        }
+
+        [class*="st-key-next_phase__"] button:hover {
+            border-color: var(--emi-blue) !important;
+            background: var(--emi-blue-soft) !important;
+            color: var(--emi-blue-dark) !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         /* Métricas */
         div[data-testid="stMetric"] {
             min-height: 104px !important;
