@@ -154,13 +154,13 @@ def invocar_con_fallback(
         )
     except Exception as exc:
         error_type = clasificar_error_remoto(exc)
-        if selection.provider != "groq" or error_type is None:
+        if selection.provider not in ("groq", "nvidia") or error_type is None:
             raise
         logger.warning(
-            "REMOTE_LLM_ERROR agent=%s error=%s fallback=%s",
-            agent_name, error_type, selection.fallback_enabled,
+            "REMOTE_LLM_ERROR agent=%s error=%s fallback=%s provider=%s",
+            agent_name, error_type, selection.fallback_enabled, selection.provider,
         )
-        if not selection.fallback_enabled:
+        if not selection.fallback_enabled or selection.provider == "nvidia":
             status = getattr(exc, "status_code", None) or getattr(getattr(exc, "response", None), "status_code", None)
             raise RemoteLLMError(
                 error_type, http_status=status, retry_after_seconds=_retry_after_sanitizado(exc),

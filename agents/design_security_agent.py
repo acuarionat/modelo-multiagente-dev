@@ -70,8 +70,8 @@ def analizar_seguridad_diseno(issues_json_str: str) -> str:
         provider=selection.provider,
     ) as audit:
         from core.remote_execution import REMOTE_PACER
-        if selection.provider == "groq":
-            REMOTE_PACER.before_call("groq", "DesignSecurity")
+        if selection.provider in ("groq", "nvidia"):
+            REMOTE_PACER.before_call(selection.provider, "DesignSecurity")
         try:
             result = invocar_con_fallback(
                 "Design_Security", selection,
@@ -84,8 +84,8 @@ def analizar_seguridad_diseno(issues_json_str: str) -> str:
             exc.issue_ids = list(expected_issue_ids)
             raise
         finally:
-            if selection.provider == "groq":
-                REMOTE_PACER.after_call("groq", "DesignSecurity")
+            if selection.provider in ("groq", "nvidia"):
+                REMOTE_PACER.after_call(selection.provider, "DesignSecurity")
         response = result.response
         audit["response"] = response.content
         audit["provider_used"] = result.provider

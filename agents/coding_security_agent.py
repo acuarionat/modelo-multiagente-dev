@@ -69,8 +69,8 @@ def analizar_seguridad_codificacion(entrada_json_str: str) -> str:
         provider=selection.provider,
     ) as audit:
         from core.remote_execution import REMOTE_PACER
-        if selection.provider == "groq":
-            REMOTE_PACER.before_call("groq", "CodingSecurity")
+        if selection.provider in ("groq", "nvidia"):
+            REMOTE_PACER.before_call(selection.provider, "CodingSecurity")
         try:
             result = invocar_con_fallback(
                 "Coding_Security", selection,
@@ -83,8 +83,8 @@ def analizar_seguridad_codificacion(entrada_json_str: str) -> str:
             exc.issue_ids = list(expected_issue_ids)
             raise
         finally:
-            if selection.provider == "groq":
-                REMOTE_PACER.after_call("groq", "CodingSecurity")
+            if selection.provider in ("groq", "nvidia"):
+                REMOTE_PACER.after_call(selection.provider, "CodingSecurity")
         response = result.response
         audit["response"] = response.content
         audit["provider_used"] = result.provider

@@ -145,12 +145,23 @@ def procesar_ticket(project_name: str, issues_json_str: str, sprint_context: str
         context_text=issues_json_str,
         model_params=params,
     ) as audit:
-        response = chain.invoke({
-            "project_name": project_name,
-            "issues_json_str": issues_json_str,
-            "sprint_context": sprint_context,
-            "expected_issue_ids": json.dumps(expected_issue_ids),
-        })
+        from core.remote_execution import REMOTE_PACER, reintentar_con_backoff
+        if provider in ("groq", "nvidia"):
+            REMOTE_PACER.before_call(provider, "Central")
+        try:
+            invoke_fn = lambda: chain.invoke({
+                "project_name": project_name,
+                "issues_json_str": issues_json_str,
+                "sprint_context": sprint_context,
+                "expected_issue_ids": json.dumps(expected_issue_ids),
+            })
+            if provider == "nvidia":
+                response = reintentar_con_backoff(invoke_fn, agent="Central")
+            else:
+                response = invoke_fn()
+        finally:
+            if provider in ("groq", "nvidia"):
+                REMOTE_PACER.after_call(provider, "Central")
         try:
             parsed_response = json.loads(response.content)
             keys = sorted(parsed_response) if isinstance(parsed_response, dict) else []

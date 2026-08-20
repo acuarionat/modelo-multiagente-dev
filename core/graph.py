@@ -65,6 +65,8 @@ from core.batch_contract import (
     validar_semantica_calidad_llm, validar_semantica_seguridad_llm,
     obtener_universo_funcional_calidad, normalizar_iid,
     descartar_grupos_genericos_sin_datos_canonicos,
+    purgar_funciones_fuera_de_universo_calidad,
+    purgar_clasificaciones_sin_fuente_seguridad,
 )
 
 # Configuración del logger
@@ -375,11 +377,42 @@ def _ejecutar_sublotes_remotos(req_text, agent_name, batch_size, invoke):
                     if agent_name == "Calidad" else validar_semantica_seguridad_llm(parsed, batch)
                 )
                 if not semantic_diagnostic["valid"]:
-                    raise RemoteBatchError(
-                        semantic_diagnostic["error_category"], agent=agent_name,
-                        sub_batch=index, issue_ids=expected, received=received,
-                        semantic_diagnostic=semantic_diagnostic,
-                    )
+                    if (
+                        agent_name == "Calidad"
+                        and semantic_diagnostic.get("error_category") == "REMOTE_SEMANTIC_OUT_OF_UNIVERSE"
+                    ):
+                        purged = purgar_funciones_fuera_de_universo_calidad(parsed, batch)
+                        registrar_evento_grafo(
+                            "quality_out_of_universe_purged", agent_name,
+                            sub_batch=index, issue_ids=expected,
+                            purged_count=purged,
+                        )
+                        semantic_diagnostic["valid"] = True
+                        semantic_diagnostic["validation"] = "success"
+                        semantic_diagnostic["error_category"] = None
+                    elif (
+                        agent_name == "Seguridad"
+                        and semantic_diagnostic.get("error_category") == "REMOTE_SEMANTIC_CONTRADICTION"
+                        and semantic_diagnostic.get("failed_semantic_rule") in (
+                            "SECURITY_EXPLICIT_CLASSIFICATION_WITHOUT_SOURCE",
+                            "SECURITY_INFERRED_CLASSIFICATION_COUNTED_AS_EXPLICIT",
+                        )
+                    ):
+                        moved = purgar_clasificaciones_sin_fuente_seguridad(parsed, batch)
+                        registrar_evento_grafo(
+                            "security_classification_without_source_purged", agent_name,
+                            sub_batch=index, issue_ids=expected,
+                            moved_count=moved,
+                        )
+                        semantic_diagnostic["valid"] = True
+                        semantic_diagnostic["validation"] = "success"
+                        semantic_diagnostic["error_category"] = None
+                    else:
+                        raise RemoteBatchError(
+                            semantic_diagnostic["error_category"], agent=agent_name,
+                            sub_batch=index, issue_ids=expected, received=received,
+                            semantic_diagnostic=semantic_diagnostic,
+                        )
             consolidated.extend(ordered)
             status = "success"
             registrar_evento_sublote_remoto(

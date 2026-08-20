@@ -54,8 +54,8 @@ def analizar_calidad(
     ) as audit:
         prompt_values = {"issues_json_str": issues_json_str, "expected_issue_ids": json.dumps(expected_issue_ids)}
         from core.remote_execution import REMOTE_PACER
-        if selection.provider == "groq":
-            REMOTE_PACER.before_call("groq", "Quality")
+        if selection.provider in ("groq", "nvidia"):
+            REMOTE_PACER.before_call(selection.provider, "Quality")
         try:
             result = invocar_con_fallback(
                 "Quality", selection,
@@ -69,8 +69,8 @@ def analizar_calidad(
             exc.issue_ids = list(expected_issue_ids)
             raise
         finally:
-            if selection.provider == "groq":
-                REMOTE_PACER.after_call("groq", "Quality")
+            if selection.provider in ("groq", "nvidia"):
+                REMOTE_PACER.after_call(selection.provider, "Quality")
         response = result.response
         audit["response"] = response.content
         audit["provider_used"] = result.provider

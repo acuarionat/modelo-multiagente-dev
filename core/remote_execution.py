@@ -43,7 +43,13 @@ def remote_batch_size(agent: str) -> int:
     return _env_int_tolerante(f"REMOTE_{agent.upper()}_BATCH_SIZE", 2)
 
 
-def remote_inter_call_delay() -> float:
+def remote_inter_call_delay(provider: str | None = None) -> float:
+    if provider:
+        suffix = provider.upper()
+        env_name = f"REMOTE_INTER_CALL_DELAY_SECONDS_{suffix}"
+        raw = os.getenv(env_name)
+        if raw is not None:
+            return _env_float_tolerante(env_name, 60.0)
     return _env_float_tolerante("REMOTE_INTER_CALL_DELAY_SECONDS", 60.0)
 
 
@@ -140,7 +146,7 @@ class RemotePacer:
     def before_call(self, provider: str, agent: str) -> float:
         waited = 0.0
         if self.last_end is not None and self.last_provider == provider:
-            configured = remote_inter_call_delay()
+            configured = remote_inter_call_delay(provider)
             elapsed = max(0.0, self.clock() - self.last_end)
             waited = max(0.0, configured - elapsed)
             registrar_evento_grafo(
@@ -164,3 +170,58 @@ REMOTE_PACER = RemotePacer()
 
 def reiniciar_pacing_remoto() -> None:
     REMOTE_PACER.reset()
+
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    for attr in ("status_code", "http_status"):
+        status = getattr(exc, attr, None)
+        if status == 429:
+            return True
+    response = getattr(exc, "response", None)
+    if getattr(response, "status_code", None) == 429:
+        return True
+    name = type(exc).__name__.casefold()
+    category = getattr(exc, "category", "")
+    return "ratelimit" in name or "rate_limit" in name or category == "REMOTE_RATE_LIMIT"
+
+
+
+
+def _rate_limit_retry_after(exc: Exception) -> float | None:
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None)
+    raw = headers.get("retry-after") if hasattr(headers, "get") else None
+    try:
+        value = float(raw)
+        return value if 0 < value <= 300 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def reintentar_con_backoff(
+    fn: Callable[[], Any],
+    *,
+    agent: str,
+    max_retries: int = 3,
+    base_delay: float = 30.0,
+    max_delay: float = 120.0,
+) -> Any:
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            if not _is_rate_limit_error(exc) or attempt >= max_retries:
+                raise
+            retry_after = _rate_limit_retry_after(exc)
+            delay = retry_after or min(base_delay * (2 ** attempt), max_delay)
+            logger.warning(
+                "RATE_LIMIT_RETRY agent=%s attempt=%d/%d delay=%.1fs",
+                agent, attempt + 1, max_retries, delay,
+            )
+            registrar_evento_grafo(
+                "rate_limit_retry", agent,
+                attempt=attempt + 1, max_retries=max_retries,
+                delay_seconds=round(delay, 1),
+                retry_after_header=retry_after,
+            )
+            time.sleep(delay)

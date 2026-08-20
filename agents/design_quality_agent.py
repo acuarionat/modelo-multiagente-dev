@@ -72,8 +72,8 @@ def analizar_calidad_diseno(
         provider=selection.provider,
     ) as audit:
         from core.remote_execution import REMOTE_PACER
-        if selection.provider == "groq":
-            REMOTE_PACER.before_call("groq", "Quality")
+        if selection.provider in ("groq", "nvidia"):
+            REMOTE_PACER.before_call(selection.provider, "Quality")
         try:
             result = invocar_con_fallback(
                 "Design_Quality", selection,
@@ -86,8 +86,8 @@ def analizar_calidad_diseno(
             exc.issue_ids = list(expected_issue_ids)
             raise
         finally:
-            if selection.provider == "groq":
-                REMOTE_PACER.after_call("groq", "Quality")
+            if selection.provider in ("groq", "nvidia"):
+                REMOTE_PACER.after_call(selection.provider, "Quality")
         response = result.response
         audit["response"] = response.content
         audit["provider_used"] = result.provider

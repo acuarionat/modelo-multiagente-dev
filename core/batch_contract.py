@@ -2077,11 +2077,11 @@ def _evidencia_seguridad_contexto(context: Dict[str, Any]) -> tuple[List[str], L
     for value in source_values:
         clean = clean_datum(value)
         match = re.search(
-            r"(?:^|:|→|->)\s*(PERSONAL|SENSIBLE|CLÍNICO|SALUD|BIOMÉTRICO|FINANCIERO)\s*$",
+            r"(?:^|:|→|->|\.\s)\s*(PERSONAL|SENSIBLE|CLÍNICO|SALUD|BIOMÉTRICO|FINANCIERO)\s*$",
             clean, flags=re.IGNORECASE,
         )
         if match:
-            datum = re.split(r"\s*(?::|→|->)\s*", clean, maxsplit=1)[0].strip()
+            datum = re.split(r"\s*(?::|→|->|\.\s)\s*", clean, maxsplit=1)[0].strip()
             classified.append(f"{datum} → {match.group(1).upper()}")
     return applicable, documented, data, classified
 
@@ -2197,7 +2197,7 @@ def completar_resultado_seguridad(
         ]
 
         def datum_name(value: Any) -> str:
-            return re.split(r"\s*(?::|→|->)\s*", str(value), maxsplit=1)[0].strip()
+            return re.split(r"\s*(?::|→|->|\.\s)\s*", str(value), maxsplit=1)[0].strip()
 
         if context_identified:
             ms02["datos_identificados"] = context_identified
@@ -2255,7 +2255,7 @@ def completar_resultado_seguridad(
         f"{len(classified)} / {len(identified)}",
     )
     classified_names = {
-        _clave_texto(re.split(r"\s*(?::|→|->)\s*", str(value), maxsplit=1)[0])
+        _clave_texto(re.split(r"\s*(?::|→|->|\.\s)\s*", str(value), maxsplit=1)[0])
         for value in classified
     }
     unclassified = [x for x in identified if _clave_texto(x) not in classified_names]
@@ -3251,6 +3251,110 @@ def validar_semantica_calidad_llm(
     }
 
 
+def purgar_funciones_fuera_de_universo_calidad(
+    response: Dict[str, Any], prepared_input: Dict[str, Any],
+) -> int:
+    """Elimina in-place funciones alucinadas del resultado de Calidad.
+
+    Retorna la cantidad de elementos removidos.
+    """
+    universo_por_iid = {}
+    for item in prepared_input.get("historias", []):
+        iid = normalizar_iid(item.get("issue_iid"))
+        if iid is None:
+            continue
+        canon = []
+        for f in (item.get("funciones_principales") or []):
+            texto = str(f.get("funcion") if isinstance(f, dict) else f or "").strip()
+            if texto and texto not in canon:
+                canon.append(texto)
+        universo_por_iid[iid] = canon
+
+    removed_total = 0
+    for result in response.get("resultados", []):
+        iid = normalizar_iid(result.get("issue_iid"))
+        canonical = universo_por_iid.get(iid, [])
+        if not canonical:
+            continue
+        alignment = result.get("metricas", {}).get("adecuacion_funcional", {})
+        for field in ("funciones_alineadas", "funciones_no_alineadas"):
+            original = alignment.get(field)
+            if not isinstance(original, list):
+                continue
+            filtered = []
+            for value in original:
+                texto = str(value).strip() if not isinstance(value, dict) else str(value.get("funcion", value)).strip()
+                candidates = [c for c in canonical if funciones_equivalentes(texto, c)]
+                if len(candidates) == 1:
+                    filtered.append(value)
+                else:
+                    removed_total += 1
+            alignment[field] = filtered
+    return removed_total
+
+
+def purgar_clasificaciones_sin_fuente_seguridad(
+    response: Dict[str, Any], prepared_input: Dict[str, Any],
+) -> int:
+    """Mueve in-place datos clasificados por el LLM sin respaldo en la fuente.
+
+    Cuando el LLM pone un dato en datos_clasificados pero la evidencia
+    original no contiene una clasificación explícita para ese dato,
+    se mueve la identidad a datos_sin_clasificacion y la clasificación
+    completa a clasificaciones_inferidas.
+
+    Retorna la cantidad de elementos reclasificados.
+    """
+    sources = {
+        normalizar_iid(item.get("issue_iid")): item
+        for item in prepared_input.get("resultados", [])
+        if isinstance(item, dict) and normalizar_iid(item.get("issue_iid")) is not None
+    }
+    moved_total = 0
+    for result in response.get("resultados", []):
+        if not isinstance(result, dict):
+            continue
+        iid = normalizar_iid(result.get("issue_iid"))
+        source = sources.get(iid, {})
+        evidence = source.get("evidencia_seguridad", {}) if isinstance(source, dict) else {}
+        if not isinstance(evidence, dict):
+            evidence = {}
+        metrics = result.get("metricas", {})
+        if not isinstance(metrics, dict):
+            continue
+        ms02 = metrics.get("clasificacion_datos", {})
+        if not isinstance(ms02, dict):
+            continue
+        classified = ms02.get("datos_clasificados")
+        if not isinstance(classified, list) or not classified:
+            continue
+        unclassified = ms02.get("datos_sin_clasificacion")
+        if not isinstance(unclassified, list):
+            unclassified = []
+            ms02["datos_sin_clasificacion"] = unclassified
+        inferred = ms02.get("clasificaciones_inferidas")
+        if not isinstance(inferred, list):
+            inferred = []
+            ms02["clasificaciones_inferidas"] = inferred
+        keep = []
+        for value in classified:
+            sig = _firma_seguridad(value)
+            category = _categoria_clasificacion(value)
+            confirmed = clasificacion_explicita_confirmada(sig, evidence, category)
+            if confirmed["found_explicit_category"]:
+                keep.append(value)
+            else:
+                identity = extraer_identidad_dato(value)["identity"]
+                if identity not in unclassified:
+                    unclassified.append(identity)
+                full_text = str(value).strip() if not isinstance(value, dict) else f"{identity} → {category.upper()}" if category else identity
+                if full_text not in inferred:
+                    inferred.append(full_text)
+                moved_total += 1
+        ms02["datos_clasificados"] = keep
+    return moved_total
+
+
 _SECURITY_METRIC_FIELDS = {
     "cobertura_seguridad": (
         "aspectos_aplicables", "aspectos_documentados", "aspectos_parciales",
@@ -3320,7 +3424,7 @@ def diagnosticar_contrato_seguridad_llm(response: Dict[str, Any]) -> Dict[str, A
 
 _DATA_IDENTITY_KEYS = ("dato", "nombre")
 _DATA_CLASSIFICATION_KEYS = ("clasificacion", "categoria")
-_DATA_COMPOSITE_SEPARATOR = re.compile(r"\s*(?::|â†’|->)\s*", re.IGNORECASE)
+_DATA_COMPOSITE_SEPARATOR = re.compile(r"\s*(?::|→|->|\.\s)\s*", re.IGNORECASE)
 
 
 def _limpiar_identidad_dato(value: Any) -> str:

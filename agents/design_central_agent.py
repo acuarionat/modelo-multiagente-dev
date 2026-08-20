@@ -63,17 +63,27 @@ def procesar_diseno_central(
         model_params=params,
         provider=selection.provider,
     ) as audit:
+        from core.remote_execution import REMOTE_PACER, reintentar_con_backoff
+        if selection.provider in ("groq", "nvidia"):
+            REMOTE_PACER.before_call(selection.provider, "DesignCentral")
         try:
-            result = invocar_con_fallback(
+            invoke_fn = lambda: invocar_con_fallback(
                 "Design_Central", selection,
                 lambda: chain.invoke(prompt_values),
                 lambda: ((prompt | crear_llm_local(
                     json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1,
                 )).invoke(prompt_values), OLLAMA_MODEL),
             )
+            if selection.provider == "nvidia":
+                result = reintentar_con_backoff(invoke_fn, agent="DesignCentral")
+            else:
+                result = invoke_fn()
         except RemoteLLMError as exc:
             exc.issue_ids = list(expected_issue_ids)
             raise
+        finally:
+            if selection.provider in ("groq", "nvidia"):
+                REMOTE_PACER.after_call(selection.provider, "DesignCentral")
         response = result.response
         audit["response"] = response.content
         audit["provider_used"] = result.provider
