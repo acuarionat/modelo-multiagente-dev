@@ -224,6 +224,41 @@ def publicar_comentario_diseno(project_id, issue_iid, resumen_diseno: dict):
     return nota
 
 
+def construir_comentario_referencias_invalidas_diseno(diseno_id: str, referencias_invalidas: list) -> str:
+    """Comentario de aviso para un Issue de Diseño que NO fue analizado por contener
+    referencias a requisitos inexistentes en la matriz de entrada vigente."""
+    referencias = [str(ref).strip() for ref in (referencias_invalidas or []) if str(ref).strip()]
+    lineas = [
+        f"Revisar — Trazabilidad incompleta ({diseno_id})",
+        "",
+        "Este Issue de Diseño no fue analizado porque contiene referencias a "
+        "elementos inexistentes en la matriz de entrada vigente.",
+        "",
+        "Referencias inexistentes:",
+        *([f"- {item}" for item in referencias] if referencias else ["- No especificadas."]),
+        "",
+        "Próxima acción:",
+        "Corregir las referencias del Issue de Diseño (o actualizar la matriz de "
+        "trazabilidad) y volver a ejecutar el análisis.",
+        "",
+        "Evaluación asistida para apoyar el control, seguimiento y trazabilidad. La decisión final corresponde al responsable del proyecto.",
+    ]
+    return "\n".join(lineas) + "\n"
+
+
+def publicar_aviso_referencias_invalidas_diseno(project_id, issue_iid, diseno_id, referencias_invalidas):
+    """Publica en GitLab el aviso de un Issue de Diseño bloqueado por referencias
+    inexistentes: comentario + etiqueta 'Requiere modificación' (reutiliza el ciclo
+    de etiquetas de evaluación técnica con estado CORREGIR)."""
+    comentario = construir_comentario_referencias_invalidas_diseno(diseno_id, referencias_invalidas)
+    adapter = GitLabAdapter(project_id=project_id)
+    nota = adapter.agregar_comentario(issue_iid, comentario)
+    issue = adapter.obtener_issue(issue_iid)
+    nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(issue.labels, "CORREGIR")
+    adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
+    return nota
+
+
 def construir_comentario_codificacion(resumen_codificacion: dict) -> str:
     """
     Construye el comentario compacto de retroalimentación operativa para un
@@ -293,6 +328,41 @@ def publicar_comentario_codificacion(project_id, issue_iid, resumen_codificacion
     nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
         issue.labels, resumen_codificacion.get("estado_orientativo"),
     )
+    adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
+    return nota
+
+
+def construir_comentario_referencias_invalidas_codificacion(codificacion_id: str, referencias_invalidas: list) -> str:
+    """Comentario de aviso para un Issue de Codificación que NO fue analizado por
+    referenciar elementos de Diseño inexistentes en la matriz de trazabilidad heredada."""
+    referencias = [str(ref).strip() for ref in (referencias_invalidas or []) if str(ref).strip()]
+    lineas = [
+        f"Revisar — Trazabilidad incompleta ({codificacion_id})",
+        "",
+        "Este Issue de Codificación no fue analizado porque referencia elementos de "
+        "Diseño inexistentes en la matriz de trazabilidad heredada.",
+        "",
+        "Elementos de Diseño inexistentes:",
+        *([f"- {item}" for item in referencias] if referencias else ["- No especificados."]),
+        "",
+        "Próxima acción:",
+        "Corregir las referencias del Issue de Codificación (o actualizar la matriz de "
+        "trazabilidad de Diseño) y volver a ejecutar el análisis.",
+        "",
+        "Evaluación asistida para apoyar el control, seguimiento y trazabilidad. La decisión final corresponde al responsable del proyecto.",
+    ]
+    return "\n".join(lineas) + "\n"
+
+
+def publicar_aviso_referencias_invalidas_codificacion(project_id, issue_iid, codificacion_id, referencias_invalidas):
+    """Publica en GitLab el aviso de un Issue de Codificación bloqueado por elementos
+    de Diseño inexistentes: comentario + etiqueta 'Requiere modificación' (reutiliza el
+    ciclo de etiquetas de evaluación técnica con estado CORREGIR)."""
+    comentario = construir_comentario_referencias_invalidas_codificacion(codificacion_id, referencias_invalidas)
+    adapter = GitLabAdapter(project_id=project_id)
+    nota = adapter.agregar_comentario(issue_iid, comentario)
+    issue = adapter.obtener_issue(issue_iid)
+    nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(issue.labels, "CORREGIR")
     adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
     return nota
 

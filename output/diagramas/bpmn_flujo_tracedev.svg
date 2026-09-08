@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2700" height="1500" viewBox="0 0 2700 1500">
+<defs>
+<marker id="arrow" markerWidth="14" markerHeight="14" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+  <path d="M0,0 L11,5 L0,10 z" fill="#2b3a4a"/></marker>
+<marker id="arrowR" markerWidth="15" markerHeight="15" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+  <path d="M0,0 L11,5 L0,10 z" fill="#C0392B"/></marker>
+<marker id="arrowG" markerWidth="15" markerHeight="15" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+  <path d="M0,0 L11,5 L0,10 z" fill="#1F8A4C"/></marker>
+</defs>
+<g transform="scale(1.0)">
+<rect x="0" y="0" width="2700" height="1500" fill="#ffffff"/>
+<rect x="8.0" y="8.0" width="2684.0" height="1484.0" rx="6" ry="6" fill="none" stroke="#2b3a4a" stroke-width="3"/>
+<rect x="8.0" y="8.0" width="2684.0" height="66.0" rx="6" ry="6" fill="#f3f6fb" stroke="#2b3a4a" stroke-width="3"/>
+<text x="1350.0" y="50.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="32.480000000000004" font-weight="bold" fill="#12324f">HERRAMIENTA TRACEDEV  ·  PROCESO DE DESARROLLO DE SOFTWARE CON MODELO MULTIAGENTE</text>
+<rect x="14.0" y="80.0" width="2674.0" height="352.0" rx="0" ry="0" fill="#F4F1FB" stroke="#8fa2b5" stroke-width="1.6"/>
+<rect x="14.0" y="80.0" width="58.0" height="352.0" rx="0" ry="0" fill="#6A4FB3" stroke="#6A4FB3" stroke-width="0"/>
+<text x="43.0" y="256.0" text-anchor="middle" transform="rotate(-90 43.0 256.0)" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" letter-spacing="0.7">USUARIO</text>
+<rect x="14.0" y="432.0" width="2674.0" height="352.0" rx="0" ry="0" fill="#FDF3EE" stroke="#8fa2b5" stroke-width="1.6"/>
+<rect x="14.0" y="432.0" width="58.0" height="352.0" rx="0" ry="0" fill="#C0432B" stroke="#C0432B" stroke-width="0"/>
+<text x="43.0" y="608.0" text-anchor="middle" transform="rotate(-90 43.0 608.0)" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" letter-spacing="0.7">ADAPTADOR GITLAB</text>
+<rect x="14.0" y="784.0" width="2674.0" height="352.0" rx="0" ry="0" fill="#EFF3F8" stroke="#8fa2b5" stroke-width="1.6"/>
+<rect x="14.0" y="784.0" width="58.0" height="352.0" rx="0" ry="0" fill="#3E5A78" stroke="#3E5A78" stroke-width="0"/>
+<text x="43.0" y="960.0" text-anchor="middle" transform="rotate(-90 43.0 960.0)" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" letter-spacing="0.7">ORQUESTACIÓN · LANGGRAPH</text>
+<rect x="14.0" y="1136.0" width="2674.0" height="352.0" rx="0" ry="0" fill="#F1F8F1" stroke="#8fa2b5" stroke-width="1.6"/>
+<rect x="14.0" y="1136.0" width="58.0" height="352.0" rx="0" ry="0" fill="#2E7D46" stroke="#2E7D46" stroke-width="0"/>
+<text x="43.0" y="1312.0" text-anchor="middle" transform="rotate(-90 43.0 1312.0)" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" letter-spacing="0.7">MODELO MULTIAGENTE</text>
+<circle cx="150.0" cy="256.0" r="30" fill="#EAF6EF" stroke="#2E8B57" stroke-width="4.2"/>
+<text x="150.0" y="212.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="bold" fill="#2E7D46">Inicio</text>
+<rect x="297.0" y="186.0" width="336.0" height="140.0" rx="14" ry="14" fill="#EFE9FB" stroke="#6A4FB3" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="465.0" y="235.8">Configurar el proyecto y</tspan><tspan x="465.0" y="263.6">validar la conexión</tspan><tspan x="465.0" y="291.4">con GitLab</tspan></text>
+<rect x="282.0" y="522.0" width="406.0" height="172.0" rx="14" ry="14" fill="#FBE2D5" stroke="#C0432B" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="485.0" y="574.0">Asegurar milestones (etapas) y</tspan><tspan x="485.0" y="601.7">etiquetas de flujo en GitLab:</tspan><tspan x="485.0" y="629.5">Pendiente · Revisada ·</tspan><tspan x="485.0" y="657.3">Requiere modificación</tspan></text>
+<rect x="676.0" y="186.0" width="324.0" height="140.0" rx="14" ry="14" fill="#EFE9FB" stroke="#6A4FB3" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="838.0" y="235.8">Seleccionar la etapa y</tspan><tspan x="838.0" y="263.6">preparar la matriz</tspan><tspan x="838.0" y="291.4">de entrada</tspan></text>
+<rect x="1038.0" y="194.0" width="264.0" height="124.0" rx="14" ry="14" fill="#EFE9FB" stroke="#6A4FB3" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="1170.0" y="249.7">Lanzar la evaluación</tspan><tspan x="1170.0" y="277.5">de la etapa</tspan></text>
+<rect x="943.0" y="521.0" width="324.0" height="174.0" rx="14" ry="14" fill="#FBE2D5" stroke="#C0432B" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="1105.0" y="560.1">Adaptador GitLab: obtener</tspan><tspan x="1105.0" y="587.8">los Issues (artefactos de</tspan><tspan x="1105.0" y="615.6">la etapa) con etiqueta</tspan><tspan x="1105.0" y="643.4">Pendiente o Requiere</tspan><tspan x="1105.0" y="671.2">modificación</tspan></text>
+<rect x="943.0" y="873.0" width="324.0" height="174.0" rx="14" ry="14" fill="#E4EAF1" stroke="#3E5A78" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="1105.0" y="912.1">Controlador → Orquestador</tspan><tspan x="1105.0" y="939.8">LangGraph: ejecuta el</tspan><tspan x="1105.0" y="967.6">grafo por sublotes</tspan><tspan x="1105.0" y="995.4">(estado compartido</tspan><tspan x="1105.0" y="1023.2">AgentState)</tspan></text>
+<polygon points="1410.0,900.0 1470.0,960.0 1410.0,1020.0 1350.0,960.0" fill="#FCE9C6" stroke="#D08A16" stroke-width="3"/>
+<line x1="1384.8" y1="934.8" x2="1435.2" y2="985.2" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<line x1="1384.8" y1="985.2" x2="1435.2" y2="934.8" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="bold" fill="#7a4d00"><tspan x="1410.0" y="862.2">¿Etapa de</tspan><tspan x="1410.0" y="889.1">Codificación?</tspan></text>
+<rect x="1538.0" y="876.0" width="356.0" height="168.0" rx="14" ry="14" fill="#E9E1F3" stroke="#7A57B0" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20.160000000000004" font-weight="normal" fill="#16283a"><tspan x="1716.0" y="916.9">Descubrir el repositorio y</tspan><tspan x="1716.0" y="941.9">ejecutar herramientas de</tspan><tspan x="1716.0" y="966.9">análisis de código (Radon,</tspan><tspan x="1716.0" y="991.9">Semgrep, pip-audit, Gitleaks):</tspan><tspan x="1716.0" y="1016.9">genera evidencia por métrica</tspan></text>
+<polygon points="1410.0,1054.0 1452.0,1096.0 1410.0,1138.0 1368.0,1096.0" fill="#FCE9C6" stroke="#D08A16" stroke-width="3"/>
+<line x1="1392.4" y1="1078.4" x2="1427.6" y2="1113.6" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<line x1="1392.4" y1="1113.6" x2="1427.6" y2="1078.4" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<rect x="1240.0" y="1154.0" width="988.0" height="316.0" rx="16" ry="16" fill="#FBFDFB" stroke="#2E7D46" stroke-width="2.8" stroke-dasharray="9,5"/>
+<text x="1734.0" y="1184.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="23.520000000000003" font-weight="bold" fill="#2E7D46">Subproceso · Evaluación multiagente (grafo LangGraph)</text>
+<rect x="1282.0" y="1261.0" width="256.0" height="150.0" rx="14" ry="14" fill="#DCE7F7" stroke="#2E5FA3" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="1410.0" y="1315.8">Agente Central:</tspan><tspan x="1410.0" y="1343.6">prepara y estructura</tspan><tspan x="1410.0" y="1371.4">el contexto</tspan></text>
+<polygon points="1584.0,1308.0 1612.0,1336.0 1584.0,1364.0 1556.0,1336.0" fill="#EAF2FB" stroke="#2E5FA3" stroke-width="3"/>
+<line x1="1570.0" y1="1336.0" x2="1598.0" y2="1336.0" stroke="#2E5FA3" stroke-width="4.6" stroke-linecap="round"/>
+<line x1="1584.0" y1="1322.0" x2="1584.0" y2="1350.0" stroke="#2E5FA3" stroke-width="4.6" stroke-linecap="round"/>
+<rect x="1616.0" y="1199.0" width="252.0" height="90.0" rx="14" ry="14" fill="#DCEFDA" stroke="#3E8E41" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="1742.0" y="1237.7">Agente de Calidad</tspan><tspan x="1742.0" y="1265.5">ISO/IEC 25023</tspan></text>
+<rect x="1616.0" y="1383.0" width="252.0" height="90.0" rx="14" ry="14" fill="#DCEFDA" stroke="#3E8E41" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="1742.0" y="1421.7">Agente de Seguridad</tspan><tspan x="1742.0" y="1449.5">ISO/IEC 27034</tspan></text>
+<polygon points="1900.0,1308.0 1928.0,1336.0 1900.0,1364.0 1872.0,1336.0" fill="#EAF2FB" stroke="#2E5FA3" stroke-width="3"/>
+<line x1="1886.0" y1="1336.0" x2="1914.0" y2="1336.0" stroke="#2E5FA3" stroke-width="4.6" stroke-linecap="round"/>
+<line x1="1900.0" y1="1322.0" x2="1900.0" y2="1350.0" stroke="#2E5FA3" stroke-width="4.6" stroke-linecap="round"/>
+<rect x="1936.0" y="1251.0" width="252.0" height="170.0" rx="14" ry="14" fill="#DCE7F7" stroke="#2E5FA3" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="normal" fill="#16283a"><tspan x="2062.0" y="1288.1">Agente Evaluador:</tspan><tspan x="2062.0" y="1315.8">integra calidad y</tspan><tspan x="2062.0" y="1343.6">seguridad; genera</tspan><tspan x="2062.0" y="1371.4">evaluación y</tspan><tspan x="2062.0" y="1399.2">recomendaciones</tspan></text>
+<rect x="1899.0" y="878.0" width="322.0" height="164.0" rx="14" ry="14" fill="#E4EAF1" stroke="#3E5A78" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="21.28" font-weight="normal" fill="#16283a"><tspan x="2060.0" y="914.5">Consolidación de Resultados</tspan><tspan x="2060.0" y="940.8">(determinística, sin LLM):</tspan><tspan x="2060.0" y="967.2">índices de calidad y</tspan><tspan x="2060.0" y="993.6">seguridad + estado</tspan><tspan x="2060.0" y="1020.0">orientativo</tspan></text>
+<polygon points="2060.0,544.0 2124.0,608.0 2060.0,672.0 1996.0,608.0" fill="#FCE9C6" stroke="#D08A16" stroke-width="3"/>
+<line x1="2033.1" y1="581.1" x2="2086.9" y2="634.9" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<line x1="2033.1" y1="634.9" x2="2086.9" y2="581.1" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="bold" fill="#7a4d00"><tspan x="2060.0" y="506.2">¿Artefacto</tspan><tspan x="2060.0" y="533.1">aprobado?</tspan></text>
+<rect x="2187.0" y="446.0" width="262.0" height="120.0" rx="14" ry="14" fill="#DDF0E1" stroke="#2E7D46" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20.160000000000004" font-weight="normal" fill="#16283a"><tspan x="2318.0" y="475.4">Etiqueta &#x27;Revisada&#x27; +</tspan><tspan x="2318.0" y="500.4">comentario en GitLab</tspan><tspan x="2318.0" y="525.4">(el artefacto avanza a</tspan><tspan x="2318.0" y="550.4">la siguiente etapa)</tspan></text>
+<rect x="2187.0" y="654.0" width="262.0" height="116.0" rx="14" ry="14" fill="#F7DAD7" stroke="#C0392B" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20.160000000000004" font-weight="normal" fill="#16283a"><tspan x="2318.0" y="681.4">Etiqueta &#x27;Requiere</tspan><tspan x="2318.0" y="706.4">modificación&#x27; +</tspan><tspan x="2318.0" y="731.4">comentario con</tspan><tspan x="2318.0" y="756.4">recomendaciones</tspan></text>
+<rect x="2288.0" y="868.0" width="336.0" height="184.0" rx="14" ry="14" fill="#E4EAF1" stroke="#3E5A78" stroke-width="2.6"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20.160000000000004" font-weight="normal" fill="#16283a"><tspan x="2456.0" y="916.9">Trazabilidad y documentación:</tspan><tspan x="2456.0" y="941.9">registra ejecución, resultados</tspan><tspan x="2456.0" y="966.9">y evidencias (Memoria SQLite);</tspan><tspan x="2456.0" y="991.9">genera reportes y matrices</tspan><tspan x="2456.0" y="1016.9">(.docx · .pdf · .xlsx)</tspan></text>
+<polygon points="2522.0,194.0 2584.0,256.0 2522.0,318.0 2460.0,256.0" fill="#FCE9C6" stroke="#D08A16" stroke-width="3"/>
+<line x1="2496.0" y1="230.0" x2="2548.0" y2="282.0" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<line x1="2496.0" y1="282.0" x2="2548.0" y2="230.0" stroke="#9A6410" stroke-width="4.2" stroke-linecap="round"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="bold" fill="#7a4d00"><tspan x="2522.0" y="132.2">¿Quedan etapas</tspan><tspan x="2522.0" y="159.1">por evaluar?</tspan></text>
+<circle cx="2652.0" cy="256.0" r="30" fill="#F7DAD7" stroke="#C0392B" stroke-width="4.2"/>
+<text x="2652.0" y="212.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.400000000000002" font-weight="bold" fill="#C0392B">Fin</text>
+<polyline points="180.0,256.0 297.0,256.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="465.0,326.0 465.0,424.0 485.0,424.0 485.0,522.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="688.0,608.0 838.0,608.0 838.0,326.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1000.0,256.0 1038.0,256.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1170.0,318.0 1170.0,419.5 1105.0,419.5 1105.0,521.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1105.0,695.0 1105.0,784.0 1105.0,873.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1267.0,960.0 1350.0,960.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1470.0,960.0 1538.0,960.0" fill="none" stroke="#1F8A4C" stroke-width="2.8" marker-end="url(#arrowG)" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1487.4" y="931.0" width="33.3" height="26.0" rx="6" ry="6" fill="#EFF3F8" stroke="#EFF3F8" stroke-width="0"/>
+<text x="1504.0" y="946.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="19.040000000000003" font-weight="bold" fill="#1F8A4C">Sí</text>
+<polyline points="1410.0,1020.0 1410.0,1054.0" fill="none" stroke="#C0392B" stroke-width="2.8" marker-end="url(#arrowR)" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1427.4" y="1022.0" width="33.3" height="26.0" rx="6" ry="6" fill="#EFF3F8" stroke="#EFF3F8" stroke-width="0"/>
+<text x="1444.0" y="1037.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="19.040000000000003" font-weight="bold" fill="#C0392B">No</text>
+<polyline points="1716.0,1044.0 1716.0,1096.0 1452.0,1096.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1410.0,1138.0 1410.0,1261.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1538.0,1336.0 1556.0,1336.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1604.0,1326.0 1616.0,1244.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1604.0,1346.0 1616.0,1428.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1868.0,1244.0 1880.0,1326.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1868.0,1428.0 1880.0,1346.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1928.0,1336.0 1936.0,1336.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="2062.0,1251.0 2062.0,1098.0 2060.0,1098.0 2060.0,1042.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="2060.0,878.0 2060.0,775.0 2060.0,672.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="2124.0,608.0 2149.0,608.0 2149.0,506.0 2187.0,506.0" fill="none" stroke="#1F8A4C" stroke-width="2.8" marker-end="url(#arrowG)" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="2128.4" y="542.0" width="33.3" height="26.0" rx="6" ry="6" fill="#FDF3EE" stroke="#FDF3EE" stroke-width="0"/>
+<text x="2145.0" y="557.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="19.040000000000003" font-weight="bold" fill="#1F8A4C">Sí</text>
+<polyline points="2124.0,608.0 2167.0,608.0 2167.0,712.0 2187.0,712.0" fill="none" stroke="#C0392B" stroke-width="2.8" marker-end="url(#arrowR)" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="2146.4" y="645.0" width="33.3" height="26.0" rx="6" ry="6" fill="#FDF3EE" stroke="#FDF3EE" stroke-width="0"/>
+<text x="2163.0" y="660.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="19.040000000000003" font-weight="bold" fill="#C0392B">No</text>
+<polyline points="2449.0,506.0 2491.0,506.0 2491.0,868.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="2522.0,868.0 2522.0,318.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="2584.0,256.0 2622.0,256.0" fill="none" stroke="#2b3a4a" stroke-width="2.8" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="2603.0" y="240.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20.160000000000004" font-weight="bold" fill="#C0392B">No</text>
+<polyline points="2318.0,770.0 2318.0,776.0 1309.0,776.0 1309.0,608.0 1267.0,608.0" fill="none" stroke="#C0392B" stroke-width="2.8" stroke-dasharray="9,6" marker-end="url(#arrowR)" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1294.0" y="783.0" width="852.0" height="26.0" rx="6" ry="6" fill="#FDF3EE" stroke="#FDF3EE" stroke-width="0"/>
+<text x="1720.0" y="798.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="19.040000000000003" font-weight="bold" fill="#C0392B">Corregir el artefacto y marcarlo &#x27;Pendiente&#x27; → nueva evaluación (iteración intra-etapa)</text>
+<polyline points="2522.0,194.0 2522.0,178.0 654.5,178.0 654.5,256.0 676.0,256.0" fill="none" stroke="#6A4FB3" stroke-width="3" stroke-dasharray="10,6" marker-end="url(#arrow)" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="2435.4" y="190.0" width="33.3" height="26.0" rx="6" ry="6" fill="#F4F1FB" stroke="#F4F1FB" stroke-width="0"/>
+<text x="2452.0" y="205.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="19.040000000000003" font-weight="bold" fill="#6A4FB3">Sí</text>
+<path d="M581.0,78.0 H1077.0 L1095.0,96.0 V166.0 H581.0 Z" fill="#FFF8D6" stroke="#D9C86A" stroke-width="2"/>
+<path d="M1077.0,78.0 V96.0 H1095.0" fill="none" stroke="#D9C86A" stroke-width="2"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20.160000000000004" font-weight="normal" fill="#5b4d17"><tspan x="838.0" y="103.0">Flujo ITERATIVO de 4 etapas: la matriz de</tspan><tspan x="838.0" y="128.9">salida de una etapa alimenta la siguiente.</tspan><tspan x="838.0" y="154.7">①Requerimientos  ②Diseño  ③Codificación  ④Pruebas</tspan></text>
+<line x1="838.0" y1="166.0" x2="838.0" y2="186.0" stroke="#D9C86A" stroke-width="2" stroke-dasharray="5,4"/>
+<path d="M720.0,699.0 H1066.0 L1084.0,717.0 V781.0 H720.0 Z" fill="#FFF8D6" stroke="#D9C86A" stroke-width="2"/>
+<path d="M1066.0,699.0 V717.0 H1084.0" fill="none" stroke="#D9C86A" stroke-width="2"/>
+<text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20.160000000000004" font-weight="normal" fill="#5b4d17"><tspan x="902.0" y="721.0">Omite los Issues ya &#x27;Revisados&#x27;</tspan><tspan x="902.0" y="746.9">(control de avance); cada etapa</tspan><tspan x="902.0" y="772.7">se filtra por su milestone.</tspan></text>
+<line x1="1010.0" y1="700.0" x2="1059.0" y2="695.0" stroke="#D9C86A" stroke-width="2" stroke-dasharray="5,4"/>
+</g>
+</svg>

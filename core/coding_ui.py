@@ -51,6 +51,7 @@ from integrations.issue_service import (
     crear_o_actualizar_issue_matriz_trazabilidad_codificacion,
     obtener_issue_matriz_trazabilidad_diseno,
     obtener_issues_codificacion,
+    publicar_aviso_referencias_invalidas_codificacion,
     publicar_comentario_codificacion,
 )
 from agents.coding_repository_discovery import (
@@ -621,6 +622,28 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
                     **session["coding_matriz_snapshot_metadata"],
                 }
                 session["codificacion_resultados"][codificacion_id] = grafo.invoke(initial_state)
+        # Issues bloqueados por elementos de Diseño inexistentes: no se analizan, pero
+        # se deja constancia en GitLab (comentario + etiqueta 'Requiere modificación').
+        avisos_publicados = session.setdefault("coding_avisos_referencias_publicados", set())
+        for fila in estado_entrada["filas"]:
+            if not fila["referencias_invalidas"] or fila["codificacion_id"] in avisos_publicados:
+                continue
+            try:
+                publicar_aviso_referencias_invalidas_codificacion(
+                    adapter.project_id, fila["issue_iid"], fila["codificacion_id"],
+                    fila["referencias_invalidas"],
+                )
+                avisos_publicados.add(fila["codificacion_id"])
+                paso_analisis.info(
+                    f"{fila['codificacion_id']}: no analizado por elementos de Diseño "
+                    f"inexistentes ({', '.join(fila['referencias_invalidas'])}). "
+                    f"Aviso publicado en GitLab."
+                )
+            except Exception as exc:
+                paso_analisis.warning(
+                    f"No se pudo publicar el aviso de elementos inexistentes para "
+                    f"{fila['codificacion_id']} en GitLab: {exc}"
+                )
         guardar_estado_etapa("codificacion", {
             "codificacion_resultados": session["codificacion_resultados"],
             "coding_matriz_snapshot": session["coding_matriz_snapshot"],

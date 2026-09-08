@@ -108,6 +108,41 @@ def publicar_comentario_pruebas(project_id, issue_iid, testing_summary: dict):
     return nota
 
 
+def construir_comentario_referencias_invalidas_pruebas(prueba_id: str, referencias_invalidas: list) -> str:
+    """Comentario de aviso para un Issue de Pruebas que NO fue analizado por referenciar
+    codificaciones inexistentes en la matriz de trazabilidad de Codificación heredada (TRZ-003)."""
+    referencias = [str(ref).strip() for ref in (referencias_invalidas or []) if str(ref).strip()]
+    lineas = [
+        f"Revisar — Trazabilidad incompleta ({prueba_id})",
+        "",
+        "Este Issue de Pruebas no fue analizado porque referencia codificaciones "
+        "inexistentes en la matriz de trazabilidad de Codificación heredada (TRZ-003).",
+        "",
+        "Codificaciones inexistentes:",
+        *([f"- {item}" for item in referencias] if referencias else ["- No especificadas."]),
+        "",
+        "Próxima acción:",
+        "Corregir las referencias del Issue de Pruebas (o actualizar la matriz de "
+        "trazabilidad de Codificación) y volver a ejecutar el análisis.",
+        "",
+        "Evaluación asistida para apoyar el control, seguimiento y trazabilidad. La decisión final corresponde al responsable del proyecto.",
+    ]
+    return "\n".join(lineas) + "\n"
+
+
+def publicar_aviso_referencias_invalidas_pruebas(project_id, issue_iid, prueba_id, referencias_invalidas):
+    """Publica en GitLab el aviso de un Issue de Pruebas bloqueado por codificaciones
+    inexistentes: comentario + etiqueta 'Requiere modificación' (reutiliza el ciclo de
+    etiquetas de evaluación técnica con estado CORREGIR)."""
+    comentario = construir_comentario_referencias_invalidas_pruebas(prueba_id, referencias_invalidas)
+    adapter = GitLabAdapter(project_id=project_id)
+    nota = adapter.agregar_comentario(issue_iid, comentario)
+    issue = adapter.obtener_issue(issue_iid)
+    nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(issue.labels, "CORREGIR")
+    adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
+    return nota
+
+
 def obtener_issue_matriz_trazabilidad_pruebas(project_id):
     """Recupera TRZ-004 y sus filas con el contrato oficial de 18 columnas."""
     adapter = GitLabAdapter(project_id=project_id)

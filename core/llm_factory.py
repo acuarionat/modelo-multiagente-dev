@@ -189,6 +189,7 @@ def obtener_llm_para_agente(
 ) -> LLMSelection:
 
     agent = agent_name.strip().casefold()
+    original_agent = agent
     if agent in {"design_central", "coding_central", "testing_central"}:
         # Arranca mapeado al mismo provider/modelo del Central de Requerimientos.
         agent = "central"
@@ -221,6 +222,13 @@ def obtener_llm_para_agente(
             "NVIDIA_MODEL_CENTRAL",
             "z-ai/glm-5.2",
         ).strip()
+
+        # Override por etapa: Coding_Central usa un modelo propio (más rápido) porque
+        # su prompt incluye el código fuente (~20k tokens) y el endpoint gratuito de
+        # NVIDIA agota su gateway (~300 s) generando con modelos grandes. Si no se
+        # define NVIDIA_MODEL_CODING_CENTRAL, hereda NVIDIA_MODEL_CENTRAL.
+        if original_agent == "coding_central":
+            model = os.getenv("NVIDIA_MODEL_CODING_CENTRAL", model).strip() or model
 
         max_completion_tokens = _env_positive_int(
             "NVIDIA_CENTRAL_MAX_COMPLETION_TOKENS",

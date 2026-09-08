@@ -41,6 +41,7 @@ from integrations.issue_service import (
     construir_matriz_requerimientos_original,
     obtener_issue_matriz_trazabilidad,
     obtener_issues_diseno,
+    publicar_aviso_referencias_invalidas_diseno,
     publicar_comentario_diseno,
 )
 
@@ -502,6 +503,27 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                     **session["matriz_snapshot_metadata"],
                 }
                 session["diseno_resultados"][diseno_id] = grafo.invoke(initial_state)
+        # Issues bloqueados por referencias inexistentes: no se analizan, pero se
+        # deja constancia en GitLab (comentario + etiqueta 'Requiere modificación').
+        avisos_publicados = session.setdefault("diseno_avisos_referencias_publicados", set())
+        for fila in estado_entrada:
+            if fila["entrada_valida"] or fila["diseno_id"] in avisos_publicados:
+                continue
+            try:
+                publicar_aviso_referencias_invalidas_diseno(
+                    adapter.project_id, fila["issue_iid"], fila["diseno_id"],
+                    fila["referencias_invalidas"],
+                )
+                avisos_publicados.add(fila["diseno_id"])
+                paso_analisis.info(
+                    f"{fila['diseno_id']}: no analizado por referencias inexistentes "
+                    f"({', '.join(fila['referencias_invalidas'])}). Aviso publicado en GitLab."
+                )
+            except Exception as exc:
+                paso_analisis.warning(
+                    f"No se pudo publicar el aviso de referencias inexistentes para "
+                    f"{fila['diseno_id']} en GitLab: {exc}"
+                )
         guardar_estado_etapa("diseno", {
             "diseno_resultados": session["diseno_resultados"],
             "matriz_snapshot": session["matriz_snapshot"],

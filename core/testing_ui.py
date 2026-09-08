@@ -41,6 +41,7 @@ from integrations.issue_service import obtener_issue_matriz_trazabilidad_codific
 from integrations.testing_service import (
     crear_o_actualizar_issue_matriz_trazabilidad_pruebas,
     obtener_issues_pruebas,
+    publicar_aviso_referencias_invalidas_pruebas,
     publicar_comentario_pruebas,
 )
 from datetime import datetime
@@ -299,6 +300,28 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
                     "testing_input_matrix_metadata": metadata_matriz,
                 }
                 session["pruebas_resultados"][prueba_id] = grafo.invoke(initial_state)
+        # Issues bloqueadas por codificaciones inexistentes: no se analizan, pero se
+        # deja constancia en GitLab (comentario + etiqueta 'Requiere modificación').
+        avisos_publicados = session.setdefault("pruebas_avisos_referencias_publicados", set())
+        for issue in issues_pruebas:
+            prueba_id = issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"
+            referencias_invalidas = validaciones[prueba_id]["referencias_invalidas"]
+            if not referencias_invalidas or prueba_id in avisos_publicados:
+                continue
+            try:
+                publicar_aviso_referencias_invalidas_pruebas(
+                    adapter.project_id, issue.get("issue_iid"), prueba_id, referencias_invalidas,
+                )
+                avisos_publicados.add(prueba_id)
+                paso_analisis.info(
+                    f"{prueba_id}: no analizado por codificaciones inexistentes "
+                    f"({', '.join(referencias_invalidas)}). Aviso publicado en GitLab."
+                )
+            except Exception as exc:
+                paso_analisis.warning(
+                    f"No se pudo publicar el aviso de codificaciones inexistentes para "
+                    f"{prueba_id} en GitLab: {exc}"
+                )
         guardar_estado_etapa("pruebas", {
             "pruebas_resultados": session["pruebas_resultados"],
             "pruebas_matriz_snapshot": session["pruebas_matriz_snapshot"],
