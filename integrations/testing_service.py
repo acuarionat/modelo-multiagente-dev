@@ -18,6 +18,7 @@ from integrations.testing_traceability_issue_mapper import (
 )
 from core.batch_contract import construir_etiquetas_resultado_evaluacion_tecnica
 from core.utils import extraer_porcentaje
+from database.repository import obtener_version_matriz
 
 logger = logging.getLogger(__name__)
 
@@ -177,12 +178,12 @@ def crear_o_actualizar_issue_matriz_trazabilidad_pruebas(project_id, filas_matri
                     f"El round-trip de TRZ-004 alteró la fila {indice}, columna {columna!r}."
                 )
 
-    if metadata:
-        detalle = (
-            f"_Ejecución: {metadata.get('execution_id', 'No informado')} — "
-            f"Versión: {metadata.get('version', 'No informada')}._\n\n"
-        )
-        contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
+    version = obtener_version_matriz("pruebas", filas_matriz, 4)
+    detalle = (
+        f"_Ejecución: {(metadata or {}).get('execution_id', 'No informado')} — "
+        f"Versión: {version}._\n\n"
+    )
+    contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
 
     adapter = GitLabAdapter(project_id=project_id)
     issue = adapter.buscar_issue_por_titulo(TRZ_004_TITULO)

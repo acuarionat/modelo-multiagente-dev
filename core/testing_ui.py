@@ -36,8 +36,11 @@ from core.utils import (
     generar_documento_formal_pruebas_docx,
     generar_reporte_pruebas_pdf,
 )
-from database.repository import cargar_estado_etapa, guardar_estado_etapa
-from integrations.issue_service import obtener_issue_matriz_trazabilidad_codificacion
+from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
+from integrations.issue_service import (
+    actualizar_etiqueta_resultado_tecnico,
+    obtener_issue_matriz_trazabilidad_codificacion,
+)
 from integrations.testing_service import (
     crear_o_actualizar_issue_matriz_trazabilidad_pruebas,
     obtener_issues_pruebas,
@@ -368,6 +371,18 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             metadata=session.get("pruebas_matriz_snapshot_metadata"),
         )
 
+    # Tras el análisis, actualizar automáticamente la etiqueta de flujo de cada
+    # Issue de Pruebas evaluado (Revisada / Requiere modificación). Los estados
+    # ERROR no modifican la etiqueta. La publicación del comentario detallado
+    # sigue disponible manualmente en cada ficha de resultado.
+    if ejecutar:
+        for prueba_id, p in presentaciones.items():
+            if p["estado_orientativo"] == "ERROR":
+                continue
+            actualizar_etiqueta_resultado_tecnico(
+                adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
+            )
+
     resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
         ["Resumen general", "Detalle por prueba", "Matriz y documentos"]
     )
@@ -531,7 +546,12 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
 
     # ---- Documentos consolidados ----
     artefactos.subheader("Documentos consolidados")
-    matriz_metadata_documentos = session.get("pruebas_matriz_snapshot_metadata", {})
+    # Copia para no mutar el metadata de la sesión. Versión propia = matriz de
+    # Pruebas (TRZ-004); versión de entrada = matriz de Codificación heredada
+    # (TRZ-003). Ambas provienen del registro de versiones de matrices.
+    matriz_metadata_documentos = dict(session.get("pruebas_matriz_snapshot_metadata", {}) or {})
+    matriz_metadata_documentos["matriz_trazabilidad_version"] = leer_version_matriz("pruebas") or "No informada"
+    matriz_metadata_documentos["matriz_entrada_version"] = leer_version_matriz("codificacion") or "No informada"
     lista_presentaciones = list(presentaciones.values())
 
     pdf_bytes = generar_reporte_pruebas_pdf(

@@ -1,52 +1,131 @@
-# Plantilla de Issue COD-xxx (Codificación)
+<!--
+=====================================================================
+PLANTILLA — Issue de Codificación (COD-XXX)
+=====================================================================
+CÓMO USAR ESTA PLANTILLA:
+1. Copia TODO el contenido a un nuevo Issue de GitLab en el milestone "Codificación".
+2. La PRIMERA línea (sin #) es el TÍTULO del Issue. El resto (desde "# COD-XXX...")
+   es la DESCRIPCIÓN del Issue.
+3. Sustituye cada texto entre corchetes [ ... ] por la información real.
+4. Los bloques que empiezan con "> Guía:" y "> Ejemplo:" son AYUDA para llenar:
+   BÓRRALOS antes de guardar el Issue.
+5. NO cambies los títulos de sección (## 1., ## 2., ...): la herramienta TraceDev
+   los usa para leer el Issue.
+=====================================================================
+-->
 
-Copiar esta estructura al crear un Issue de Codificación en GitLab, dentro
-del milestone "Codificación". El título debe contener el identificador
-`COD-XXX` (por ejemplo: `COD-001 — Servicio de autenticación`).
+COD-XXX - [Nombre corto de la implementación]
 
-`integrations/coding_issue_mapper.py` depende de los encabezados exactos
-que aparecen a continuación (el prefijo numérico "## 1." es opcional al
-parsear, pero debe conservarse el texto del encabezado).
+# COD-XXX - [Nombre corto de la implementación]
 
-```markdown
-# COD-001 — Nombre de la implementación
+<!-- Ejemplo de título: COD-001 - Implementación de Reserva de Libros -->
 
 ## 1. Descripción de la implementación
 
-Descripción en texto libre de qué se implementó y por qué.
+> **Guía:** Describe en 1 a 3 párrafos QUÉ se implementó y CÓMO se organizó a alto
+> nivel (qué flujo cubre, qué responsabilidades se separaron). No pegues código aquí.
+>
+> **Ejemplo:** "Se implementó el flujo de consulta y reserva de libros, incluyendo la
+> consulta de ejemplares disponibles, la validación previa al registro, la creación de
+> la reserva y la actualización de la disponibilidad. La implementación separa la
+> interacción con el usuario, la lógica de negocio y la persistencia."
+
+[Escribe aquí la descripción de la implementación]
+
+---
 
 ## 2. Elementos de Diseño implementados
 
-- ED-01
-- ED-02
-- ED-03
+> **Guía:** Lista los identificadores de los Elementos de Diseño (ED-XX) que esta
+> implementación cubre. Deben existir en la Matriz de Trazabilidad de Diseño (TRZ-002);
+> si referencias un ED inexistente, el Issue no será analizado.
+>
+> **Ejemplo:**
+> - ED-01
+> - ED-02
+> - ED-03
+
+- [ED-XX]
+- [ED-XX]
+- [ED-XX]
+
+---
 
 ## 3. Ubicación de la implementación
 
-| Archivo/Módulo | Descripción |
+> **Guía:** Indica los archivos o módulos donde vive la implementación y, en una frase,
+> la responsabilidad de cada uno. Usa comillas invertidas `` ` `` para las rutas.
+> Agrega o elimina filas según necesites; conserva el encabezado y la línea de guiones.
+>
+> **Ejemplo:**
+> | Archivo o módulo | Descripción |
+> |---|---|
+> | `app/reservations/service.py` | Contiene la lógica de consulta, validación y registro de reservas |
+
+| Archivo o módulo | Descripción |
 |---|---|
-| core/ejemplo_servicio.py | Implementa la lógica principal del elemento ED-01. |
-| core/ejemplo_repositorio.py | Acceso a datos para ED-02. |
+| `[ruta/al/archivo.ext]` | [Responsabilidad de este archivo] |
+| `[ruta/al/archivo.ext]` | [Responsabilidad de este archivo] |
+| `[ruta/al/archivo.ext]` | [Responsabilidad de este archivo] |
+
+---
 
 ## 4. Decisiones de implementación
 
-- Decisión relevante 1.
-- Decisión relevante 2.
+> **Guía:** Enumera las decisiones técnicas relevantes (dónde se concentró la lógica,
+> qué separaciones se respetaron, validaciones importantes, orden de las operaciones).
+> Una decisión por viñeta, en frases afirmativas y concretas.
+>
+> **Ejemplo:**
+> - La lógica de negocio relacionada con reservas se concentra en `reservation_service`.
+> - La interfaz no accede directamente al repositorio de reservas.
+> - La disponibilidad se verifica nuevamente inmediatamente antes de registrar la reserva.
 
-## 5. Observaciones
+- [Decisión de implementación]
+- [Decisión de implementación]
+- [Decisión de implementación]
 
-- Observación adicional (o "Ninguna").
-```
+---
 
-## Notas
+## 5. Consideraciones de seguridad implementadas
 
-- La sección **2** solo declara qué Elementos de Diseño (ED-xx) se
-  implementaron; no describe cómo. Cada ED declarado aquí debe existir
-  previamente en la matriz de Diseño heredada — si no existe, el Issue
-  se rechaza en `core/coding_contract.py` antes de llegar a cualquier
-  agente.
-- La sección **3** es la única fuente de rutas de archivo: solo se
-  localizan y analizan (Radon/Semgrep/pip-audit/Gitleaks) los archivos
-  aquí declarados, no el repositorio completo.
-- Ninguna sección de esta plantilla calcula métricas ni evalúa calidad o
-  seguridad: eso ocurre después, con evidencia real de las herramientas.
+> **Guía:** Enumera los controles de seguridad efectivamente aplicados (autenticación,
+> origen confiable de los datos, auditoría, mínima exposición de información, manejo de
+> credenciales). Una consideración por viñeta.
+>
+> **Ejemplo:**
+> - Las operaciones de reserva requieren un usuario autenticado.
+> - El identificador del estudiante se obtiene de la sesión autenticada, no del cliente.
+> - Los datos de conexión y credenciales se obtienen desde variables de entorno.
+
+- [Consideración de seguridad]
+- [Consideración de seguridad]
+- [Consideración de seguridad]
+
+---
+
+## 6. Dependencias relevantes utilizadas
+
+> **Guía:** Lista las librerías o dependencias externas usadas por la implementación.
+> Solo el nombre (opcionalmente la versión). Una por viñeta.
+>
+> **Ejemplo:**
+> - `Flask`
+> - `SQLAlchemy`
+> - `python-dotenv`
+
+- `[dependencia]`
+- `[dependencia]`
+- `[dependencia]`
+
+---
+
+## 7. Observaciones
+
+> **Guía:** Anota el estado de la implementación y cualquier pendiente o aclaración
+> conocida al registrar el Issue. Si no hay pendientes, indícalo explícitamente.
+>
+> **Ejemplo:** "La implementación se encuentra funcional y lista para análisis estático.
+> No se identificaron pendientes conocidos al momento de registrar este Issue."
+
+[Escribe aquí las observaciones]

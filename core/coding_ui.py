@@ -45,9 +45,10 @@ from core.utils import (
     generar_documento_formal_codificacion_docx,
     generar_reporte_codificacion_pdf,
 )
-from database.repository import cargar_estado_etapa, guardar_estado_etapa
+from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
 from integrations.code_repository_service import obtener_codigo_codificacion
 from integrations.issue_service import (
+    actualizar_etiqueta_resultado_tecnico,
     crear_o_actualizar_issue_matriz_trazabilidad_codificacion,
     obtener_issue_matriz_trazabilidad_diseno,
     obtener_issues_codificacion,
@@ -693,6 +694,18 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         for codificacion_id, resultado_grafo in resultados.items()
     }
 
+    # Tras el análisis, actualizar automáticamente la etiqueta de flujo de cada
+    # Issue de Codificación evaluado (Revisada / Requiere modificación). Los
+    # estados ERROR no modifican la etiqueta. La publicación del comentario
+    # detallado sigue disponible manualmente en cada ficha de resultado.
+    if ejecutar:
+        for codificacion_id, p in presentaciones.items():
+            if p["estado_orientativo"] == "ERROR":
+                continue
+            actualizar_etiqueta_resultado_tecnico(
+                adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
+            )
+
     resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
         ["Resumen general", "Detalle por codificación", "Matriz y documentos"]
     )
@@ -892,7 +905,16 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
 
     # ---- Documentos consolidados ----
     artefactos.subheader("Documentos consolidados")
-    matriz_metadata_documentos = session.get("coding_matriz_snapshot_metadata", {})
+    # Copia para no mutar el metadata de la sesión (usado también al publicar).
+    # Versión propia = matriz de Codificación (TRZ-003); versión de entrada =
+    # matriz de Diseño heredada (TRZ-002). Ambas provienen del registro de versiones.
+    matriz_metadata_documentos = dict(session.get("coding_matriz_snapshot_metadata", {}) or {})
+    matriz_metadata_documentos["matriz_trazabilidad_version"] = leer_version_matriz("codificacion") or "No informada"
+    matriz_metadata_documentos["coding_matrix_version"] = (
+        leer_version_matriz("diseno")
+        or matriz_metadata_documentos.get("coding_matrix_version")
+        or "No informada"
+    )
     lista_presentaciones = list(presentaciones.values())
 
     pdf_bytes = generar_reporte_codificacion_pdf(

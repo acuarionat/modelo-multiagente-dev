@@ -1038,7 +1038,7 @@ def render_sidebar_brand(tool_logo_path: str | Path, project_config: dict) -> No
         f"""
         <div class="nexo-sidebar-brand">
             <img src="{tool_logo}" alt="TraceDev">
-            <p>Sistema Multiagente<br>Recepción y seguimiento de requerimientos</p>
+            <p>Sistema Multiagente<br>Control y seguimiento del Desarrollo de Software</p>
         </div>
         <div class="sidebar-section-label">Proyecto activo</div>
         <div class="sidebar-project-card">

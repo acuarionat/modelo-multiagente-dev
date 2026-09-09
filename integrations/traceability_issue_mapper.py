@@ -21,6 +21,7 @@ def construir_markdown_matriz_trazabilidad(filas_oficiales: list, metadata: dict
     if metadata:
         lineas += [
             f"_Ejecución: {metadata.get('execution_id', 'No informado')} — "
+            f"Versión: {metadata.get('matriz_version', 'No informada')} — "
             f"Milestone: {metadata.get('milestone', 'No informado')} — "
             f"Generado: {metadata.get('generated_at', 'No informado')}._",
             "",

@@ -58,6 +58,16 @@ def inicializar_bd():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS matrix_versions (
+            stage TEXT PRIMARY KEY,
+            content_hash TEXT NOT NULL,
+            major INTEGER NOT NULL,
+            minor INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -68,6 +78,7 @@ def limpiar_datos_seguimiento():
     cursor.execute('DELETE FROM issues')
     cursor.execute('DELETE FROM history')
     cursor.execute('DELETE FROM cache_results')
+    cursor.execute('DELETE FROM matrix_versions')
     conn.commit()
     conn.close()
     limpiar_estado_etapas()
@@ -184,6 +195,71 @@ def obtener_cache(content_hash: str, schema_version: str):
             "evaluation": json.loads(row[3])
         }
     return None
+
+def _hash_filas_matriz(filas: list) -> str:
+    """Hash estable del contenido de una matriz de trazabilidad. Excluye las
+    columnas volátiles (fechas de generación) para que la versión cambie
+    únicamente ante cambios reales de contenido y no por la fecha del día."""
+    normalizadas = []
+    for fila in filas or []:
+        if isinstance(fila, dict):
+            normalizadas.append({
+                str(clave): "" if valor is None else str(valor)
+                for clave, valor in fila.items()
+                if "fecha" not in str(clave).lower()
+            })
+        else:
+            normalizadas.append(fila)
+    serial = json.dumps(normalizadas, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(serial.encode('utf-8')).hexdigest()
+
+
+def obtener_version_matriz(stage: str, filas: list, major: int) -> str:
+    """Devuelve la versión 'vMAJOR.MINOR' de la matriz de trazabilidad de una
+    etapa y persiste su estado. El MINOR se incrementa solo cuando el contenido
+    cambia respecto de la última publicación registrada; si el contenido es
+    idéntico, la versión se mantiene. El MAJOR identifica la etapa
+    (1=Requerimientos, 2=Diseño, 3=Codificación, 4=Pruebas)."""
+    content_hash = _hash_filas_matriz(filas)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT content_hash, major, minor FROM matrix_versions WHERE stage = ?', (stage,))
+    row = cursor.fetchone()
+    if row is None:
+        minor = 0
+    else:
+        prev_hash, prev_major, prev_minor = row
+        if prev_major != major:
+            minor = 0
+        elif prev_hash == content_hash:
+            minor = prev_minor
+        else:
+            minor = prev_minor + 1
+    cursor.execute('''
+        INSERT INTO matrix_versions (stage, content_hash, major, minor, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(stage) DO UPDATE SET content_hash=excluded.content_hash,
+            major=excluded.major, minor=excluded.minor, updated_at=CURRENT_TIMESTAMP
+    ''', (stage, content_hash, major, minor))
+    conn.commit()
+    conn.close()
+    return f"v{major}.{minor}"
+
+
+def leer_version_matriz(stage: str) -> str | None:
+    """Devuelve la versión 'vMAJOR.MINOR' actualmente registrada para la matriz de
+    trazabilidad de una etapa, SIN modificarla. Retorna None si esa matriz aún no
+    se ha publicado. Pensada para mostrar la versión en documentos/reportes sin
+    provocar ningún incremento."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT major, minor FROM matrix_versions WHERE stage = ?', (stage,))
+    row = cursor.fetchone()
+    conn.close()
+    if row is None:
+        return None
+    return f"v{row[0]}.{row[1]}"
+
 
 # Asegurar que se crea la BD al importar este módulo
 inicializar_bd()

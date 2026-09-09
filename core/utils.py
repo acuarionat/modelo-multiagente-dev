@@ -2102,6 +2102,7 @@ def generar_reporte_diseno_pdf(project_name: str, milestone: str, presentaciones
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
     linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    linea(f"Version de la matriz de trazabilidad: {(matriz_metadata or {}).get('matriz_trazabilidad_version', 'No informada')}")
     if matriz_metadata:
         pdf.ln(2)
         encabezado("Matriz de entrada", 12)
@@ -2250,7 +2251,7 @@ def generar_documento_formal_diseno_docx(project_name: str, milestone: str, pres
     doc.add_paragraph(f"Proyecto: {project_name}")
     doc.add_paragraph(f"Milestone: {milestone}")
     doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
-    doc.add_paragraph("Versión: 1.0")
+    doc.add_paragraph(f"Versión de la matriz de trazabilidad: {(matriz_metadata or {}).get('matriz_trazabilidad_version', 'No informada')}")
     if matriz_metadata:
         doc.add_paragraph("Matriz de entrada:")
         doc.add_paragraph(f"Versión: {matriz_metadata.get('matriz_version', 'No informado')}")
@@ -2470,6 +2471,7 @@ def generar_reporte_codificacion_pdf(project_name: str, milestone: str, presenta
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
     linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    linea(f"Version de la matriz de trazabilidad: {(matriz_metadata or {}).get('matriz_trazabilidad_version', 'No informada')}")
     if matriz_metadata:
         pdf.ln(2)
         encabezado("Matriz de entrada (Diseño heredado)", 12)
@@ -2622,7 +2624,7 @@ def generar_documento_formal_codificacion_docx(project_name: str, milestone: str
     doc.add_paragraph(f"Proyecto: {project_name}")
     doc.add_paragraph(f"Milestone: {milestone}")
     doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
-    doc.add_paragraph("Versión: 1.0")
+    doc.add_paragraph(f"Versión de la matriz de trazabilidad: {(matriz_metadata or {}).get('matriz_trazabilidad_version', 'No informada')}")
     if matriz_metadata:
         doc.add_paragraph("Matriz de entrada (Diseño heredado):")
         doc.add_paragraph(f"Versión: {matriz_metadata.get('coding_matrix_version', 'No informado')}")
@@ -2861,9 +2863,11 @@ def generar_reporte_pruebas_pdf(project_name: str, milestone: str, presentacione
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
     linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+    linea(f"Version de la matriz de trazabilidad: {(matriz_metadata or {}).get('matriz_trazabilidad_version', 'No informada')}")
     if matriz_metadata:
         pdf.ln(2)
         encabezado("Matriz de entrada (Codificación heredada)", 12)
+        linea(f"Version: {matriz_metadata.get('matriz_entrada_version', 'No informado')}")
         linea(f"Fuente: {matriz_metadata.get('fuente', 'No informado')}")
     pdf.ln(4)
 
@@ -3007,9 +3011,10 @@ def generar_documento_formal_pruebas_docx(project_name: str, milestone: str, pre
     doc.add_paragraph(f"Proyecto: {project_name}")
     doc.add_paragraph(f"Milestone: {milestone}")
     doc.add_paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
-    doc.add_paragraph("Versión: 1.0")
+    doc.add_paragraph(f"Versión de la matriz de trazabilidad: {(matriz_metadata or {}).get('matriz_trazabilidad_version', 'No informada')}")
     if matriz_metadata:
         doc.add_paragraph("Matriz de entrada (Codificación heredada):")
+        doc.add_paragraph(f"Versión: {matriz_metadata.get('matriz_entrada_version', 'No informado')}")
         doc.add_paragraph(f"Fuente: {matriz_metadata.get('fuente', 'No informado')}")
     doc.add_page_break()
 

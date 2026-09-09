@@ -35,8 +35,9 @@ from core.ui_components import (
     render_next_phase_button,
 )
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
-from database.repository import cargar_estado_etapa, guardar_estado_etapa
+from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
 from integrations.issue_service import (
+    actualizar_etiqueta_resultado_tecnico,
     crear_o_actualizar_issue_matriz_trazabilidad_diseno,
     construir_matriz_requerimientos_original,
     obtener_issue_matriz_trazabilidad,
@@ -569,6 +570,18 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         for diseno_id, resultado_grafo in resultados.items()
     }
 
+    # Tras el análisis, actualizar automáticamente la etiqueta de flujo de cada
+    # Issue de Diseño evaluado (Revisada / Requiere modificación). Los estados
+    # ERROR no modifican la etiqueta. La publicación del comentario detallado
+    # sigue disponible manualmente en cada ficha de resultado.
+    if ejecutar:
+        for diseno_id, p in presentaciones.items():
+            if p["estado_orientativo"] == "ERROR":
+                continue
+            actualizar_etiqueta_resultado_tecnico(
+                adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
+            )
+
     resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
         ["Resumen general", "Detalle por diseño", "Matriz y documentos"]
     )
@@ -795,7 +808,16 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
 
     # ---- Documentos consolidados ----
     artefactos.subheader("Documentos consolidados")
-    matriz_metadata_documentos = session.get("matriz_snapshot_metadata", {})
+    # Copia para no mutar el metadata de la sesión (usado también al publicar).
+    # La versión propia (matriz de Diseño, TRZ-002) y la de entrada (matriz de
+    # Requerimientos, TRZ-001) se leen del mismo registro que alimenta los Issues TRZ.
+    matriz_metadata_documentos = dict(session.get("matriz_snapshot_metadata", {}) or {})
+    matriz_metadata_documentos["matriz_trazabilidad_version"] = leer_version_matriz("diseno") or "No informada"
+    matriz_metadata_documentos["matriz_version"] = (
+        leer_version_matriz("requerimientos")
+        or matriz_metadata_documentos.get("matriz_version")
+        or "No informada"
+    )
     lista_presentaciones = list(presentaciones.values())
 
     pdf_bytes = generar_reporte_diseno_pdf(

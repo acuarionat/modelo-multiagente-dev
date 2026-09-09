@@ -9,7 +9,13 @@ from core.config import ALLOW_INCOMPLETE_STORIES, OLLAMA_MODEL
 from core.batch_contract import construir_etiquetas_resultado, construir_etiquetas_resultado_evaluacion_tecnica
 from core.performance_audit import obtener_contadores, reiniciar_contadores
 from core.utils import construir_filas_trazabilidad, construir_resultado_lote, extraer_porcentaje
-from database.repository import calcular_hash_issue, guardar_cache, guardar_historial, insertar_o_actualizar_issue
+from database.repository import (
+    calcular_hash_issue,
+    guardar_cache,
+    guardar_historial,
+    insertar_o_actualizar_issue,
+    obtener_version_matriz,
+)
 from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente
 from integrations.issue_mapper import mapear_issue_a_json, separar_entradas_para_analisis
 from integrations.design_issue_mapper import mapear_issue_diseno
@@ -412,6 +418,26 @@ def _actualizar_estado_gitlab(adapter, result: dict, estado_evaluacion: str) -> 
         )
 
 
+def actualizar_etiqueta_resultado_tecnico(project_id, issue_iid, estado_orientativo, adapter=None) -> bool:
+    """Actualiza SOLO la etiqueta de flujo (Revisada / Requiere modificación) de un
+    Issue de Diseño, Codificación o Pruebas a partir de su estado orientativo, sin
+    publicar comentario. Reutiliza el mismo ciclo de etiquetas que Requerimientos y
+    NO convierte un fallo de GitLab en fallo del análisis (se registra y continúa)."""
+    try:
+        adapter = adapter or GitLabAdapter(project_id=project_id)
+        issue = adapter.obtener_issue(issue_iid)
+        nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
+            issue.labels, estado_orientativo,
+        )
+        adapter.actualizar_etiquetas(issue_iid, nuevas_etiquetas)
+        return True
+    except Exception:
+        logger.exception(
+            "No se pudieron actualizar etiquetas de GitLab para Issue #%s.", issue_iid,
+        )
+        return False
+
+
 def procesar_flujo_lote(issues: list, project_name: str, sprint_context: str = "", adapter=None) -> dict:
     reiniciar_contadores()
     logger.info("Modelo Ollama efectivo para la ejecución: %s", OLLAMA_MODEL)
@@ -627,6 +653,8 @@ def crear_o_actualizar_issue_matriz_trazabilidad(project_id, filas_matriz, metad
         logger.warning("No hay filas de matriz para publicar TRZ-001.")
         return None
 
+    version = obtener_version_matriz("requerimientos", filas_matriz, 1)
+    metadata = {**(metadata or {}), "matriz_version": version}
     contenido = construir_markdown_matriz_trazabilidad(filas_matriz, metadata)
 
     filas_publicables = mapear_matriz_trazabilidad(SimpleNamespace(description=contenido))
@@ -670,12 +698,12 @@ def crear_o_actualizar_issue_matriz_trazabilidad_diseno(project_id, filas_matriz
                     f"El round-trip de TRZ-002 alteró la fila {indice}, columna {columna!r}."
                 )
 
-    if metadata:
-        detalle = (
-            f"_Ejecución: {metadata.get('execution_id', 'No informado')} — "
-            f"Versión: {metadata.get('matriz_version', 'No informada')}._\n\n"
-        )
-        contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
+    version = obtener_version_matriz("diseno", filas_matriz, 2)
+    detalle = (
+        f"_Ejecución: {(metadata or {}).get('execution_id', 'No informado')} — "
+        f"Versión: {version}._\n\n"
+    )
+    contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
 
     adapter = GitLabAdapter(project_id=project_id)
     issue = adapter.buscar_issue_por_titulo(TRZ_002_TITULO)
@@ -718,12 +746,12 @@ def crear_o_actualizar_issue_matriz_trazabilidad_codificacion(project_id, filas_
                     f"El round-trip de TRZ-003 alteró la fila {indice}, columna {columna!r}."
                 )
 
-    if metadata:
-        detalle = (
-            f"_Ejecución: {metadata.get('execution_id', 'No informado')} — "
-            f"Versión: {metadata.get('coding_matrix_version', 'No informada')}._\n\n"
-        )
-        contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
+    version = obtener_version_matriz("codificacion", filas_matriz, 3)
+    detalle = (
+        f"_Ejecución: {(metadata or {}).get('execution_id', 'No informado')} — "
+        f"Versión: {version}._\n\n"
+    )
+    contenido = contenido.replace("## Matriz de trazabilidad", detalle + "## Matriz de trazabilidad", 1)
 
     adapter = GitLabAdapter(project_id=project_id)
     issue = adapter.buscar_issue_por_titulo(TRZ_003_TITULO)
