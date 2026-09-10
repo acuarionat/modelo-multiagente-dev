@@ -187,7 +187,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
     # ============================================================
 
     paso_entrada.markdown("### Entrada de Pruebas")
-    paso_entrada.markdown("#### Matriz de Trazabilidad — Etapa Codificación")
+    paso_entrada.markdown("#### Matriz de trazabilidad")
 
     actualizar_gitlab = paso_entrada.button("Actualizar desde GitLab", key="pruebas_actualizar_trz003")
     if "pruebas_matriz_carga" not in session or actualizar_gitlab:
@@ -207,8 +207,15 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         return
 
     matriz_codificacion = session["pruebas_matriz_carga"]
+    # Bloque de información de la matriz de entrada (mismos campos en todas las etapas:
+    # Fuente vigente · Versión · Estado · Validación · Filas de la matriz). La etapa de
+    # Pruebas usa la matriz heredada de Codificación (TRZ-003) tal cual, sin edición ni
+    # recomparación local: por eso Estado y Validación son constantes.
     paso_entrada.write(f"**Fuente vigente:** {session.get('pruebas_matriz_fuente', 'GitLab — TRZ-003')}")
-    paso_entrada.write(f"**Filas de trazabilidad heredadas:** {len(matriz_codificacion)}")
+    paso_entrada.write(f"**Versión:** {leer_version_matriz('codificacion') or 'No informada'}")
+    paso_entrada.write("**Estado:** Original")
+    paso_entrada.write("**Validación:** VÁLIDA")
+    paso_entrada.write(f"**Filas de la matriz:** {len(matriz_codificacion)}")
     paso_entrada.dataframe(matriz_codificacion, width="stretch")
 
     issue_trz003 = session.get("pruebas_issue_trz003")

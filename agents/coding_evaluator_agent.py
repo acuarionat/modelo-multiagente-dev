@@ -46,7 +46,7 @@ def analizar_evaluador_codificacion(issues_json_str: str) -> str:
     num_predict = calcular_num_predict("Evaluator", len(expected_issue_ids))
 
     selection = obtener_llm_para_agente(
-        "evaluator", json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1,
+        "coding_evaluator", json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1,
     )
     prompt_template = cargar_prompt("coding_evaluator_prompt.txt")
 

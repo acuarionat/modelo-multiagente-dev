@@ -177,6 +177,20 @@ def crear_llm_nvidia(
         "max_tokens": max_completion_tokens,
     }
 
+    # Modelos de razonamiento (p. ej. deepseek-v4-flash) generan tokens de "thinking"
+    # que disparan la latencia hasta el timeout con prompts reales (~190 s → timeout).
+    # Desactivarlo entrega JSON directo y baja la latencia a ~10 s. Es un campo no
+    # estándar que NVIDIA NIM acepta en el cuerpo de la petición vía extra_body.
+    if _env_bool("NVIDIA_DISABLE_THINKING", False):
+        kwargs["extra_body"] = {"chat_template_kwargs": {"thinking": False}}
+
+    # nemotron (etapa de Codificación) solo emite JSON estructuralmente válido de forma
+    # fiable con decodificación guiada (response_format); sin ella devuelve JSON roto de
+    # vez en cuando. Se aplica SOLO a nemotron: deepseek ya entrega JSON limpio y con
+    # response_format su latencia supera el timeout del gateway gratuito.
+    if json_mode and "nemotron" in model_name.lower():
+        kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
+
     return ChatOpenAI(**kwargs)
 
 def obtener_llm_para_agente(
@@ -193,6 +207,10 @@ def obtener_llm_para_agente(
     if agent in {"design_central", "coding_central", "testing_central"}:
         # Arranca mapeado al mismo provider/modelo del Central de Requerimientos.
         agent = "central"
+    elif agent == "coding_evaluator":
+        # Comparte gate/provider con "evaluator", pero puede usar un modelo propio
+        # (el de la etapa de Codificación) para evitar los timeouts de deepseek.
+        agent = "evaluator"
 
     fallback_enabled = _env_bool(
         "ENABLE_LOCAL_FALLBACK",
@@ -220,7 +238,7 @@ def obtener_llm_para_agente(
     ):
         model = os.getenv(
             "NVIDIA_MODEL_CENTRAL",
-            "z-ai/glm-5.2",
+            "deepseek-ai/deepseek-v4-flash-0731",
         ).strip()
 
         # Override por etapa: Coding_Central usa un modelo propio (más rápido) porque
@@ -229,6 +247,16 @@ def obtener_llm_para_agente(
         # define NVIDIA_MODEL_CODING_CENTRAL, hereda NVIDIA_MODEL_CENTRAL.
         if original_agent == "coding_central":
             model = os.getenv("NVIDIA_MODEL_CODING_CENTRAL", model).strip() or model
+
+        # El Evaluador de Codificación hereda el modelo de la etapa de Codificación
+        # (NVIDIA_MODEL_CODING_CENTRAL, p. ej. nemotron) porque deepseek se atasca en el
+        # gateway gratuito incluso con prompts pequeños. Se puede fijar aparte con
+        # NVIDIA_MODEL_CODING_EVALUATOR si algún día se quiere un modelo distinto.
+        elif original_agent == "coding_evaluator":
+            model = os.getenv(
+                "NVIDIA_MODEL_CODING_EVALUATOR",
+                os.getenv("NVIDIA_MODEL_CODING_CENTRAL", model),
+            ).strip() or model
 
         max_completion_tokens = _env_positive_int(
             "NVIDIA_CENTRAL_MAX_COMPLETION_TOKENS",

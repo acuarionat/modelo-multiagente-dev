@@ -216,10 +216,10 @@ def _explicar_estado_diseno(resumen: dict) -> str:
 
 def _describir_fuente(matriz_fuente: str, issue_trz001, nombre_archivo: str = None) -> str:
     if matriz_fuente == "GitLab" and issue_trz001 is not None:
-        return f"Fuente vigente: GitLab — Issue TRZ-001 (#{issue_trz001.iid})"
+        return f"GitLab — Issue TRZ-001 (#{issue_trz001.iid})"
     if matriz_fuente == "EXCEL":
-        return f"Fuente vigente: Archivo Excel — {nombre_archivo or 'archivo cargado'}"
-    return "Fuente vigente: Matriz original de Requerimientos"
+        return f"Archivo Excel — {nombre_archivo or 'archivo cargado'}"
+    return "Matriz original de Requerimientos"
 
 
 def _todos_los_resultados_cache() -> list:
@@ -312,11 +312,14 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     carga = session["matriz_carga"]
 
     # ---- Procedencia y estado (sección 4) ----
+    # Bloque de información de la matriz de entrada (mismos campos en todas las etapas:
+    # Fuente vigente · Versión · Estado · Validación · Filas de la matriz).
     paso_entrada.markdown("#### Matriz de trazabilidad")
-    paso_entrada.write(_describir_fuente(carga["matriz_fuente"], carga["issue_trz001"], carga.get("archivo_excel_nombre")))
+    paso_entrada.write(f"**Fuente vigente:** {_describir_fuente(carga['matriz_fuente'], carga['issue_trz001'], carga.get('archivo_excel_nombre'))}")
+    paso_entrada.write(f"**Versión:** {leer_version_matriz('requerimientos') or carga.get('matriz_version') or 'No informada'}")
     paso_entrada.write(f"**Estado:** {carga['matriz_estado']}")
     paso_entrada.write(f"**Validación:** {'VÁLIDA' if carga['matriz_validacion']['valida'] else 'INVÁLIDA'}")
-    paso_entrada.write(f"**Requisitos vigentes:** {carga['requisitos_vigentes']}")
+    paso_entrada.write(f"**Filas de la matriz:** {len(carga['matriz_entrada_diseno'])}")
 
     if carga["matriz_estado"] == "EDITADA":
         cambios = carga["matriz_cambios_pre_diseno"]

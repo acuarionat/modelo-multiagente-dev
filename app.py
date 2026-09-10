@@ -20,6 +20,7 @@ from project_config import load_project_config, save_project_config
 from core.design_ui import render_design_stage
 from core.coding_ui import render_coding_stage
 from core.testing_ui import render_testing_stage
+from core.dashboard_ui import render_dashboard
 from core.ui_components import (
     _lista_ui as lista_ui,
     _texto_hallazgo_ui as texto_hallazgo_ui,
@@ -728,6 +729,7 @@ def render_stage_navigation():
                     width="content",
                 ):
                     st.session_state["etapa_actual"] = stage_id
+                    st.session_state["vista"] = "etapa"
                     st.rerun()
                 label_class = "stage-label active" if current == stage_id else "stage-label"
                 st.markdown(f'<div class="{label_class}" title="{full_name}">{short_name}</div>', unsafe_allow_html=True)
@@ -836,6 +838,9 @@ st.info("Las métricas e indicadores son valoraciones asistidas basadas en la ev
 with st.sidebar:
     render_sidebar_brand(TRACEDEV_LOGO_PATH, project_config)
     st.divider()
+    if st.button("Panel del proyecto", width="stretch"):
+        st.session_state["vista"] = "dashboard"
+        st.rerun()
     if st.button("Editar configuración", width="stretch"):
         st.session_state["editing_project_config"] = True
         st.rerun()
@@ -854,6 +859,14 @@ except Exception as e:
     st.stop()
 
 project_name = project_config["name"]
+
+# Panel del proyecto (dashboard): vista de solo lectura, transversal a las etapas.
+# Se despacha antes de la lógica de etapa/milestone para no renderizar el banner
+# de etapa. Se sale volviendo a elegir cualquier etapa en la navegación superior.
+if st.session_state.get("vista") == "dashboard":
+    render_dashboard(project_name, project_config, adapter)
+    st.stop()
+
 stage_id = st.session_state["etapa_actual"]
 milestone_val = MILESTONES_BY_STAGE[stage_id]
 stage_name = next(stage[2] for stage in STAGES if stage[0] == stage_id)

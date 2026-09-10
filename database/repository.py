@@ -167,6 +167,55 @@ def guardar_historial(gitlab_iid: int, quality_index: float, security_index: flo
     conn.commit()
     conn.close()
 
+def obtener_historial(limite: int | None = None) -> list:
+    """Lectura de solo lectura del historial de análisis (calidad, seguridad,
+    veredicto, tiempo de ejecución) por Issue y por corrida, ordenado del más
+    antiguo al más reciente. Pensado para el panel/dashboard del proyecto."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    query = (
+        'SELECT gitlab_iid, analysis_date, quality_index, security_index, '
+        'verdict, execution_time, observations FROM history '
+        'ORDER BY analysis_date ASC, id ASC'
+    )
+    if limite:
+        cursor.execute(query + ' LIMIT ?', (int(limite),))
+    else:
+        cursor.execute(query)
+    filas = cursor.fetchall()
+    conn.close()
+    return [
+        {
+            "gitlab_iid": fila[0],
+            "analysis_date": fila[1],
+            "quality_index": fila[2],
+            "security_index": fila[3],
+            "verdict": fila[4],
+            "execution_time": fila[5],
+            "observations": fila[6],
+        }
+        for fila in filas
+    ]
+
+
+def obtener_versiones_matrices() -> list:
+    """Lectura de solo lectura de la versión actual de cada matriz de trazabilidad
+    (etapa, vMAJOR.MINOR y última modificación), ordenada por etapa."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT stage, major, minor, updated_at FROM matrix_versions ORDER BY major ASC')
+    filas = cursor.fetchall()
+    conn.close()
+    return [
+        {
+            "stage": fila[0],
+            "version": f"v{fila[1]}.{fila[2]}",
+            "updated_at": fila[3],
+        }
+        for fila in filas
+    ]
+
+
 def guardar_cache(content_hash: str, schema_version: str, central_json: dict, quality_json: dict, security_json: dict, eval_json: dict):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()

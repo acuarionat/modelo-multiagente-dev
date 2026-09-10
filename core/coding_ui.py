@@ -447,10 +447,14 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         session["coding_matriz_original"], matriz_entrada, session.get("coding_matriz_fuente", "Diseño"),
     )
 
+    # Bloque de información de la matriz de entrada (mismos campos en todas las etapas:
+    # Fuente vigente · Versión · Estado · Validación · Filas de la matriz).
+    paso_entrada.markdown("#### Matriz de trazabilidad")
     paso_entrada.write(f"**Fuente vigente:** {preparacion_matriz['coding_matrix_source']}")
+    paso_entrada.write(f"**Versión:** {leer_version_matriz('diseno') or preparacion_matriz.get('coding_matrix_version') or 'No informada'}")
     paso_entrada.write(f"**Estado:** {preparacion_matriz['coding_matrix_status']}")
-    paso_entrada.write(f"**Versión:** {preparacion_matriz['coding_matrix_version']}")
-    paso_entrada.write(f"**Elementos de Diseño vigentes:** {len(preparacion_matriz['elementos_diseno_validos'])}")
+    paso_entrada.write(f"**Validación:** {'INVÁLIDA' if preparacion_matriz['coding_matrix_status'] == ESTADO_MATRIZ_INVALIDA else 'VÁLIDA'}")
+    paso_entrada.write(f"**Filas de la matriz:** {len(matriz_entrada)}")
 
     if preparacion_matriz["coding_matrix_status"] == ESTADO_MATRIZ_INVALIDA:
         paso_entrada.error("Estado: INVÁLIDA. Se encontraron errores estructurales:")
