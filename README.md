@@ -1,6 +1,6 @@
 # Modelo Multiagente Dev
 
-Sistema multiagente para evaluación de código basado en LangGraph, LangChain y Ollama.
+Herramienta multiagente para evaluación de código basado en LangGraph, LangChain y Ollama.
 
 ## Arquitectura
 

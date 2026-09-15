@@ -880,8 +880,8 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
                 st.markdown(f"**Implementados:** {', '.join(implementados) if implementados else 'Ninguno.'}")
                 st.markdown(f"**Declarados sin confirmar:** {', '.join(no_confirmados) if no_confirmados else 'Ninguno.'}")
 
-    # ---- Matriz de Trazabilidad Evolucionada ----
-    with artefactos.expander("Matriz de Trazabilidad Evolucionada", expanded=False):
+    # ---- Matriz de Trazabilidad de la etapa ----
+    with artefactos.expander("Matriz de Trazabilidad de la etapa", expanded=False):
         import pandas as pd
         columnas_trz = [
             "HU origen", "Código requisito", "Tipo", "Nombre del requisito",

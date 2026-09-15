@@ -1,4 +1,4 @@
-# Auditoria de Rendimiento del Sistema Multiagente
+# Auditoria de Rendimiento de la Herramienta Multiagente
 
 Fecha de auditoria: 2026-07-08  
 Proyecto auditado: `modelo-multiagente-dev`  

@@ -784,8 +784,8 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                 st.markdown(f"**Cubiertos:** {', '.join(cubiertos) if cubiertos else 'Ninguno.'}")
                 st.markdown(f"**Pendientes de relación:** {', '.join(pendientes_trz) if pendientes_trz else 'Ninguno.'}")
 
-    # ---- Matriz de Trazabilidad Evolucionada ----
-    with artefactos.expander("Matriz de Trazabilidad Evolucionada", expanded=False):
+    # ---- Matriz de Trazabilidad de la etapa ----
+    with artefactos.expander("Matriz de Trazabilidad de la etapa", expanded=False):
         import pandas as pd
         columnas_trz = [
             "HU origen", "Código requisito", "Tipo", "Nombre del requisito",

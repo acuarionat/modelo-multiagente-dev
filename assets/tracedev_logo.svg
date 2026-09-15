@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 144" role="img" aria-labelledby="title desc">
   <title id="title">TraceDev</title>
-  <desc id="desc">Identidad visual de TraceDev, plataforma multiagente de desarrollo y trazabilidad</desc>
+  <desc id="desc">Identidad visual de TraceDev, herramienta multiagente de desarrollo y trazabilidad</desc>
   <defs>
     <linearGradient id="mark" x1="16" y1="18" x2="126" y2="126" gradientUnits="userSpaceOnUse">
       <stop stop-color="#F8D532"/>
@@ -18,7 +18,7 @@
     <circle cx="113" cy="119" r="10" fill="#FFFFFF" stroke="#F2C300" stroke-width="4"/>
   </g>
   <text x="151" y="87" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="61" font-weight="800" letter-spacing="1">Trace</text>
-  <text x="305" y="87" fill="#F2C300" font-family="Segoe UI, Arial, sans-serif" font-size="61" font-weight="800" letter-spacing="1">Dev</text>
+  <text x="332" y="87" fill="#F2C300" font-family="Segoe UI, Arial, sans-serif" font-size="61" font-weight="800" letter-spacing="1">Dev</text>
   <rect x="155" y="106" width="318" height="4" rx="2" fill="#F2C300"/>
   <text x="155" y="131" fill="#DCEAF6" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="650" letter-spacing="1.8">DESARROLLO · TRAZABILIDAD · DECISIÓN</text>
 </svg>

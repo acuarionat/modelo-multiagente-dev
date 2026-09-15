@@ -523,8 +523,8 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
                 else:
                     st.info("Sin trazabilidad heredada resuelta.")
 
-    # ---- Matriz de Trazabilidad Evolucionada ----
-    with artefactos.expander("Matriz de Trazabilidad Evolucionada — Pruebas", expanded=False):
+    # ---- Matriz de Trazabilidad de la etapa ----
+    with artefactos.expander("Matriz de Trazabilidad de la etapa — Pruebas", expanded=False):
         import pandas as pd
         columnas_trz = [
             "HU origen", "Código requisito", "Tipo", "Nombre del requisito",

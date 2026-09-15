@@ -1002,7 +1002,7 @@ def render_brand_header(entity_logo_path: str | Path, tool_logo_path: str | Path
             </div>
             <div class="nexo-hero-divider" aria-hidden="true"></div>
             <div class="nexo-product">
-                <div class="nexo-product-kicker">Plataforma multiagente</div>
+                <div class="nexo-product-kicker">Herramienta multiagente</div>
                 <img src="{tool_logo}" alt="TraceDev — Desarrollo, trazabilidad y decisión">
                 <p>Proceso adaptativo para el desarrollo y la trazabilidad de software.</p>
             </div>
@@ -1038,7 +1038,7 @@ def render_sidebar_brand(tool_logo_path: str | Path, project_config: dict) -> No
         f"""
         <div class="nexo-sidebar-brand">
             <img src="{tool_logo}" alt="TraceDev">
-            <p>Sistema Multiagente<br>Control y seguimiento del Desarrollo de Software</p>
+            <p>Herramienta Multiagente<br>Control y seguimiento del Desarrollo de Software</p>
         </div>
         <div class="sidebar-section-label">Proyecto activo</div>
         <div class="sidebar-project-card">

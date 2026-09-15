@@ -766,6 +766,12 @@ editing_config = st.session_state.get("editing_project_config", False)
 if saved_config is None or editing_config:
     st.subheader("Configuración del Proyecto")
     st.caption("Identifica el proyecto y valida la conexión con GitLab para habilitar las etapas.")
+    # Volver a las etapas sin reconfigurar (solo si ya hay proyecto). Únicamente cierra
+    # la edición; NO limpia el estado ni la persistencia de resultados.
+    if editing_config and saved_config is not None:
+        if st.button("← Volver a las etapas", key="volver_a_etapas"):
+            st.session_state["editing_project_config"] = False
+            st.rerun()
     defaults = saved_config or {}
     with st.form("project_configuration"):
         st.markdown("### Identificación")

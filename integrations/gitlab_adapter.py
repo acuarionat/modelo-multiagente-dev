@@ -41,7 +41,7 @@ def es_issue_pendiente(issue) -> bool:
 class GitLabAdapter:
     """
     Clase responsable únicamente de comunicarse con la API de GitLab.
-    No contiene lógica de negocio del sistema multiagente.
+    No contiene lógica de negocio de la herramienta multiagente.
     """
     def __init__(self, url: str = None, token: str = None, project_id: str = None):
         self.url = url or os.getenv("GITLAB_URL")
