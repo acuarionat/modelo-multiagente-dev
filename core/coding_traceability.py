@@ -93,10 +93,19 @@ def construir_filas_matriz_codificacion(
             continue
 
         for elemento_id in elementos:
+            # "Elementos de Diseño" se estrecha a este único elemento_id (en
+            # vez de conservar la lista completa heredada de fila_diseno):
+            # cada fila que sigue describe la implementación de ESTE elemento
+            # específico, no de todos los que declaraba la fila de Diseño
+            # original. Sin esto, dos filas de un mismo fila_diseno con
+            # elementos y estados distintos (p. ej. ED-01 implementado y
+            # ED-02 sin confirmar) mostrarían la misma lista "ED-01, ED-02"
+            # en ambas, sin forma de saber a cuál se refiere cada una.
             relaciones = indice_elementos.get(elemento_id)
             if not relaciones:
                 filas.append({
                     **fila_diseno,
+                    "Elementos de Diseño": elemento_id,
                     "Codificación": "—",
                     "Estado de implementación": ETIQUETAS_ESTADO_IMPLEMENTACION["NO_EVALUADO"],
                     "Ubicación de implementación": "—",
@@ -111,6 +120,7 @@ def construir_filas_matriz_codificacion(
                 codificacion_id = relacion["codificacion_id"]
                 filas.append({
                     **fila_diseno,
+                    "Elementos de Diseño": elemento_id,
                     "Codificación": codificacion_id,
                     "Estado de implementación": ETIQUETAS_ESTADO_IMPLEMENTACION[estado],
                     "Ubicación de implementación": ubicacion,
@@ -121,26 +131,49 @@ def construir_filas_matriz_codificacion(
     return filas
 
 
+_PRIORIDAD_ESTADO_IMPLEMENTACION = {
+    ETIQUETAS_ESTADO_IMPLEMENTACION["IMPLEMENTADO"]: 3,
+    ETIQUETAS_ESTADO_IMPLEMENTACION["NO_CONFIRMADO"]: 2,
+    ETIQUETAS_ESTADO_IMPLEMENTACION["NO_EVALUADO"]: 1,
+}
+
+
 def resumir_trazabilidad_codificacion(filas: list) -> dict:
-    """Resumen determinístico de la matriz evolucionada de Codificación."""
-    elementos_totales = len({
-        (fila.get("Diseño"), elemento.strip())
-        for fila in filas
-        for elemento in str(fila.get("Elementos de Diseño") or "").split(",")
-        if elemento.strip() and elemento.strip() != "—"
-    })
+    """Resumen determinístico de la matriz evolucionada de Codificación.
+
+    Cuenta por par (Diseño, Elemento) único, no por fila: la matriz heredada
+    repite el mismo par en varias filas cuando más de un requisito comparte
+    el mismo Diseño, o cuando más de una Codificación lo referencia. Sin esta
+    deduplicación, "implementados" (conteo de filas) podía superar a
+    "elementos_diseno_totales" (conteo de pares únicos), produciendo
+    porcentajes sin sentido (>100 %). Cuando un mismo par aparece con más de
+    un estado (p. ej. implementado por una Codificación y sin confirmar por
+    otra), se queda con la evidencia más fuerte: Implementado > Declarado sin
+    confirmar > No evaluado.
+    """
+    estado_por_par = {}
+    for fila in filas:
+        elemento = str(fila.get("Elementos de Diseño") or "").strip()
+        if not elemento or elemento == "—":
+            continue
+        par = (fila.get("Diseño"), elemento)
+        estado_fila = fila.get("Estado de implementación")
+        actual = estado_por_par.get(par)
+        if actual is None or _PRIORIDAD_ESTADO_IMPLEMENTACION.get(estado_fila, 0) > _PRIORIDAD_ESTADO_IMPLEMENTACION.get(actual, 0):
+            estado_por_par[par] = estado_fila
+
     implementados = sum(
-        1 for fila in filas if fila["Estado de implementación"] == ETIQUETAS_ESTADO_IMPLEMENTACION["IMPLEMENTADO"]
+        1 for estado in estado_por_par.values() if estado == ETIQUETAS_ESTADO_IMPLEMENTACION["IMPLEMENTADO"]
     )
     no_confirmados = sum(
-        1 for fila in filas if fila["Estado de implementación"] == ETIQUETAS_ESTADO_IMPLEMENTACION["NO_CONFIRMADO"]
+        1 for estado in estado_por_par.values() if estado == ETIQUETAS_ESTADO_IMPLEMENTACION["NO_CONFIRMADO"]
     )
     no_evaluados = sum(
-        1 for fila in filas if fila["Estado de implementación"] == ETIQUETAS_ESTADO_IMPLEMENTACION["NO_EVALUADO"]
+        1 for estado in estado_por_par.values() if estado == ETIQUETAS_ESTADO_IMPLEMENTACION["NO_EVALUADO"]
     )
 
     return {
-        "elementos_diseno_totales": elementos_totales,
+        "elementos_diseno_totales": len(estado_por_par),
         "implementados": implementados,
         "no_confirmados": no_confirmados,
         "no_evaluados": no_evaluados,

@@ -119,6 +119,7 @@ def inject_global_styles() -> None:
 
         /* Encabezado institucional + producto */
         .nexo-hero {
+            position: relative;
             display: grid;
             grid-template-columns: minmax(190px, 26%) 1px 1fr;
             align-items: center;
@@ -133,6 +134,46 @@ def inject_global_styles() -> None:
                 radial-gradient(circle at 92% 8%, rgba(242,195,0,.19), transparent 24%),
                 linear-gradient(118deg, var(--emi-blue-deep), var(--emi-blue) 72%, #0A63AE);
             box-shadow: var(--nexo-shadow);
+        }
+
+        /* Sesión activa: identidad del usuario visible en el header, esquina
+           superior derecha. Solo presentación (no altera st.login/st.logout). */
+        .nexo-session-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1.35rem;
+            z-index: 2;
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            max-width: min(46%, 260px);
+            padding: .38rem .8rem .38rem .5rem;
+            border: 1px solid rgba(255,255,255,.32);
+            border-radius: 999px;
+            background: rgba(6, 58, 107, .4);
+            backdrop-filter: blur(8px);
+        }
+
+        .nexo-session-avatar {
+            display: inline-grid;
+            flex: 0 0 auto;
+            place-items: center;
+            width: 1.65rem;
+            height: 1.65rem;
+            border-radius: 50%;
+            background: var(--emi-yellow);
+            color: var(--emi-blue-deep);
+            font-size: .74rem;
+            font-weight: 820;
+        }
+
+        .nexo-session-name {
+            overflow: hidden;
+            color: #FFFFFF;
+            font-size: .8rem;
+            font-weight: 700;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
 
         .nexo-entity {
@@ -971,6 +1012,8 @@ def inject_global_styles() -> None:
             .nexo-hero-divider { width: 100%; height: 1px; }
             .nexo-product-kicker { margin-top: .15rem; }
             .nexo-product img { height: 62px; }
+            .nexo-session-badge { top: .6rem; right: .6rem; max-width: 55%; padding: .3rem .6rem .3rem .4rem; }
+            .nexo-session-name { font-size: .72rem; }
             .stage-context-card { align-items: flex-start; flex-direction: column; }
             .milestone-chip { width: 100%; min-width: 0; }
             .st-key-stage_shell { padding-inline: .45rem !important; }
@@ -991,9 +1034,25 @@ def inject_global_styles() -> None:
     )
 
 
-def render_brand_header(entity_logo_path: str | Path, tool_logo_path: str | Path) -> None:
+def render_brand_header(
+    entity_logo_path: str | Path,
+    tool_logo_path: str | Path,
+    session_name: str | None = None,
+) -> None:
     entity_logo = _data_uri(entity_logo_path, "image/png")
     tool_logo = _data_uri(tool_logo_path, "image/svg+xml")
+
+    session_badge_html = ""
+    nombre = (session_name or "").strip()
+    if nombre:
+        inicial = escape(nombre[:1].upper())
+        session_badge_html = (
+            '<div class="nexo-session-badge" title="Sesión activa">'
+            f'<span class="nexo-session-avatar">{inicial}</span>'
+            f'<span class="nexo-session-name">{escape(nombre)}</span>'
+            "</div>"
+        )
+
     st.markdown(
         f"""
         <header class="nexo-hero">
@@ -1006,6 +1065,7 @@ def render_brand_header(entity_logo_path: str | Path, tool_logo_path: str | Path
                 <img src="{tool_logo}" alt="TraceDev — Desarrollo, trazabilidad y decisión">
                 <p>Proceso adaptativo para el desarrollo y la trazabilidad de software.</p>
             </div>
+            {session_badge_html}
         </header>
         """,
         unsafe_allow_html=True,
@@ -1026,6 +1086,217 @@ def render_stage_context(stage_name: str, milestone: str) -> None:
             </div>
         </section>
         """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_login_card(
+    entity_logo_path: str | Path,
+    tool_logo_path: str | Path,
+    background_path: str | Path | None = None,
+) -> "st.delta_generator.DeltaGenerator":
+    """Renderiza la pantalla de acceso institucional (pre-login) y devuelve el
+    contenedor de la tarjeta para que el botón de Microsoft 365 se dibuje
+    dentro de ella; app.py resuelve el clic (st.login())."""
+    background_css = "linear-gradient(135deg, var(--emi-blue-deep), var(--emi-blue) 65%, #0A63AE)"
+    if background_path and Path(background_path).exists():
+        mime = "image/png" if Path(background_path).suffix.lower() == ".png" else "image/jpeg"
+        # "contain" evita el recorte/zoom que produce "cover" con una imagen
+        # vertical sobre pantallas anchas; el color de respaldo rellena los
+        # márgenes que deja de sobra con el mismo tono del fondo institucional.
+        background_css = (
+            f"url('{_data_uri(background_path, mime)}') center/contain no-repeat fixed "
+            "var(--emi-blue-deep)"
+        )
+
+    entity_logo = _data_uri(entity_logo_path, "image/png")
+    tool_logo = _data_uri(tool_logo_path, "image/svg+xml")
+
+    st.markdown(
+        f"""
+        <style>
+        [data-testid="stAppViewContainer"] {{
+            background: {background_css} !important;
+        }}
+        [data-testid="stHeader"] {{
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }}
+        [data-testid="stMainBlockContainer"] {{
+            max-width: 100% !important;
+            padding: 0 !important;
+        }}
+        @keyframes loginFadeUp {{
+            from {{ opacity: 0; transform: translateY(26px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        .st-key-login_shell {{
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 3.2rem);
+            padding: 2rem 1.25rem;
+        }}
+        .st-key-login_shell::before {{
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 24% 22%, rgba(242, 195, 0, .12), transparent 45%),
+                radial-gradient(circle at 76% 78%, rgba(10, 99, 174, .22), transparent 45%);
+            pointer-events: none;
+        }}
+        .st-key-login_frame {{
+            position: relative;
+            z-index: 1;
+            width: min(94vw, 460px);
+            margin: 0 auto !important;
+            padding: 16px;
+            background: rgba(255, 255, 255, .16);
+            backdrop-filter: blur(22px) saturate(140%);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, .45);
+            border-radius: 30px;
+            box-shadow: 0 30px 80px rgba(2, 16, 34, .5), inset 0 1px 0 rgba(255, 255, 255, .3);
+            animation: loginFadeUp .65s ease-out;
+        }}
+        .st-key-login_card {{
+            width: 100%;
+            margin: 0 !important;
+            padding: clamp(2rem, 4.5vw, 2.7rem) clamp(1.7rem, 4vw, 2.3rem) 2.2rem;
+            background: rgba(255, 255, 255, .98);
+            border: 1px solid rgba(255, 255, 255, .7);
+            border-radius: 22px;
+            box-shadow: 0 10px 30px rgba(4, 30, 58, .2);
+            text-align: center;
+        }}
+        .login-logo {{
+            display: block;
+            width: min(100%, 230px);
+            margin: 0 auto .95rem;
+        }}
+        .login-tool-badge {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            margin: 0 auto .95rem;
+            padding: .6rem 1.1rem;
+            border-radius: 14px;
+            background: linear-gradient(118deg, var(--emi-blue-deep), var(--emi-blue) 72%, #0A63AE);
+            box-shadow: 0 8px 20px rgba(5,47,86,.18);
+        }}
+        .login-tool-logo {{
+            display: block;
+            width: min(100%, 190px);
+            height: auto;
+        }}
+        .login-kicker {{
+            margin: 0 0 1.1rem;
+            color: var(--emi-blue-dark);
+            font-size: clamp(1rem, 2.3vw, 1.15rem);
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: -.01em;
+            text-align: center !important;
+        }}
+        .login-divider {{
+            position: relative;
+            height: 1px;
+            margin: 0 auto 1.15rem;
+            background: linear-gradient(90deg, transparent, var(--nexo-line-strong), transparent);
+        }}
+        .login-divider::after {{
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--emi-yellow);
+            box-shadow: 0 0 7px rgba(242, 195, 0, .65);
+        }}
+        .login-welcome {{
+            margin: 0 0 .6rem;
+            color: var(--emi-blue-dark) !important;
+            font-size: clamp(1.3rem, 3vw, 1.55rem);
+            font-weight: 800;
+            text-align: center !important;
+        }}
+        .login-caption {{
+            margin: 0 0 1.6rem;
+            color: var(--nexo-muted);
+            font-size: .92rem;
+            line-height: 1.55;
+        }}
+        .st-key-login_card .stButton > button {{
+            position: relative;
+            width: 100%;
+            min-height: 3.1rem;
+            border-radius: 10px;
+            font-weight: 750;
+            overflow: hidden;
+            box-shadow: 0 10px 24px rgba(7, 84, 154, .28);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }}
+        .st-key-login_card .stButton > button:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(7, 84, 154, .38);
+        }}
+        .st-key-login_card .stButton > button::before {{
+            content: "";
+            position: absolute;
+            inset: 0;
+            left: -100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .28), transparent);
+            transition: left .5s ease;
+        }}
+        .st-key-login_card .stButton > button:hover::before {{
+            left: 100%;
+        }}
+        .login-help {{
+            margin: 1.6rem 0 0;
+            padding-top: 1rem;
+            border-top: 1px solid var(--nexo-line);
+            color: var(--nexo-muted);
+            font-size: .78rem;
+            line-height: 1.5;
+        }}
+        </style>
+        <div></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    shell = st.container(key="login_shell")
+    frame = shell.container(key="login_frame")
+    card = frame.container(key="login_card")
+    card.markdown(
+        f"""
+        <img class="login-logo" src="{entity_logo}" alt="Escuela Militar de Ingeniería">
+        <div class="login-tool-badge">
+            <img class="login-tool-logo" src="{tool_logo}" alt="TraceDev">
+        </div>
+        <p class="login-kicker">Control y Trazabilidad del Desarrollo de Software</p>
+        <div class="login-divider"></div>
+        <h1 class="login-welcome">Bienvenido</h1>
+        <p class="login-caption">Inicia sesión con tu cuenta institucional de Microsoft 365 para continuar.</p>
+        """,
+        unsafe_allow_html=True,
+    )
+    return card
+
+
+def render_login_help(card: "st.delta_generator.DeltaGenerator") -> None:
+    """Nota de soporte al pie de la tarjeta de login; se dibuja después del
+    botón de Microsoft 365 porque este último se resuelve en app.py."""
+    card.markdown(
+        '<p class="login-help">Si tienes problemas para iniciar sesión, '
+        "contacta con el área de Tecnologías de la Información de la EMI.</p>",
         unsafe_allow_html=True,
     )
 

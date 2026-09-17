@@ -42,6 +42,10 @@ def construir_presentacion_resultado_pruebas(
         "titulo": contexto.get("titulo", ""),
         "estado_orientativo": testing_summary["estado_orientativo"],
         "codificaciones_relacionadas": contexto.get("codificaciones_relacionadas", []),
+        # Las claves internas (MC-07/MC-08) se conservan para no alterar el
+        # cálculo determinístico ni el estado persistido; el código MOSTRADO al
+        # usuario es el del campo "codigo" de cada métrica (MC-06 y MC-07), que
+        # cierra la brecha de numeración respecto a Codificación (MC-05).
         "metricas": {
             "MC-07": mc07,
             "MC-08": mc08,
@@ -78,7 +82,7 @@ def _construir_mc07(mc07_summary, interpretacion_mc07):
     d = mc07_summary.get("denominador")
 
     return {
-        "codigo": "MC-07",
+        "codigo": "MC-06",
         "nombre": "Corrección Funcional",
         "valor": mc07_summary.get("valor"),
         "numerador": n,
@@ -102,7 +106,7 @@ def _construir_mc08(mc08_summary, interpretacion_mc08):
     d = mc08_summary.get("denominador")
 
     return {
-        "codigo": "MC-08",
+        "codigo": "MC-07",
         "nombre": "Corrección de Fallos",
         "valor": mc08_summary.get("valor"),
         "numerador": n,

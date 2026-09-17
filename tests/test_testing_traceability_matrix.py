@@ -83,7 +83,9 @@ assert {f["Estado de Pruebas"] for f in filas_rf001_dos_pru} == {"Fallo pendient
 resumen = resumir_trazabilidad_pruebas(filas)
 print("\nresumir_trazabilidad_pruebas:", resumen)
 assert resumen["codificaciones_totales"] == 2  # COD-001, COD-002
-assert resumen["con_fallo_pendiente"] == 2
+# COD-001 aparece en 2 filas heredadas (RF-001 y RF-002), ambas "Fallo
+# pendiente": se cuenta una sola vez por Codificación única, no por fila.
+assert resumen["con_fallo_pendiente"] == 1
 assert resumen["no_evaluadas"] == 1
 assert resumen["verificadas"] == 0
 

@@ -76219,3 +76219,109 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-09-10 15:10:05,976 - [INFO] - PERF_AUDIT {"event": "node_start", "agent": "Testing_Central_Final", "timestamp": "2026-09-10T15:10:05.976"}
 2026-09-10 15:10:05,976 - [INFO] - ✔ Consolidación de Pruebas completada en 0.00 segundos.
 2026-09-10 15:10:05,976 - [INFO] - PERF_AUDIT {"event": "node_end", "agent": "Testing_Central_Final", "timestamp": "2026-09-10T15:10:05.976", "elapsed_seconds": 0.0}
+2026-09-15 08:27:30,727 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2026-09-15 08:59:49,271 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/TU-TENANT-ID/v2.0/.well-known/openid-configuration "HTTP/1.1 400 Bad Request"
+2026-09-15 09:01:12,564 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 09:01:24,977 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 09:01:25,761 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-09-15 09:01:26,502 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-09-15 09:25:12,590 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 09:44:41,707 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 09:44:46,153 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 09:44:47,018 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-09-15 09:44:47,890 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-09-15 10:03:42,657 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:15:31,265 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:15:35,491 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:15:36,445 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-09-15 10:15:37,201 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-09-15 10:16:47,245 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:26:44,476 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:26:48,667 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:26:49,526 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-09-15 10:26:50,331 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-09-15 10:43:01,324 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:43:15,792 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:44:28,303 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:44:32,596 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:44:33,428 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-09-15 10:44:34,192 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-09-15 10:46:56,965 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2026-09-15 10:48:57,232 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:49:13,209 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:49:50,236 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:49:51,284 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-09-15 10:49:52,290 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-09-15 10:50:58,136 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2026-09-15 10:52:26,371 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:52:54,774 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:52:58,933 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-09-15 10:52:59,771 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-09-15 10:53:00,630 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-09-15 10:55:17,160 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2026-09-15 10:56:14,864 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2026-09-15 10:57:07,343 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2026-09-15 10:58:07,214 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto

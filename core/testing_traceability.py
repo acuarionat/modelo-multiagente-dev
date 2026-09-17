@@ -136,20 +136,45 @@ def construir_filas_matriz_pruebas(matriz_codificacion_entrada: list, testing_su
     return filas
 
 
+# Orden de severidad: si una misma Codificación aparece en varias filas con
+# resultados distintos (heredadas de varios RF/ED, o evaluada por más de un
+# PRU), gana el resultado más desfavorable — cualquier fallo pendiente pesa
+# más que una revisión pendiente, y ambos pesan más que "Verificado".
+_PRIORIDAD_ESTADO_PRUEBAS = {
+    "Fallo pendiente": 4,
+    "Pendiente de revisión": 3,
+    "Error técnico": 2,
+    "Verificado": 1,
+}
+
+
 def resumir_trazabilidad_pruebas(filas: list) -> dict:
-    """Resumen determinístico de la matriz evolucionada de Pruebas."""
-    codificaciones_totales = len({
-        str(fila.get("Codificación") or "").strip()
-        for fila in filas
-        if str(fila.get("Codificación") or "").strip() not in ("", "—")
-    })
-    verificadas = sum(1 for fila in filas if fila.get("Estado de Pruebas") == "Verificado")
-    con_fallo_pendiente = sum(1 for fila in filas if fila.get("Estado de Pruebas") == "Fallo pendiente")
-    pendientes_revision = sum(1 for fila in filas if fila.get("Estado de Pruebas") == "Pendiente de revisión")
-    no_evaluadas = sum(1 for fila in filas if fila.get("Estado de Pruebas") == "—")
+    """Resumen determinístico de la matriz evolucionada de Pruebas.
+
+    Cuenta por Codificación única, no por fila: la matriz heredada repite la
+    misma Codificación en varias filas (una por cada RF/ED que implementa) y,
+    si más de un Issue de Pruebas la evaluó, una fila adicional por cada PRU.
+    Sin esta deduplicación, "verificadas"/"con_fallo_pendiente" (conteo de
+    filas) podían superar a "codificaciones_totales" (conteo de
+    Codificaciones únicas), produciendo porcentajes sin sentido (>100 %).
+    """
+    estado_por_codificacion = {}
+    for fila in filas:
+        codificacion_id = str(fila.get("Codificación") or "").strip()
+        if codificacion_id in ("", "—"):
+            continue
+        estado_fila = fila.get("Estado de Pruebas")
+        actual = estado_por_codificacion.get(codificacion_id)
+        if actual is None or _PRIORIDAD_ESTADO_PRUEBAS.get(estado_fila, 0) > _PRIORIDAD_ESTADO_PRUEBAS.get(actual, 0):
+            estado_por_codificacion[codificacion_id] = estado_fila
+
+    verificadas = sum(1 for estado in estado_por_codificacion.values() if estado == "Verificado")
+    con_fallo_pendiente = sum(1 for estado in estado_por_codificacion.values() if estado == "Fallo pendiente")
+    pendientes_revision = sum(1 for estado in estado_por_codificacion.values() if estado == "Pendiente de revisión")
+    no_evaluadas = sum(1 for estado in estado_por_codificacion.values() if estado == "—")
 
     return {
-        "codificaciones_totales": codificaciones_totales,
+        "codificaciones_totales": len(estado_por_codificacion),
         "verificadas": verificadas,
         "con_fallo_pendiente": con_fallo_pendiente,
         "pendientes_revision": pendientes_revision,

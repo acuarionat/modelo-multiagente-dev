@@ -25,11 +25,12 @@ from core.testing_validation import validar_entrada_pruebas
 from core.traceability_export import exportar_filas_xlsx
 from core.ui_components import (
     create_stage_step_panels,
+    promedio_indices,
+    render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
-    render_human_decision_notice,
     render_next_phase_button,
-    render_state_badge,
+    render_stage_summary,
 )
 from core.utils import (
     extraer_porcentaje,
@@ -54,7 +55,7 @@ SPRINT_CONTEXT_PRUEBAS = "Pruebas"
 
 PRUEBAS_AVISO = (
     "El modelo multiagente apoya el control, seguimiento y trazabilidad de las pruebas. "
-    "MC-07, MC-08, MS-08 y MS-09 se calculan de forma determinística a partir de lo "
+    "MC-06, MC-07, MS-08 y MS-09 se calculan de forma determinística a partir de lo "
     "registrado en cada Issue PRU-xxx; la interpretación de calidad y seguridad es "
     "orientativa y requiere revisión del responsable del proyecto."
 )
@@ -394,8 +395,6 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         ["Resumen general", "Detalle por prueba", "Matriz y documentos"]
     )
 
-    resumen_general.subheader("Resumen general de resultados")
-
     total_pruebas = len(presentaciones)
     requieren_correccion = sum(
         1 for p in presentaciones.values() if p.get("estado_orientativo") == "CORREGIR"
@@ -403,16 +402,23 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
     con_error = sum(
         1 for p in presentaciones.values() if p.get("estado_orientativo") == "ERROR"
     )
-    rg1, rg2, rg3 = resumen_general.columns(3)
-    rg1.metric("Pruebas evaluadas", total_pruebas)
-    rg2.metric("Requieren corrección", requieren_correccion)
-    rg3.metric("Con error", con_error)
-
-    with resumen_general:
-        render_human_decision_notice(
+    render_stage_summary(
+        resumen_general,
+        etiqueta_items="Pruebas evaluadas",
+        total_items=total_pruebas,
+        requieren_correccion=requieren_correccion,
+        con_error=con_error,
+        calidad_promedio=promedio_indices(
+            _indicador_general_pruebas(p, ("MC-07", "MC-08")) for p in presentaciones.values()
+        ),
+        seguridad_promedio=promedio_indices(
+            _indicador_general_pruebas(p, ("MS-08", "MS-09")) for p in presentaciones.values()
+        ),
+        aviso=(
             "Los resultados constituyen apoyo al control y seguimiento de las pruebas. "
             "La aceptación final requiere revisión humana."
-        )
+        ),
+    )
 
     detalle_resultados.subheader("Resultado de evaluación asistida")
 
@@ -422,14 +428,13 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
 
         # Mantener el detalle bajo demanda facilita comparar varios resultados.
         with detalle_resultados.expander(expander_title, expanded=False):
-            st.subheader("Resultado de evaluación asistida")
-            render_state_badge(p["estado_orientativo"])
-            m1, m2 = st.columns(2)
-            indicador_calidad = _indicador_general_pruebas(p, ("MC-07", "MC-08"))
-            indicador_seguridad = _indicador_general_pruebas(p, ("MS-08", "MS-09"))
-            m1.metric("Indicador general de Calidad", extraer_porcentaje(indicador_calidad))
-            m2.metric("Indicador general de Seguridad", extraer_porcentaje(indicador_seguridad))
-            st.info(f"**¿Por qué este estado?**\n\n{_explicar_estado_pruebas(p)}")
+            render_evaluation_header(
+                titulo="Resultado de evaluación asistida",
+                estado=p["estado_orientativo"],
+                indice_calidad=extraer_porcentaje(_indicador_general_pruebas(p, ("MC-07", "MC-08"))),
+                indice_seguridad=extraer_porcentaje(_indicador_general_pruebas(p, ("MS-08", "MS-09"))),
+                explicacion_estado=_explicar_estado_pruebas(p),
+            )
 
             tab_resumen, tab_calidad, tab_seguridad, tab_formalizacion = st.tabs(
                 ["Resumen", "Calidad", "Seguridad", "Formalización"]
@@ -460,7 +465,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             with tab_calidad:
                 mc07 = p["metricas"]["MC-07"]
                 mc08 = p["metricas"]["MC-08"]
-                with st.expander(f"MC-07 — {mc07['nombre']} · {extraer_porcentaje(mc07['valor'])}", expanded=False):
+                with st.expander(f"{mc07['codigo']} — {mc07['nombre']} · {extraer_porcentaje(mc07['valor'])}", expanded=False):
                     st.metric(f"Resultado {mc07['codigo']}", extraer_porcentaje(mc07["valor"]))
                     st.markdown(f"**Qué mide esta métrica:**\n\n{mc07['que_mide']}")
                     st.markdown("**Funcionalidades con brecha:**")
@@ -470,7 +475,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
                     if mc07.get("conclusion"):
                         st.markdown(mc07["conclusion"])
 
-                with st.expander(f"MC-08 — {mc08['nombre']} · {extraer_porcentaje(mc08['valor'])}", expanded=False):
+                with st.expander(f"{mc08['codigo']} — {mc08['nombre']} · {extraer_porcentaje(mc08['valor'])}", expanded=False):
                     st.metric(f"Resultado {mc08['codigo']}", extraer_porcentaje(mc08["valor"]))
                     st.caption(
                         f"Fallos detectados/corregidos/verificados: "

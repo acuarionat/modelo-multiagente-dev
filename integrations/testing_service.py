@@ -37,7 +37,7 @@ def construir_comentario_pruebas(testing_summary: dict) -> str:
     Construye el comentario compacto de retroalimentación operativa para
     un Issue de Pruebas a partir de testing_summary (salida de
     nodo_testing_central_final). No repite las métricas completas
-    MC-07/MC-08/MS-08/MS-09: solo el estado orientativo, las conclusiones
+    MC-06/MC-07/MS-08/MS-09: solo el estado orientativo, las conclusiones
     de Calidad/Seguridad y los hallazgos ya clasificados por el Evaluador
     de Pruebas.
     """
@@ -60,8 +60,8 @@ def construir_comentario_pruebas(testing_summary: dict) -> str:
         f"Resultado del análisis de Pruebas — {prueba_id}",
         "",
         f"Estado orientativo: {estado}",
-        f"MC-07 Corrección Funcional: {extraer_porcentaje((calidad.get('mc07') or {}).get('valor'))}",
-        f"MC-08 Corrección de Fallos: {extraer_porcentaje((calidad.get('mc08') or {}).get('valor'))}",
+        f"MC-06 Corrección Funcional: {extraer_porcentaje((calidad.get('mc07') or {}).get('valor'))}",
+        f"MC-07 Corrección de Fallos: {extraer_porcentaje((calidad.get('mc08') or {}).get('valor'))}",
         f"MS-08 Cobertura de Verificación de Controles: {extraer_porcentaje((seguridad.get('ms08') or {}).get('valor'))}",
         f"MS-09 Pruebas de Seguridad Satisfactorias: {extraer_porcentaje((seguridad.get('ms09') or {}).get('valor'))}",
         "",

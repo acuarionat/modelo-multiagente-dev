@@ -34,11 +34,12 @@ from core.graph import construir_grafo_codificacion
 from core.traceability_export import exportar_filas_xlsx, importar_matriz_csv, importar_matriz_xlsx
 from core.ui_components import (
     create_coding_step_panels,
+    promedio_indices,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
-    render_human_decision_notice,
     render_next_phase_button,
+    render_stage_summary,
 )
 from core.utils import (
     extraer_porcentaje,
@@ -713,22 +714,23 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
         ["Resumen general", "Detalle por codificación", "Matriz y documentos"]
     )
-    resumen_general.subheader("Resultado de evaluación asistida")
-    resumen_cols = resumen_general.columns(3)
-    resumen_cols[0].metric("Codificaciones evaluadas", len(presentaciones))
-    resumen_cols[1].metric(
-        "Requieren corrección",
-        sum(p.get("estado_orientativo") == "CORREGIR" for p in presentaciones.values()),
-    )
-    resumen_cols[2].metric(
-        "Con error",
-        sum(p.get("estado_orientativo") == "ERROR" for p in presentaciones.values()),
-    )
-    with resumen_general:
-        render_human_decision_notice(
+    render_stage_summary(
+        resumen_general,
+        etiqueta_items="Codificaciones evaluadas",
+        total_items=len(presentaciones),
+        requieren_correccion=sum(
+            p.get("estado_orientativo") == "CORREGIR" for p in presentaciones.values()
+        ),
+        con_error=sum(
+            p.get("estado_orientativo") == "ERROR" for p in presentaciones.values()
+        ),
+        calidad_promedio=promedio_indices(p.get("indice_calidad") for p in presentaciones.values()),
+        seguridad_promedio=promedio_indices(p.get("indice_seguridad") for p in presentaciones.values()),
+        aviso=(
             "Los resultados constituyen apoyo al control y seguimiento de la codificación. "
             "La aceptación final requiere revisión humana."
-        )
+        ),
+    )
 
     for codificacion_id, p in presentaciones.items():
         resultado_grafo = resultados[codificacion_id]

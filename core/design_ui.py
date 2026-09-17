@@ -28,11 +28,12 @@ from core.traceability_export import (
 )
 from core.ui_components import (
     create_stage_step_panels,
+    promedio_indices,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
-    render_human_decision_notice,
     render_next_phase_button,
+    render_stage_summary,
 )
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
 from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
@@ -589,23 +590,23 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         ["Resumen general", "Detalle por diseño", "Matriz y documentos"]
     )
 
-    resumen_general.subheader("Resumen general de resultados")
-    rg1, rg2, rg3 = resumen_general.columns(3)
-    rg1.metric("Diseños evaluados", len(presentaciones))
-    rg2.metric(
-        "Requieren corrección",
-        sum(1 for p in presentaciones.values() if p.get("estado_orientativo") == "CORREGIR"),
-    )
-    rg3.metric(
-        "Con error",
-        sum(1 for p in presentaciones.values() if p.get("estado_orientativo") == "ERROR"),
-    )
-
-    with resumen_general:
-        render_human_decision_notice(
+    render_stage_summary(
+        resumen_general,
+        etiqueta_items="Diseños evaluados",
+        total_items=len(presentaciones),
+        requieren_correccion=sum(
+            1 for p in presentaciones.values() if p.get("estado_orientativo") == "CORREGIR"
+        ),
+        con_error=sum(
+            1 for p in presentaciones.values() if p.get("estado_orientativo") == "ERROR"
+        ),
+        calidad_promedio=promedio_indices(p.get("indice_calidad") for p in presentaciones.values()),
+        seguridad_promedio=promedio_indices(p.get("indice_seguridad") for p in presentaciones.values()),
+        aviso=(
             "Los resultados constituyen apoyo al control y seguimiento del diseño. "
             "La aceptación final requiere revisión humana."
-        )
+        ),
+    )
 
     # ---- Resultado por Issue de Diseño ----
     detalle_resultados.subheader("Resultado de evaluación asistida")

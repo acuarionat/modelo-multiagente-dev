@@ -33,6 +33,8 @@ from core.ui_components import (
 from core.ui_theme import (
     inject_global_styles,
     render_brand_header,
+    render_login_card,
+    render_login_help,
     render_sidebar_brand,
     render_stage_context,
 )
@@ -40,6 +42,7 @@ from core.ui_theme import (
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EMI_LOGO_PATH = os.path.join(BASE_DIR, "assets", "emi_logo.png")
 TRACEDEV_LOGO_PATH = os.path.join(BASE_DIR, "assets", "tracedev_logo.svg")
+LOGIN_BG_PATH = os.path.join(BASE_DIR, "assets", "login_bg.jpg")
 
 st.set_page_config(page_title="TraceDev | Control y Trazabilidad", page_icon="◈", layout="wide")
 
@@ -694,6 +697,16 @@ st.markdown("""
 # compatibilidad con todos los componentes ya existentes en las cuatro etapas.
 inject_global_styles()
 
+# Acceso institucional vía Microsoft 365 (OIDC). El tenant configurado en
+# .streamlit/secrets.toml es quien restringe el acceso a cuentas de la
+# organización; aquí solo se exige que exista una sesión autenticada.
+if not getattr(st.user, "is_logged_in", False):
+    login_card = render_login_card(EMI_LOGO_PATH, TRACEDEV_LOGO_PATH, LOGIN_BG_PATH)
+    if login_card.button("Iniciar sesión con Microsoft 365", type="primary", width="stretch", icon="🪟"):
+        st.login()
+    render_login_help(login_card)
+    st.stop()
+
 STAGES = (
     ("requerimientos", "Requerimientos", "Recepción de requerimientos", "☷"),
     ("diseno", "Diseño", "Diseño", "◇"),
@@ -758,7 +771,10 @@ def render_coming_soon(stage_id):
             st.session_state["etapa_actual"] = "requerimientos"
             st.rerun()
 
-render_brand_header(EMI_LOGO_PATH, TRACEDEV_LOGO_PATH)
+render_brand_header(
+    EMI_LOGO_PATH, TRACEDEV_LOGO_PATH,
+    session_name=getattr(st.user, "name", None) or getattr(st.user, "email", None),
+)
 
 saved_config = load_project_config()
 editing_config = st.session_state.get("editing_project_config", False)
@@ -843,6 +859,8 @@ st.info("Las métricas e indicadores son valoraciones asistidas basadas en la ev
 # Sidebar options
 with st.sidebar:
     render_sidebar_brand(TRACEDEV_LOGO_PATH, project_config)
+    if st.button("Cerrar sesión", width="stretch"):
+        st.logout()
     st.divider()
     if st.button("Panel del proyecto", width="stretch"):
         st.session_state["vista"] = "dashboard"
@@ -1195,7 +1213,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         ["Resumen general", "Detalle por historia", "Matriz y documentos"]
     )
 
-    resumen_general.subheader("Resumen global")
+    resumen_general.subheader("Resumen general de resultados")
     resumen_general.caption(
         f"Milestone: {st.session_state.last_milestone}"
     )
@@ -1208,13 +1226,13 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
     )
 
     r2.metric(
-        "Con error",
-        summary["errores"],
+        "Requieren corrección",
+        summary["requieren_correccion"],
     )
 
     r3.metric(
-        "Requieren corrección",
-        summary["requieren_correccion"],
+        "Con error",
+        summary["errores"],
     )
 
     r4, r5, r6 = resumen_general.columns(3)

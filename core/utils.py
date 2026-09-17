@@ -2873,8 +2873,8 @@ def generar_reporte_pruebas_pdf(project_name: str, milestone: str, presentacione
 
     encabezado("Resumen global", 13)
     linea(f"Pruebas procesadas: {len(presentaciones)} | Con error: {con_error}")
-    linea(f"MC-07 Correccion Funcional promedio: {extraer_porcentaje(sum(valores_mc07) / len(valores_mc07) if valores_mc07 else None)}")
-    linea(f"MC-08 Correccion de Fallos promedio: {extraer_porcentaje(sum(valores_mc08) / len(valores_mc08) if valores_mc08 else None)}")
+    linea(f"MC-06 Correccion Funcional promedio: {extraer_porcentaje(sum(valores_mc07) / len(valores_mc07) if valores_mc07 else None)}")
+    linea(f"MC-07 Correccion de Fallos promedio: {extraer_porcentaje(sum(valores_mc08) / len(valores_mc08) if valores_mc08 else None)}")
     linea(f"MS-08 Cobertura de Verificacion de Controles promedio: {extraer_porcentaje(sum(valores_ms08) / len(valores_ms08) if valores_ms08 else None)}")
     linea(f"MS-09 Pruebas de Seguridad Satisfactorias promedio: {extraer_porcentaje(sum(valores_ms09) / len(valores_ms09) if valores_ms09 else None)}")
     linea(f"Codificaciones verificadas: {resumen_trazabilidad.get('verificadas', 0)}")
@@ -2892,7 +2892,7 @@ def generar_reporte_pruebas_pdf(project_name: str, milestone: str, presentacione
         # --- CALIDAD ---
         encabezado("CALIDAD", 12)
         mc07 = p["metricas"]["MC-07"]
-        linea(f"MC-07 {mc07['nombre']}: {extraer_porcentaje(mc07['valor'])} ({mc07.get('estado_calculo', '')})")
+        linea(f"{mc07['codigo']} {mc07['nombre']}: {extraer_porcentaje(mc07['valor'])} ({mc07.get('estado_calculo', '')})")
         pdf.ln(1)
         linea("Que mide esta metrica:")
         linea(mc07["que_mide"])
@@ -2909,7 +2909,7 @@ def generar_reporte_pruebas_pdf(project_name: str, milestone: str, presentacione
         pdf.ln(2)
 
         mc08 = p["metricas"]["MC-08"]
-        linea(f"MC-08 {mc08['nombre']}: {extraer_porcentaje(mc08['valor'])} ({mc08.get('estado_calculo', '')})")
+        linea(f"{mc08['codigo']} {mc08['nombre']}: {extraer_porcentaje(mc08['valor'])} ({mc08.get('estado_calculo', '')})")
         linea(f"Fallos detectados/corregidos/verificados: {mc08.get('fallos_detectados')}/{mc08.get('fallos_corregidos')}/{mc08.get('fallos_corregidos_verificados')}")
         pdf.ln(1)
         linea("Que mide esta metrica:")

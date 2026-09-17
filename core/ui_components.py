@@ -129,6 +129,58 @@ def render_state_badge(estado: str) -> None:
 
 
 # ---------------------------------------------------------
+# Resumen general de la etapa (mismo formato en todas las etapas)
+# ---------------------------------------------------------
+
+def _formatear_promedio(valor) -> str:
+    """Formatea un índice promedio 0..1 como porcentaje; 'No evaluado' si no hay dato."""
+    if isinstance(valor, (int, float)):
+        return f"{round(valor * 100)} %"
+    return "No evaluado"
+
+
+def promedio_indices(valores) -> float:
+    """Promedia solo los valores numéricos de una colección (ignora None/no numéricos)."""
+    numericos = [v for v in (valores or []) if isinstance(v, (int, float))]
+    return sum(numericos) / len(numericos) if numericos else None
+
+
+def render_stage_summary(
+    container,
+    *,
+    etiqueta_items: str,
+    total_items: int,
+    requieren_correccion: int,
+    con_error: int,
+    calidad_promedio,
+    seguridad_promedio,
+    aviso: str,
+    subtitulo: str = "",
+) -> None:
+    """Resumen general homogéneo para todas las etapas.
+
+    Primera fila: conteos (ítems evaluados · requieren corrección · con error).
+    Segunda fila: porcentajes promedio de la etapa (calidad y seguridad).
+    Cierra con el aviso de decisión humana. Solo presentación: no recalcula.
+    """
+    container.subheader("Resumen general de resultados")
+    if subtitulo:
+        container.caption(subtitulo)
+
+    fila_conteos = container.columns(3)
+    fila_conteos[0].metric(etiqueta_items, total_items)
+    fila_conteos[1].metric("Requieren corrección", requieren_correccion)
+    fila_conteos[2].metric("Con error", con_error)
+
+    fila_promedios = container.columns(2)
+    fila_promedios[0].metric("Calidad promedio", _formatear_promedio(calidad_promedio))
+    fila_promedios[1].metric("Seguridad promedio", _formatear_promedio(seguridad_promedio))
+
+    with container:
+        render_human_decision_notice(aviso)
+
+
+# ---------------------------------------------------------
 # Encabezado de resultado (Estado + métricas principales)
 # ---------------------------------------------------------
 

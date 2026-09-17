@@ -215,8 +215,29 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
     if filas_grafico:
         try:
             import pandas as pd
-            df_avance = pd.DataFrame(filas_grafico).T[list(ESTADOS_FLUJO)]
-            st.bar_chart(df_avance)
+            import altair as alt
+
+            # El orden del eje X sigue el flujo del proyecto (Requerimientos →
+            # Diseño → Codificación → Pruebas), no el alfabético que Streamlit
+            # aplicaría por defecto.
+            orden_etapas = [nombre for _sid, nombre, _m in ETAPAS if nombre in filas_grafico]
+            df_avance = (
+                pd.DataFrame(filas_grafico).T[list(ESTADOS_FLUJO)]
+                .reset_index()
+                .rename(columns={"index": "Etapa"})
+                .melt(id_vars="Etapa", var_name="Estado", value_name="Cantidad")
+            )
+            grafico = (
+                alt.Chart(df_avance)
+                .mark_bar()
+                .encode(
+                    x=alt.X("Etapa:N", sort=orden_etapas, title="Etapa"),
+                    y=alt.Y("Cantidad:Q", title="Issues"),
+                    color=alt.Color("Estado:N", sort=list(ESTADOS_FLUJO), title="Estado"),
+                    order=alt.Order("Estado:N"),
+                )
+            )
+            st.altair_chart(grafico, use_container_width=True)
         except Exception:
             pass
 
@@ -242,25 +263,17 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
         except Exception:
             st.info("No se pudo generar la gráfica de tendencia.")
 
-    # ---- 4. Distribución de veredictos ----
-    st.subheader("Distribución de veredictos")
-    if resumen["veredictos"]:
-        try:
-            import pandas as pd
-            df_veredictos = pd.DataFrame(
-                {"Cantidad": resumen["veredictos"]}
-            ).sort_values("Cantidad", ascending=False)
-            st.bar_chart(df_veredictos)
-        except Exception:
-            for etiqueta, cantidad in resumen["veredictos"].items():
-                st.write(f"- {etiqueta}: {cantidad}")
-    else:
-        st.info("Aún no hay veredictos registrados.")
-
     st.divider()
 
-    # ---- 5. Trazabilidad por matriz (GitLab) ----
+    # ---- 4. Trazabilidad por matriz (GitLab) ----
     st.subheader("Trazabilidad por matriz")
+    st.caption(
+        "Cada matriz mide qué proporción de los elementos de la etapa anterior "
+        "quedó cubierta por la etapa siguiente. Se lee en el orden del flujo: "
+        "el **Diseño** cubre los **requisitos**, la **Codificación** implementa los "
+        "**elementos de diseño** y las **Pruebas** verifican las **codificaciones**. "
+        "El formato es siempre «cubiertos / total (porcentaje)»."
+    )
     if "dashboard_trazabilidad" not in st.session_state:
         with st.spinner("Leyendo matrices de trazabilidad en GitLab..."):
             st.session_state["dashboard_trazabilidad"] = recolectar_trazabilidad(adapter.project_id)
@@ -273,7 +286,7 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
 
     st.divider()
 
-    # ---- 6. Versiones de las matrices de trazabilidad ----
+    # ---- 5. Versiones de las matrices de trazabilidad ----
     st.subheader("Versiones de las matrices de trazabilidad")
     if not versiones:
         st.info("Aún no se ha publicado ninguna matriz de trazabilidad.")
@@ -296,14 +309,30 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
         )
 
 
+def _cobertura(cubiertos, total) -> str:
+    """Formatea la cobertura como 'cubiertos / total (porcentaje)'."""
+    try:
+        cubiertos = int(cubiertos or 0)
+        total = int(total or 0)
+    except (TypeError, ValueError):
+        return "—"
+    if total <= 0:
+        return f"{cubiertos} / 0"
+    return f"{cubiertos} / {total} ({cubiertos / total * 100:.0f}%)"
+
+
 def _render_trazabilidad_diseno(columna, datos) -> None:
     with columna:
         st.markdown("**Diseño (TRZ-002)**")
+        st.caption("Requisitos cubiertos por el diseño")
         if not datos or not datos.get("resumen"):
             st.caption("No disponible")
             return
         r = datos["resumen"]
-        st.metric("Requisitos cubiertos", f"{r.get('cubiertos', 0)}/{r.get('requisitos_totales', 0)}")
+        cubiertos = r.get("cubiertos", 0)
+        total = r.get("requisitos_totales", 0)
+        st.metric("Requisitos con diseño", _cobertura(cubiertos, total))
+        st.caption(f"{cubiertos} de {total} requisitos tienen diseño que los cubre.")
         st.caption(
             f"Pendientes: {r.get('pendientes_relacion', 0)} · "
             f"Requieren revisión: {r.get('requieren_revision', 0)} · "
@@ -314,11 +343,15 @@ def _render_trazabilidad_diseno(columna, datos) -> None:
 def _render_trazabilidad_codificacion(columna, datos) -> None:
     with columna:
         st.markdown("**Codificación (TRZ-003)**")
+        st.caption("Elementos de diseño implementados en código")
         if not datos or not datos.get("resumen"):
             st.caption("No disponible")
             return
         r = datos["resumen"]
-        st.metric("Elementos implementados", f"{r.get('implementados', 0)}/{r.get('elementos_diseno_totales', 0)}")
+        implementados = r.get("implementados", 0)
+        total = r.get("elementos_diseno_totales", 0)
+        st.metric("Elementos implementados", _cobertura(implementados, total))
+        st.caption(f"{implementados} de {total} elementos de diseño están implementados en código.")
         st.caption(
             f"No confirmados: {r.get('no_confirmados', 0)} · "
             f"No evaluados: {r.get('no_evaluados', 0)}"
@@ -328,11 +361,15 @@ def _render_trazabilidad_codificacion(columna, datos) -> None:
 def _render_trazabilidad_pruebas(columna, datos) -> None:
     with columna:
         st.markdown("**Pruebas (TRZ-004)**")
+        st.caption("Codificaciones verificadas con pruebas")
         if not datos or not datos.get("resumen"):
             st.caption("No disponible")
             return
         r = datos["resumen"]
-        st.metric("Codificaciones verificadas", f"{r.get('verificadas', 0)}/{r.get('codificaciones_totales', 0)}")
+        verificadas = r.get("verificadas", 0)
+        total = r.get("codificaciones_totales", 0)
+        st.metric("Codificaciones verificadas", _cobertura(verificadas, total))
+        st.caption(f"{verificadas} de {total} codificaciones fueron verificadas mediante pruebas.")
         st.caption(
             f"Con fallo pendiente: {r.get('con_fallo_pendiente', 0)} · "
             f"Pendientes de revisión: {r.get('pendientes_revision', 0)} · "
