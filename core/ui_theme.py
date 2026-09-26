@@ -94,7 +94,7 @@ def inject_global_styles() -> None:
 
         [data-testid="stMarkdownContainer"] h3 {
             position: relative;
-            margin: 1.7rem 0 .72rem !important;
+            margin: 1.1rem 0 .6rem !important;
             padding-left: .85rem !important;
             font-size: clamp(1.08rem, 1.5vw, 1.28rem) !important;
             font-weight: 760 !important;
@@ -125,7 +125,7 @@ def inject_global_styles() -> None:
             align-items: center;
             gap: clamp(1.15rem, 2.5vw, 2.2rem);
             min-height: 154px;
-            margin: .25rem 0 1rem;
+            margin: .25rem 0 .55rem;
             padding: 1.35rem clamp(1.25rem, 3vw, 2.5rem);
             overflow: hidden;
             border: 1px solid rgba(255,255,255,.16);
@@ -388,6 +388,38 @@ def inject_global_styles() -> None:
         }
 
         .milestone-chip strong { color: var(--emi-blue-dark); font-size: .88rem; }
+
+        /* Zona de configuración del proyecto: agrupa título, formulario y
+           estado en un único bloque de ancho legible y centrado. */
+        .st-key-config_workspace {
+            max-width: 960px !important;
+            margin: 0 auto !important;
+        }
+
+        .st-key-config_back_row {
+            margin: -.25rem 0 .7rem !important;
+        }
+
+        .st-key-config_back_row button {
+            min-height: 2.1rem !important;
+            padding: .3rem .9rem !important;
+            font-size: .82rem !important;
+            border-radius: 999px !important;
+            box-shadow: none !important;
+        }
+
+        .st-key-config_status_panel {
+            margin-top: .3rem !important;
+            padding: 1.1rem 1.25rem 1.25rem !important;
+            border: 1px solid var(--nexo-line) !important;
+            border-radius: var(--nexo-radius-lg) !important;
+            background: var(--nexo-surface) !important;
+            box-shadow: var(--nexo-shadow-sm) !important;
+        }
+
+        .st-key-config_status_panel [data-testid="stMarkdownContainer"] h3 {
+            margin-top: 0 !important;
+        }
 
         /* Formularios y entradas */
         div[data-testid="stForm"] {
@@ -922,6 +954,7 @@ def inject_global_styles() -> None:
         }
 
         .sidebar-project-card {
+            margin: 0 0 1.1rem;
             padding: .85rem;
             border: 1px solid rgba(255,255,255,.13);
             border-radius: 13px;
@@ -1101,12 +1134,13 @@ def render_login_card(
     background_css = "linear-gradient(135deg, var(--emi-blue-deep), var(--emi-blue) 65%, #0A63AE)"
     if background_path and Path(background_path).exists():
         mime = "image/png" if Path(background_path).suffix.lower() == ".png" else "image/jpeg"
-        # "contain" evita el recorte/zoom que produce "cover" con una imagen
-        # vertical sobre pantallas anchas; el color de respaldo rellena los
-        # márgenes que deja de sobra con el mismo tono del fondo institucional.
+        # "cover" llena toda la pantalla sin las franjas de color que dejaba
+        # "contain" con una imagen vertical en pantallas anchas; el degradado
+        # institucional superpuesto uniforma el tono y mantiene el contraste
+        # del texto/tarjeta sobre cualquier zona de la foto.
         background_css = (
-            f"url('{_data_uri(background_path, mime)}') center/contain no-repeat fixed "
-            "var(--emi-blue-deep)"
+            "linear-gradient(135deg, rgba(6, 58, 107, .45), rgba(10, 99, 174, .25)), "
+            f"url('{_data_uri(background_path, mime)}') center/cover no-repeat fixed"
         )
 
     entity_logo = _data_uri(entity_logo_path, "image/png")
@@ -1137,7 +1171,7 @@ def render_login_card(
             align-items: center;
             justify-content: center;
             min-height: calc(100vh - 3.2rem);
-            padding: 2rem 1.25rem;
+            padding: 1rem 1.25rem;
         }}
         .st-key-login_shell::before {{
             content: "";
@@ -1152,8 +1186,10 @@ def render_login_card(
             position: relative;
             z-index: 1;
             width: min(94vw, 460px);
+            max-height: calc(100vh - 2rem);
             margin: 0 auto !important;
-            padding: 16px;
+            padding: 12px;
+            overflow-y: auto;
             background: rgba(255, 255, 255, .16);
             backdrop-filter: blur(22px) saturate(140%);
             -webkit-backdrop-filter: blur(22px) saturate(140%);
@@ -1162,10 +1198,13 @@ def render_login_card(
             box-shadow: 0 30px 80px rgba(2, 16, 34, .5), inset 0 1px 0 rgba(255, 255, 255, .3);
             animation: loginFadeUp .65s ease-out;
         }}
+        .st-key-login_frame::-webkit-scrollbar {{
+            display: none;
+        }}
         .st-key-login_card {{
             width: 100%;
             margin: 0 !important;
-            padding: clamp(2rem, 4.5vw, 2.7rem) clamp(1.7rem, 4vw, 2.3rem) 2.2rem;
+            padding: clamp(1.3rem, 3vw, 1.8rem) clamp(1.3rem, 3vw, 1.7rem) 1.4rem;
             background: rgba(255, 255, 255, .98);
             border: 1px solid rgba(255, 255, 255, .7);
             border-radius: 22px;
@@ -1174,29 +1213,29 @@ def render_login_card(
         }}
         .login-logo {{
             display: block;
-            width: min(100%, 230px);
-            margin: 0 auto .95rem;
+            width: min(100%, 140px);
+            margin: 0 auto .5rem;
         }}
         .login-tool-badge {{
             display: flex;
             align-items: center;
             justify-content: center;
             width: fit-content;
-            margin: 0 auto .95rem;
-            padding: .6rem 1.1rem;
-            border-radius: 14px;
+            margin: 0 auto .5rem;
+            padding: .35rem .8rem;
+            border-radius: 12px;
             background: linear-gradient(118deg, var(--emi-blue-deep), var(--emi-blue) 72%, #0A63AE);
             box-shadow: 0 8px 20px rgba(5,47,86,.18);
         }}
         .login-tool-logo {{
             display: block;
-            width: min(100%, 190px);
+            width: min(100%, 130px);
             height: auto;
         }}
         .login-kicker {{
-            margin: 0 0 1.1rem;
+            margin: 0 0 .7rem;
             color: var(--emi-blue-dark);
-            font-size: clamp(1rem, 2.3vw, 1.15rem);
+            font-size: clamp(.92rem, 2vw, 1.05rem);
             font-weight: 800;
             line-height: 1.35;
             letter-spacing: -.01em;
@@ -1205,7 +1244,7 @@ def render_login_card(
         .login-divider {{
             position: relative;
             height: 1px;
-            margin: 0 auto 1.15rem;
+            margin: 0 auto .75rem;
             background: linear-gradient(90deg, transparent, var(--nexo-line-strong), transparent);
         }}
         .login-divider::after {{
@@ -1221,22 +1260,22 @@ def render_login_card(
             box-shadow: 0 0 7px rgba(242, 195, 0, .65);
         }}
         .login-welcome {{
-            margin: 0 0 .6rem;
+            margin: 0 0 .4rem;
             color: var(--emi-blue-dark) !important;
-            font-size: clamp(1.3rem, 3vw, 1.55rem);
+            font-size: clamp(1.15rem, 2.6vw, 1.4rem);
             font-weight: 800;
             text-align: center !important;
         }}
         .login-caption {{
-            margin: 0 0 1.6rem;
+            margin: 0 0 .9rem;
             color: var(--nexo-muted);
-            font-size: .92rem;
-            line-height: 1.55;
+            font-size: .88rem;
+            line-height: 1.45;
         }}
         .st-key-login_card .stButton > button {{
             position: relative;
             width: 100%;
-            min-height: 3.1rem;
+            min-height: 2.85rem;
             border-radius: 10px;
             font-weight: 750;
             overflow: hidden;
@@ -1259,12 +1298,12 @@ def render_login_card(
             left: 100%;
         }}
         .login-help {{
-            margin: 1.6rem 0 0;
-            padding-top: 1rem;
+            margin: .9rem 0 0;
+            padding-top: .7rem;
             border-top: 1px solid var(--nexo-line);
             color: var(--nexo-muted);
-            font-size: .78rem;
-            line-height: 1.5;
+            font-size: .74rem;
+            line-height: 1.4;
         }}
         </style>
         <div></div>

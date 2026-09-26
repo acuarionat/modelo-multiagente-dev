@@ -780,75 +780,78 @@ saved_config = load_project_config()
 editing_config = st.session_state.get("editing_project_config", False)
 
 if saved_config is None or editing_config:
-    st.subheader("Configuración del Proyecto")
-    st.caption("Identifica el proyecto y valida la conexión con GitLab para habilitar las etapas.")
-    # Volver a las etapas sin reconfigurar (solo si ya hay proyecto). Únicamente cierra
-    # la edición; NO limpia el estado ni la persistencia de resultados.
-    if editing_config and saved_config is not None:
-        if st.button("← Volver a las etapas", key="volver_a_etapas"):
-            st.session_state["editing_project_config"] = False
-            st.rerun()
-    defaults = saved_config or {}
-    with st.form("project_configuration"):
-        st.markdown("### Identificación")
-        cfg_name = st.text_input(
-            "Nombre del proyecto *",
-            value=defaults.get("name", ""),
-            placeholder="Ej.: Sistema de Gestión de Citas Médicas",
-        )
-        st.divider()
-        st.markdown("### Integración con GitLab")
-        st.caption("Estos datos se utilizan para consultar los issues y verificar los milestones del flujo.")
-        gitlab_col, project_col = st.columns([1.35, 1])
-        with gitlab_col:
-            gitlab_url = st.text_input("URL del servidor GitLab *", value=defaults.get("gitlab_url", os.getenv("GITLAB_URL", "")))
-        with project_col:
-            gitlab_project = st.text_input("Proyecto GitLab *", value=defaults.get("gitlab_project", os.getenv("GITLAB_PROJECT_ID", "")), help="ID numérico o ruta namespace/proyecto")
-        gitlab_token = st.text_input("Token de acceso *", value=defaults.get("gitlab_token", os.getenv("GITLAB_TOKEN", "")), type="password")
+    with st.container(key="config_workspace"):
+        st.subheader("Configuración del Proyecto")
+        st.caption("Identifica el proyecto y valida la conexión con GitLab para habilitar las etapas.")
+        # Volver a las etapas sin reconfigurar (solo si ya hay proyecto). Únicamente cierra
+        # la edición; NO limpia el estado ni la persistencia de resultados.
+        if editing_config and saved_config is not None:
+            with st.container(key="config_back_row"):
+                if st.button("← Volver a las etapas", key="volver_a_etapas"):
+                    st.session_state["editing_project_config"] = False
+                    st.rerun()
+        defaults = saved_config or {}
+        with st.form("project_configuration"):
+            st.markdown("### Identificación")
+            cfg_name = st.text_input(
+                "Nombre del proyecto *",
+                value=defaults.get("name", ""),
+                placeholder="Ej.: Sistema de Gestión de Citas Médicas",
+            )
+            st.divider()
+            st.markdown("### Integración con GitLab")
+            st.caption("Estos datos se utilizan para consultar los issues y verificar los milestones del flujo.")
+            gitlab_col, project_col = st.columns([1.35, 1])
+            with gitlab_col:
+                gitlab_url = st.text_input("URL del servidor GitLab *", value=defaults.get("gitlab_url", os.getenv("GITLAB_URL", "")))
+            with project_col:
+                gitlab_project = st.text_input("Proyecto GitLab *", value=defaults.get("gitlab_project", os.getenv("GITLAB_PROJECT_ID", "")), help="ID numérico o ruta namespace/proyecto")
+            gitlab_token = st.text_input("Token de acceso *", value=defaults.get("gitlab_token", os.getenv("GITLAB_TOKEN", "")), type="password")
 
-        values = {
-            "name": cfg_name, "gitlab_url": gitlab_url,
-            "gitlab_project": gitlab_project, "gitlab_token": gitlab_token,
-        }
-        connection_signature = (gitlab_url.strip(), gitlab_project.strip(), gitlab_token.strip())
-        test_col, save_col = st.columns([1, 2])
-        test_connection = test_col.form_submit_button("Probar conexión", width="stretch")
-        save_and_start = save_col.form_submit_button("Guardar configuración e iniciar proyecto", type="primary", width="stretch")
+            values = {
+                "name": cfg_name, "gitlab_url": gitlab_url,
+                "gitlab_project": gitlab_project, "gitlab_token": gitlab_token,
+            }
+            connection_signature = (gitlab_url.strip(), gitlab_project.strip(), gitlab_token.strip())
+            test_col, save_col = st.columns([1, 1])
+            test_connection = test_col.form_submit_button("Probar conexión", width="stretch")
+            save_and_start = save_col.form_submit_button("Guardar e iniciar proyecto", type="primary", width="stretch")
 
-    if test_connection:
-        if not all(connection_signature):
-            st.error("Completa la URL, el proyecto y el token de GitLab.")
-        else:
-            try:
-                with st.spinner("Validando GitLab y verificando milestones..."):
-                    test_adapter = GitLabAdapter(*connection_signature[::2], project_id=connection_signature[1])
-                    milestone_status = test_adapter.asegurar_hitos(list(REQUIRED_MILESTONES))
-                st.session_state["verified_gitlab"] = connection_signature
-                st.session_state["milestone_status"] = milestone_status
-                st.success(f"Conexión verificada con {test_adapter.project.name}. Milestones verificados sin duplicados.")
-            except Exception as exc:
-                st.session_state.pop("verified_gitlab", None)
-                st.error(f"No se pudo validar la conexión: {exc}")
+        if test_connection:
+            if not all(connection_signature):
+                st.error("Completa la URL, el proyecto y el token de GitLab.")
+            else:
+                try:
+                    with st.spinner("Validando GitLab y verificando milestones..."):
+                        test_adapter = GitLabAdapter(*connection_signature[::2], project_id=connection_signature[1])
+                        milestone_status = test_adapter.asegurar_hitos(list(REQUIRED_MILESTONES))
+                    st.session_state["verified_gitlab"] = connection_signature
+                    st.session_state["milestone_status"] = milestone_status
+                    st.success(f"Conexión verificada con {test_adapter.project.name}. Milestones verificados sin duplicados.")
+                except Exception as exc:
+                    st.session_state.pop("verified_gitlab", None)
+                    st.error(f"No se pudo validar la conexión: {exc}")
 
-    verified = st.session_state.get("verified_gitlab") == connection_signature
-    st.markdown("### Estado")
-    c1, c2 = st.columns(2)
-    c1.metric("GitLab", "Conectado" if verified else "Pendiente")
-    c2.metric("Milestones", "Verificados" if verified else "Pendientes")
+        verified = st.session_state.get("verified_gitlab") == connection_signature
+        with st.container(key="config_status_panel"):
+            st.markdown("### Estado del proyecto")
+            c1, c2 = st.columns(2)
+            c1.metric("GitLab", "Conectado" if verified else "Pendiente")
+            c2.metric("Milestones", "Verificados" if verified else "Pendientes")
 
-    if save_and_start:
-        missing = [key for key, value in values.items() if not str(value).strip()]
-        if missing:
-            st.error("Completa todos los campos obligatorios.")
-        elif not verified:
-            st.error("Primero debes probar correctamente esta conexión con GitLab.")
-        else:
-            st.session_state["project_config"] = save_project_config(values)
-            st.session_state["editing_project_config"] = False
-            for key in ("issues_by_stage", "last_batch_result", "milestones"):
-                st.session_state.pop(key, None)
-            limpiar_estado_etapas()
-            st.rerun()
+        if save_and_start:
+            missing = [key for key, value in values.items() if not str(value).strip()]
+            if missing:
+                st.error("Completa todos los campos obligatorios.")
+            elif not verified:
+                st.error("Primero debes probar correctamente esta conexión con GitLab.")
+            else:
+                st.session_state["project_config"] = save_project_config(values)
+                st.session_state["editing_project_config"] = False
+                for key in ("issues_by_stage", "last_batch_result", "milestones"):
+                    st.session_state.pop(key, None)
+                limpiar_estado_etapas()
+                st.rerun()
     st.stop()
 
 project_config = saved_config
