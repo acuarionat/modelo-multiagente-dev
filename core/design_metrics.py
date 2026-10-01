@@ -1,3 +1,6 @@
+from core.umbral_aprobacion import supera_umbral
+
+
 def calcular_mc03(elementos_documentados: list, elementos_necesarios_faltantes: list) -> dict:
     """MC-03 Completitud de la Descripción, a partir de la salida estructurada del Agente de Calidad de Diseño."""
     documentados = [x for x in elementos_documentados if isinstance(x, dict)]
@@ -113,19 +116,31 @@ def calcular_indice_seguridad_diseno(ms03, ms04):
 
 def determinar_estado_diseno(
     *,
+    indice_calidad,
+    indice_seguridad,
     correcciones_necesarias: list,
     precisiones_necesarias: list,
     oportunidades_mejora: list,
     error_tecnico: bool = False,
 ):
-    """Estado orientativo determinístico: el Evaluador solo entrega categorías, Python decide el estado oficial."""
+    """
+    Estado orientativo determinístico, decidido por los PORCENTAJES (nunca
+    por el LLM) con el umbral único de core/umbral_aprobacion.py:
+
+    - Fallo técnico -> ERROR.
+    - Algún índice evaluable <= 80 %, o ningún índice evaluable -> CORREGIR.
+    - Todos los índices evaluables > 80 % -> CONFORME, o CONFORME CON MEJORAS
+      si el Evaluador dejó hallazgos (quedan como mejoras, no cambian el estado).
+    Un índice no_evaluable (None) no se convierte en 0.
+    """
     if error_tecnico:
         return "ERROR"
 
-    if correcciones_necesarias:
+    evaluables = [indice for indice in (indice_calidad, indice_seguridad) if indice is not None]
+    if not evaluables or not all(supera_umbral(indice) for indice in evaluables):
         return "CORREGIR"
 
-    if precisiones_necesarias or oportunidades_mejora:
+    if correcciones_necesarias or precisiones_necesarias or oportunidades_mejora:
         return "CONFORME CON MEJORAS"
 
     return "CONFORME"

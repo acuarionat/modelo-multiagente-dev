@@ -15,6 +15,7 @@ from core.batch_contract import (
     renumerar_requerimientos,
 )
 from core.traceability_export import exportar_csv_excel
+from core.umbral_aprobacion import porcentaje, supera_umbral
 
 logger = logging.getLogger(__name__)
 
@@ -440,8 +441,10 @@ def limpiar_texto_para_pdf(text: str) -> str:
     return text.replace('\r', '')
 
 def extraer_porcentaje(val) -> str:
-    if isinstance(val, (int, float)):
-        return f"{round(val * 100)} %"
+    # Mismo redondeo (2 decimales) con el que se compara contra el umbral del
+    # 80 %: un 80.4 % no debe mostrarse como "80 %" si se aprueba.
+    if isinstance(val, (int, float)) and not isinstance(val, bool):
+        return f"{porcentaje(val):g} %"
     return "No evaluado" if val is None else str(val)
 
 
@@ -3241,7 +3244,7 @@ def calcular_metricas_calidad(q_json: dict) -> dict:
     indice = (fcp_1_g + fap_1_g) / 2.0
     
     q_json["indice"] = indice
-    q_json["meta_cumplida"] = indice >= 0.95
+    q_json["meta_cumplida"] = supera_umbral(indice) is True
     q_json["justificaciones"] = {
         "FCp-1-G": {
             "resultado": f"{int(fcp_1_g * 100)} %",
@@ -3272,7 +3275,7 @@ def calcular_metricas_seguridad(s_json: dict) -> dict:
     indice = (cobertura_controles + cobertura_lot) / 2.0
     
     s_json["indice"] = indice
-    s_json["meta_cumplida"] = indice >= 0.85
+    s_json["meta_cumplida"] = supera_umbral(indice) is True
     s_json["justificaciones"] = {
         "controles_seguridad": {
             "resultado": f"{int(cobertura_controles * 100)} %",

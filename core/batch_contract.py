@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
 from agents.llm_invocation import normalizar_json_llm
+from core.umbral_aprobacion import UMBRAL_APROBACION, supera_umbral
 
 logger = logging.getLogger(__name__)
 
@@ -1030,18 +1031,33 @@ def _completar_indicador(
     }
     if lot is not None:
         indicator["lot"] = lot
-    if (
-        first.get("estado_calculo") != "Calculada"
-        or second.get("estado_calculo") != "Calculada"
-        or meta is None
-    ):
+    if meta is None:
         return indicator
-    value = round((first["valor"] + second["valor"]) / 2, 4)
-    indicator.update({
-        "valor": value, "porcentaje": round(value * 100, 2),
-        "calculo": f"({first['valor']:.4f} + {second['valor']:.4f}) / 2",
-        "estado": "Cumple" if value >= meta else "No cumple",
-    })
+    first_calc = first.get("estado_calculo") == "Calculada"
+    second_calc = second.get("estado_calculo") == "Calculada"
+    first_na = first.get("estado_calculo") == "No aplica"
+    second_na = second.get("estado_calculo") == "No aplica"
+    if first_calc and second_calc:
+        value = round((first["valor"] + second["valor"]) / 2, 4)
+        indicator.update({
+            "valor": value, "porcentaje": round(value * 100, 2),
+            "calculo": f"({first['valor']:.4f} + {second['valor']:.4f}) / 2",
+            "estado": "Cumple" if supera_umbral(value) else "No cumple",
+        })
+    elif first_calc and second_na:
+        value = round(first["valor"], 4)
+        indicator.update({
+            "valor": value, "porcentaje": round(value * 100, 2),
+            "calculo": f"{first['valor']:.4f} (segunda métrica no aplica)",
+            "estado": "Cumple" if supera_umbral(value) else "No cumple",
+        })
+    elif second_calc and first_na:
+        value = round(second["valor"], 4)
+        indicator.update({
+            "valor": value, "porcentaje": round(value * 100, 2),
+            "calculo": f"{second['valor']:.4f} (primera métrica no aplica)",
+            "estado": "Cumple" if supera_umbral(value) else "No cumple",
+        })
     return indicator
 
 
@@ -1624,7 +1640,7 @@ def completar_resultado_calidad(
     )
     metrics = {"cobertura_funcional": mc01, "adecuacion_funcional": mc02}
     indicator = _completar_indicador(
-        mc01, mc02, "Índice de Calidad de Requerimientos", 0.95,
+        mc01, mc02, "Índice de Calidad de Requerimientos", UMBRAL_APROBACION,
     )
     item.update({
         "metricas": metrics, "indicador": indicator, "indice": indicator["valor"],
@@ -2261,7 +2277,8 @@ def completar_resultado_seguridad(
     unclassified = [x for x in identified if _clave_texto(x) not in classified_names]
     ms02["datos_sin_clasificacion"] = unclassified
     ms02["justificacion"] = (
-        "MS-02: No aplica porque la historia no identifica datos." if not identified else
+        "MS-02: No aplica porque la historia no maneja datos sensibles. "
+        "La ausencia de datos sensibles no afecta negativamente la seguridad." if not identified else
         f"MS-02: {len(classified)} de {len(identified)} datos identificados tienen "
         f"clasificación explícita. Clasificados explícitamente: "
         f"{', '.join(classified) if classified else 'ninguno'}. Sin clasificación explícita: "
@@ -2275,9 +2292,9 @@ def completar_resultado_seguridad(
     lot, lot_reason = _determinar_lot(context)
     item["lot_recomendado"] = lot
     item["justificacion_lot"] = lot_reason
-    meta = {"LoT-2": 0.90, "LoT-3": 0.95}.get(lot)
+    # Umbral único (80 %) para cualquier LoT: el LoT se conserva como dato informativo.
     indicator = _completar_indicador(
-        ms01, ms02, "Índice de Seguridad en Requerimientos", meta, lot,
+        ms01, ms02, "Índice de Seguridad en Requerimientos", UMBRAL_APROBACION, lot,
     )
     item.update({
         "metricas": {"cobertura_seguridad": ms01, "clasificacion_datos": ms02},
@@ -2288,7 +2305,12 @@ def completar_resultado_seguridad(
     item["recomendaciones"] = [
         text for text in (ms01["recomendacion"], ms02["recomendacion"]) if text
     ]
-    if len(applicable) == len(documented) == 4 and len(identified) == 2 and not classified:
+    if not identified:
+        item["observaciones"] = (
+            f"Seguridad evaluada con {len(documented)} de {len(applicable)} aspectos documentados. "
+            f"La historia no maneja datos sensibles; la clasificación de datos no aplica."
+        )
+    elif len(applicable) == len(documented) == 4 and len(identified) == 2 and not classified:
         item["observaciones"] = (
             "Los cuatro aspectos de seguridad aplicables están documentados. Sin embargo, "
             "los dos datos identificados no cuentan con clasificación explícita."
@@ -2361,7 +2383,7 @@ def calcular_metricas_agente(
                 else "no_aplicable" if metric_states == {"no_aplicable"}
                 else "evidencia_insuficiente"
             )
-            item["meta_cumplida"] = item["indice"] is not None and item["indice"] >= 0.95
+            item["meta_cumplida"] = supera_umbral(item["indice"]) is True
             coverage["interpretacion"] = "Cobertura funcional estimada según los elementos identificados y formalizados."
             adequacy["interpretacion"] = "Adecuación funcional estimada según las funciones identificadas y el objetivo declarado."
             item["interpretacion_indice"] = "Índice de Calidad de Requerimientos."
@@ -2416,7 +2438,7 @@ def calcular_metricas_agente(
                 else "no_aplicable" if metric_states == {"no_aplicable"}
                 else "evidencia_insuficiente"
             )
-            item["meta_cumplida"] = item["indice"] is not None and item["indice"] >= 0.85
+            item["meta_cumplida"] = supera_umbral(item["indice"]) is True
             item["lot_recomendado"] = lot.get("lot_recomendado")
             if context is not None:
                 item["lot_recomendado"], item["justificacion_lot"] = _determinar_lot(context)
@@ -2889,7 +2911,7 @@ def construir_brechas_seguridad_100(
 
 def construir_etiquetas_resultado(old_labels: list, estado_evaluacion: str, quality_index=None, security_index=None) -> list:
     """Calcula el siguiente estado GitLab conservando etiquetas ajenas al flujo."""
-    if estado_evaluacion not in {"APROBADO", "CORREGIR", "ALERTA", "NO_PROCESABLE", "NO_EVALUADO"}:
+    if estado_evaluacion not in {"APROBADO", "CORREGIR", "ALERTA", "NO_PROCESABLE", "NO_EVALUADO", "REVISIÓN REQUERIDA"}:
         return list(dict.fromkeys(old_labels))
     removed = {
         "Pendiente", "Revisada", "Requiere modificación",
@@ -2901,7 +2923,7 @@ def construir_etiquetas_resultado(old_labels: list, estado_evaluacion: str, qual
     ]
     if estado_evaluacion == "APROBADO":
         labels.append("Revisada")
-    elif estado_evaluacion in {"CORREGIR", "ALERTA", "NO_PROCESABLE", "NO_EVALUADO"}:
+    else:
         labels.append("Requiere modificación")
     return list(dict.fromkeys(labels))
 
@@ -3470,9 +3492,9 @@ def extraer_clasificacion_dato(elemento: Any) -> Dict[str, Any]:
     raw = None
     strategy = "none"
     if isinstance(elemento, str):
-        parts = _DATA_COMPOSITE_SEPARATOR.split(elemento, maxsplit=1)
-        if len(parts) == 2:
-            raw = parts[1]
+        parts = _DATA_COMPOSITE_SEPARATOR.split(elemento)
+        if len(parts) >= 2:
+            raw = parts[-1]
             strategy = "composite_text"
     elif isinstance(elemento, dict):
         category_keys = [key for key in _DATA_CLASSIFICATION_KEYS if key in elemento]
@@ -4249,20 +4271,13 @@ def ajustar_veredicto_determinista(
         indicator = report.get("indicador") if isinstance(report.get("indicador"), dict) else {}
         indicator_state = indicator.get("estado")
         if indicator_state is None and isinstance(report.get("indice"), (int, float)):
-            default_meta = 0.95 if label == "calidad" else {
-                "LoT-2": 0.90, "LoT-3": 0.95,
-            }.get(report.get("lot_recomendado"), 0.90)
-            indicator_state = "Cumple" if report["indice"] >= default_meta else "No cumple"
+            indicator_state = "Cumple" if supera_umbral(report["indice"]) else "No cumple"
         if indicator_state == "No cumple":
             not_compliant = True
-            reasons.append(f"El índice de {label} no alcanza su meta.")
+            reasons.append(f"El índice de {label} no supera el umbral del 80 %.")
 
-    if quality.get("gaps_funcionales"):
-        not_compliant = True
-        reasons.append(
-            "Existen funciones necesarias identificadas por Calidad "
-            "(MC-01) con confianza alta que no están formalizadas."
-        )
+    # Los gaps funcionales de MC-01 ya están descontados en el porcentaje del
+    # índice de calidad: no se usan como segunda regla que contradiga el umbral.
 
     if reasons and (not_evaluated or input_validation.get("estado") == "informacion_insuficiente"):
         adjusted = "REVISIÓN REQUERIDA"

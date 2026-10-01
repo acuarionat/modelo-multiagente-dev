@@ -114,22 +114,16 @@ def _construir_presentacion(issue: dict, resultado_grafo: dict) -> dict:
 
 def _explicar_estado_pruebas(p: dict) -> str:
     estado = p.get("estado_orientativo", "REVISAR")
-    correcciones = p.get("correcciones_necesarias") or []
 
     if estado == "CORREGIR":
-        if correcciones:
-            return (
-                f"El estado es CORREGIR porque se identificaron "
-                f"{len(correcciones)} correcciones necesarias a partir de las métricas evaluadas."
-            )
-        return "El estado es CORREGIR porque al menos una métrica evaluada no alcanza su umbral."
+        return "El estado es CORREGIR porque al menos una métrica evaluada no supera el umbral del 80 %."
     if estado == "REVISAR":
         return (
             "El estado es REVISAR porque al menos una métrica quedó sin evidencia suficiente "
             "para juzgarla (no confundir con métricas legítimamente NO_APLICA)."
         )
     if estado == "APROBADO":
-        return "Todas las métricas evaluables cumplen los criterios establecidos."
+        return "Todas las métricas evaluables superan el umbral del 80 %."
     return (
         "La evaluación requiere revisión humana debido a un fallo técnico que impidió "
         "completar el análisis."

@@ -3,7 +3,7 @@ Analizador Radon → evidencia para MC-05 (Adecuación de la Complejidad
 Ciclomática). Ejecuta `radon cc --json` sobre el workspace de un COD y
 normaliza la salida a una lista estable de funciones con su complejidad.
 Aplica el umbral por función (Python decide, no el agente); el umbral
-agregado de MC-05 (≥ 0.90) se calcula en core/coding_metrics.py.
+agregado de MC-05 (> 80 %) se calcula en core/coding_metrics.py.
 """
 
 import json

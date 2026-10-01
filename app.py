@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import sys
 import time
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -1048,10 +1049,28 @@ if start_analysis:
         else:
             global_ph.markdown("**¡Análisis completo! Todos los lotes procesados.** ✔")
         if run_results:
-            from core.utils import construir_resultado_lote
+            from core.utils import construir_resultado_lote, construir_filas_trazabilidad
+            from integrations.issue_service import crear_o_actualizar_issue_matriz_trazabilidad
             st.session_state.last_batch_result = construir_resultado_lote(
                 project_name, milestone_val or "Personalizado", run_results
             )
+            try:
+                generation_date = datetime.now().date().isoformat()
+                filas_trz = construir_filas_trazabilidad(run_results, generation_date)
+                execution_id = datetime.now().strftime("requerimientos-%Y%m%d-%H%M%S")
+                crear_o_actualizar_issue_matriz_trazabilidad(
+                    project_id=adapter.project_id,
+                    filas_matriz=filas_trz,
+                    metadata={
+                        "project_id": adapter.project_id,
+                        "milestone": milestone_val or "Personalizado",
+                        "execution_id": execution_id,
+                        "generated_at": datetime.now().isoformat(timespec="seconds"),
+                    },
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception("No se pudo publicar/actualizar TRZ-001 en GitLab.")
             st.session_state.last_project_name = project_name
             st.session_state.last_milestone = milestone_val or "Personalizado"
             guardar_estado_etapa("requerimientos", {

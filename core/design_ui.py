@@ -183,31 +183,24 @@ def _explicar_estado_diseno_from_p(p: dict) -> str:
 
 def _explicar_estado_diseno(resumen: dict) -> str:
     estado = resumen.get("estado_orientativo", "REVISIÓN HUMANA")
-    correcciones = resumen.get("correcciones_necesarias") or []
     q = extraer_porcentaje(resumen.get("indice_calidad_diseno"))
     s = extraer_porcentaje(resumen.get("indice_seguridad_diseno"))
 
     if estado == "CORREGIR":
-        if correcciones:
-            return (
-                f"El estado es CORREGIR porque se identificaron "
-                f"{len(correcciones)} correcciones necesarias. "
-                f"La evaluación actual registra Calidad {q} y Seguridad {s}."
-            )
         return (
-            "El estado es CORREGIR porque al menos una de las "
-            "métricas evaluadas presenta brechas que requieren revisión."
+            "El estado es CORREGIR porque al menos un índice evaluado no supera "
+            f"el umbral del 80 % (Calidad {q}, Seguridad {s})."
         )
     if estado == "CONFORME CON MEJORAS":
         return (
-            "Las métricas evaluadas cumplen los criterios establecidos, "
-            "pero existen precisiones u oportunidades adicionales que "
+            f"Los índices evaluados superan el umbral del 80 % (Calidad {q}, Seguridad {s}), "
+            "pero existen hallazgos u oportunidades adicionales que "
             "pueden fortalecer el diseño."
         )
     if estado == "CONFORME":
         return (
-            "Las métricas evaluadas cumplen los criterios establecidos "
-            "y no se identificaron correcciones necesarias."
+            f"Los índices evaluados superan el umbral del 80 % (Calidad {q}, Seguridad {s}) "
+            "y no se identificaron hallazgos adicionales."
         )
     return (
         "La evaluación requiere revisión humana debido a evidencia "

@@ -977,6 +977,21 @@ def nodo_design_central(state: AgentState):
     valid_element_ids = {
         elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
     }
+
+    for campo in ("trazabilidad_diseno", "requisitos_sin_relacion_evidente"):
+        items = resultado.get(campo) or []
+        vistos = set()
+        deduplicados = []
+        for item in items:
+            requisito = item.get("requisito")
+            if requisito in vistos:
+                logger.warning("Design_Central: requisito duplicado %r en %s — se elimina.", requisito, campo)
+                continue
+            vistos.add(requisito)
+            deduplicados.append(item)
+        if len(deduplicados) != len(items):
+            resultado[campo] = deduplicados
+
     validacion = validar_salida_central_diseno(
         resultado, [contexto["issue_iid"]], valid_requirement_codes, valid_element_ids,
     )
@@ -1014,6 +1029,18 @@ def nodo_design_quality(state: AgentState):
     valid_element_ids = {
         elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
     }
+
+    mc04_section = (resultado.get("metricas") or {}).get("acoplamiento_componentes") or {}
+    for comp in mc04_section.get("componentes_evaluados") or []:
+        deps = comp.get("dependencias_consideradas") or []
+        invalid_deps = [d for d in deps if d not in valid_element_ids]
+        if invalid_deps:
+            logger.warning(
+                "Design_Quality: %s tiene dependencias_consideradas inexistentes %s — se eliminan.",
+                comp.get("elemento_id"), invalid_deps,
+            )
+            comp["dependencias_consideradas"] = [d for d in deps if d in valid_element_ids]
+
     validacion = validar_salida_calidad_diseno(resultado.get("metricas", {}), valid_element_ids)
     if not validacion["valido"]:
         raise ValueError(f"Design_Quality: salida inválida: {validacion['errores']}")
@@ -1175,6 +1202,8 @@ def nodo_design_central_final(state: AgentState):
     indice_seguridad = calcular_indice_seguridad_diseno(ms03["valor"], ms04["valor"])
 
     estado = determinar_estado_diseno(
+        indice_calidad=indice_calidad,
+        indice_seguridad=indice_seguridad,
         correcciones_necesarias=evaluador["correcciones_necesarias"],
         precisiones_necesarias=evaluador["precisiones_necesarias"],
         oportunidades_mejora=evaluador["oportunidades_mejora"],
@@ -1607,6 +1636,8 @@ def nodo_coding_central_final(state: AgentState):
     indice_seguridad = calcular_indice_seguridad_codigo(ms05["valor"], ms06["valor"], ms07["valor"])
 
     estado = determinar_estado_codificacion(
+        indice_calidad=indice_calidad,
+        indice_seguridad=indice_seguridad,
         correcciones_necesarias=evaluador["correcciones_necesarias"],
         precisiones_necesarias=evaluador["precisiones_necesarias"],
         oportunidades_mejora=evaluador["oportunidades_mejora"],

@@ -565,23 +565,6 @@ La historia quedará como **Requiere modificación**. Después de corregirla, vu
         audit["llamadas_ollama"], audit["reintentos"], audit["por_agente"],
     )
 
-    try:
-        generation_date = datetime.now().date().isoformat()
-        filas_matriz_requerimientos_actual = construir_filas_trazabilidad(batch_result["issues"], generation_date)
-        execution_id = datetime.now().strftime("requerimientos-%Y%m%d-%H%M%S")
-        crear_o_actualizar_issue_matriz_trazabilidad(
-            project_id=adapter.project_id,
-            filas_matriz=filas_matriz_requerimientos_actual,
-            metadata={
-                "project_id": adapter.project_id,
-                "milestone": milestone,
-                "execution_id": execution_id,
-                "generated_at": datetime.now().isoformat(timespec="seconds"),
-            },
-        )
-    except Exception:
-        logger.exception("No se pudo publicar/actualizar TRZ-001 en GitLab.")
-
     return batch_result
 
 

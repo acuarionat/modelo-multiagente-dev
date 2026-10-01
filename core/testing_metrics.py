@@ -6,10 +6,13 @@ valores: los agentes de Calidad y Seguridad de Pruebas solo los
 interpretan.
 """
 
-UMBRAL_MC07 = 0.95
-UMBRAL_MC08 = 0.95
-UMBRAL_MS08 = 0.92
-UMBRAL_MS09 = 0.92
+from core.umbral_aprobacion import UMBRAL_APROBACION, supera_umbral
+
+# Umbral único (80 %, comparación estricta): ver core/umbral_aprobacion.py.
+UMBRAL_MC07 = UMBRAL_APROBACION
+UMBRAL_MC08 = UMBRAL_APROBACION
+UMBRAL_MS08 = UMBRAL_APROBACION
+UMBRAL_MS09 = UMBRAL_APROBACION
 
 _RESULTADOS_PRUEBA_RECONOCIDOS = {"APROBADA", "FALLIDA"}
 
@@ -77,7 +80,7 @@ def calcular_mc07(pruebas_funcionales: list) -> dict:
         "funciones_evaluadas": sorted(grupos),
         "estado_calculo": "calculada",
         "umbral": UMBRAL_MC07,
-        "cumple": valor >= UMBRAL_MC07,
+        "cumple": supera_umbral(valor),
     }
 
 
@@ -111,7 +114,7 @@ def calcular_mc08(fallos: list) -> dict:
         "fallos_corregidos_verificados": fallos_corregidos_verificados,
         "estado_calculo": "calculada",
         "umbral": UMBRAL_MC08,
-        "cumple": valor >= UMBRAL_MC08,
+        "cumple": supera_umbral(valor),
     }
 
 
@@ -140,7 +143,7 @@ def calcular_ms08(controles_seguridad: list) -> dict:
         "codigo": "MS-08", "valor": valor, "numerador": numerador, "denominador": denominador,
         "estado_calculo": "calculada",
         "umbral": UMBRAL_MS08,
-        "cumple": valor >= UMBRAL_MS08,
+        "cumple": supera_umbral(valor),
     }
 
 
@@ -183,7 +186,7 @@ def calcular_ms09(pruebas_seguridad: list, controles_seguridad: list) -> dict:
         "codigo": "MS-09", "valor": valor, "numerador": numerador, "denominador": denominador,
         "estado_calculo": "calculada",
         "umbral": UMBRAL_MS09,
-        "cumple": valor >= UMBRAL_MS09,
+        "cumple": supera_umbral(valor),
     }
 
 
@@ -203,12 +206,12 @@ def determinar_estado_pruebas(metricas: dict, *, error_tecnico: bool = False) ->
     ya calculadas:
 
     - Fallo técnico -> ERROR.
-    - Alguna métrica EVALUADA no cumple su umbral -> CORREGIR.
+    - Alguna métrica EVALUADA no supera el umbral (<= 80 %) -> CORREGIR.
     - Alguna métrica queda NO_EVALUABLE (evidencia insuficiente para
       juzgarla) -> REVISAR. NO_APLICA no activa esta rama: es un
       resultado legítimo (p. ej. MC-08 sin fallos detectados), no una
       brecha ni evidencia incompleta.
-    - Todas las métricas evaluables cumplen -> APROBADO.
+    - Todas las métricas evaluables superan el 80 % -> APROBADO.
     """
     if error_tecnico:
         return "ERROR"

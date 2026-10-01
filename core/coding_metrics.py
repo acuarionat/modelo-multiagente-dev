@@ -9,9 +9,12 @@ se define temporalmente como MC-05 (decisión de alcance documentada aquí,
 no un cálculo definitivo).
 """
 
-UMBRAL_MC05_SATISFACTORIO = 0.90
-UMBRAL_MS06_SATISFACTORIO = 0.90
-UMBRAL_MS07_SATISFACTORIO = 0.90
+from core.umbral_aprobacion import UMBRAL_APROBACION, supera_umbral
+
+# Umbral único (80 %, comparación estricta): ver core/umbral_aprobacion.py.
+UMBRAL_MC05_SATISFACTORIO = UMBRAL_APROBACION
+UMBRAL_MS06_SATISFACTORIO = UMBRAL_APROBACION
+UMBRAL_MS07_SATISFACTORIO = UMBRAL_APROBACION
 
 
 def calcular_mc05(evidencia_radon: dict) -> dict:
@@ -48,7 +51,7 @@ def calcular_mc05(evidencia_radon: dict) -> dict:
         "codigo": "MC-05", "herramienta": herramienta,
         "valor": valor, "numerador": numerador, "denominador": denominador,
         "estado_calculo": "calculada",
-        "satisfactorio": valor >= UMBRAL_MC05_SATISFACTORIO,
+        "satisfactorio": supera_umbral(valor),
     }
 
 
@@ -101,7 +104,7 @@ def calcular_ms06(evidencia_pip_audit: dict) -> dict:
     return {
         "codigo": "MS-06", "valor": valor, "numerador": numerador, "denominador": denominador,
         "estado_calculo": "calculada",
-        "satisfactorio": valor >= UMBRAL_MS06_SATISFACTORIO,
+        "satisfactorio": supera_umbral(valor),
     }
 
 
@@ -163,7 +166,7 @@ def calcular_ms07(evidencia_gitleaks: dict, archivos_analizados: list) -> dict:
         "denominador": total,
         "archivos_con_secretos": len(con_secretos),
         "secretos_detectados": evidencia_gitleaks.get("secretos_detectados", 0),
-        "cumple": valor >= UMBRAL_MS07_SATISFACTORIO,
+        "cumple": supera_umbral(valor),
         "estado_calculo": "calculada",
     }
 
@@ -197,19 +200,31 @@ def calcular_indice_seguridad_codigo(ms05_valor_normalizado, ms06_valor, ms07_va
 
 def determinar_estado_codificacion(
     *,
+    indice_calidad,
+    indice_seguridad,
     correcciones_necesarias: list,
     precisiones_necesarias: list,
     oportunidades_mejora: list,
     error_tecnico: bool = False,
 ):
-    """Estado orientativo determinístico: el Evaluador solo entrega categorías, Python decide el estado oficial."""
+    """
+    Estado orientativo determinístico, decidido por los PORCENTAJES (nunca
+    por el LLM) con el umbral único de core/umbral_aprobacion.py:
+
+    - Fallo técnico -> ERROR.
+    - Algún índice evaluable <= 80 %, o ningún índice evaluable -> CORREGIR.
+    - Todos los índices evaluables > 80 % -> CONFORME, o CONFORME CON MEJORAS
+      si el Evaluador dejó hallazgos (quedan como mejoras, no cambian el estado).
+    Un índice no_evaluable (None) no se convierte en 0.
+    """
     if error_tecnico:
         return "ERROR"
 
-    if correcciones_necesarias:
+    evaluables = [indice for indice in (indice_calidad, indice_seguridad) if indice is not None]
+    if not evaluables or not all(supera_umbral(indice) for indice in evaluables):
         return "CORREGIR"
 
-    if precisiones_necesarias or oportunidades_mejora:
+    if correcciones_necesarias or precisiones_necesarias or oportunidades_mejora:
         return "CONFORME CON MEJORAS"
 
     return "CONFORME"

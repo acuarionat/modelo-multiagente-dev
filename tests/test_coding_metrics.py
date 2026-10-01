@@ -129,9 +129,17 @@ assert calcular_indice_seguridad_codigo(None, None, None) is None
 # Estado orientativo
 # ==========================================================
 
-assert determinar_estado_codificacion(correcciones_necesarias=["x"], precisiones_necesarias=[], oportunidades_mejora=[]) == "CORREGIR"
-assert determinar_estado_codificacion(correcciones_necesarias=[], precisiones_necesarias=["x"], oportunidades_mejora=[]) == "CONFORME CON MEJORAS"
-assert determinar_estado_codificacion(correcciones_necesarias=[], precisiones_necesarias=[], oportunidades_mejora=[]) == "CONFORME"
-assert determinar_estado_codificacion(correcciones_necesarias=[], precisiones_necesarias=[], oportunidades_mejora=[], error_tecnico=True) == "ERROR"
+# El estado lo deciden los porcentajes con umbral estricto del 80 %:
+# > 80 % aprueba; <= 80 % (o ningún índice evaluable) corrige.
+sin_hallazgos = {"correcciones_necesarias": [], "precisiones_necesarias": [], "oportunidades_mejora": []}
+assert determinar_estado_codificacion(indice_calidad=0.81, indice_seguridad=0.95, **sin_hallazgos) == "CONFORME"
+assert determinar_estado_codificacion(indice_calidad=0.80, indice_seguridad=0.95, **sin_hallazgos) == "CORREGIR"
+assert determinar_estado_codificacion(indice_calidad=0.95, indice_seguridad=0.80, **sin_hallazgos) == "CORREGIR"
+assert determinar_estado_codificacion(indice_calidad=0.7999, indice_seguridad=1.0, **sin_hallazgos) == "CORREGIR"
+assert determinar_estado_codificacion(indice_calidad=0.90, indice_seguridad=None, **sin_hallazgos) == "CONFORME"
+assert determinar_estado_codificacion(indice_calidad=None, indice_seguridad=None, **sin_hallazgos) == "CORREGIR"
+assert determinar_estado_codificacion(indice_calidad=0.90, indice_seguridad=0.90, correcciones_necesarias=["x"], precisiones_necesarias=[], oportunidades_mejora=[]) == "CONFORME CON MEJORAS"
+assert determinar_estado_codificacion(indice_calidad=0.90, indice_seguridad=0.90, correcciones_necesarias=[], precisiones_necesarias=["x"], oportunidades_mejora=[]) == "CONFORME CON MEJORAS"
+assert determinar_estado_codificacion(indice_calidad=0.50, indice_seguridad=0.50, correcciones_necesarias=[], precisiones_necesarias=[], oportunidades_mejora=[], error_tecnico=True) == "ERROR"
 
 print("\nTodas las verificaciones de coding_metrics pasaron.")

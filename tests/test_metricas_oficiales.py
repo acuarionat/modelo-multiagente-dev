@@ -128,7 +128,7 @@ class MetricasOficialesTests(unittest.TestCase):
         self.assertEqual(result["metricas"]["cobertura_funcional"]["valor"], 0.75)
         self.assertEqual(result["metricas"]["adecuacion_funcional"]["valor"], 0.75)
         self.assertEqual(result["indicador"]["valor"], 0.75)
-        self.assertEqual(result["indicador"]["meta"], 0.95)
+        self.assertEqual(result["indicador"]["meta"], 0.80)
         self.assertEqual(result["indicador"]["estado"], "No cumple")
 
     def test_quality_zero_denominator_is_not_applicable(self):
@@ -157,7 +157,7 @@ class MetricasOficialesTests(unittest.TestCase):
         self.assertEqual(result["metricas"]["cobertura_seguridad"]["valor"], 1.0)
         self.assertEqual(result["metricas"]["clasificacion_datos"]["valor"], 0.5)
         self.assertEqual(result["indicador"]["valor"], 0.75)
-        self.assertEqual(result["indicador"]["meta"], 0.90)
+        self.assertEqual(result["indicador"]["meta"], 0.80)
         self.assertEqual(result["indicador"]["estado"], "No cumple")
 
     def test_lot3_meta_and_success(self):
@@ -171,7 +171,7 @@ class MetricasOficialesTests(unittest.TestCase):
                 "auditoria": "Sí",
             }},
         )
-        self.assertEqual(result["indicador"]["meta"], 0.95)
+        self.assertEqual(result["indicador"]["meta"], 0.80)
         self.assertEqual(result["indicador"]["estado"], "Cumple")
 
     def test_mc01_complete_has_coherent_python_justification(self):
@@ -268,7 +268,7 @@ class MetricasOficialesTests(unittest.TestCase):
             "objetivo": "Liberar el horario reservado",
         })
         self.assertEqual(result["lot_recomendado"], "LoT-2")
-        self.assertEqual(result["indicador"]["meta"], 0.90)
+        self.assertEqual(result["indicador"]["meta"], 0.80)
 
     def test_explicit_provenance_and_observation_requirements(self):
         requirements = completar_requerimientos_explicitos_faltantes([], {
@@ -456,6 +456,20 @@ class MetricasOficialesTests(unittest.TestCase):
         item = consolidar_lote({9}, central, quality, security, evaluation)["resultados"][0]
         self.assertEqual(item["estado_evaluacion"], "REVISIÓN REQUERIDA")
         self.assertEqual(item["recommendations"], [])
+
+    def test_indicator_uses_ms01_when_ms02_not_applicable(self):
+        result = completar_resultado_seguridad(
+            fixture_seguridad(aplicables=4, documentados=4, identificados=0, clasificados=0),
+            {"seguridad": {"maneja_datos_sensibles": "No"}},
+        )
+        ms01 = result["metricas"]["cobertura_seguridad"]
+        ms02 = result["metricas"]["clasificacion_datos"]
+        self.assertEqual(ms01["estado_calculo"], "Calculada")
+        self.assertEqual(ms01["valor"], 1.0)
+        self.assertEqual(ms02["estado_calculo"], "No aplica")
+        self.assertIsNone(ms02["valor"])
+        self.assertEqual(result["indicador"]["valor"], 1.0)
+        self.assertEqual(result["indicador"]["estado"], "Cumple")
 
     def test_invalid_security_value_does_not_feed_indicator(self):
         result = completar_resultado_seguridad(
