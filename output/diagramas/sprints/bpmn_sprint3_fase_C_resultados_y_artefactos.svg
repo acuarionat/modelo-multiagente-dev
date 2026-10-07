@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2420 1349" width="2420" height="1349">
+<defs>
+<marker id="a" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="11" markerHeight="9" orient="auto-start-reverse"><polygon points="0 0,10 4,0 8" fill="#243a63"/></marker>
+<marker id="ar" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="11" markerHeight="9" orient="auto-start-reverse"><polygon points="0 0,10 4,0 8" fill="#c0392b"/></marker>
+<marker id="ap" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="11" markerHeight="9" orient="auto-start-reverse"><polygon points="0 0,10 4,0 8" fill="#6b46b8"/></marker>
+<filter id="sh" x="-5%" y="-5%" width="110%" height="115%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.6" flood-color="#10204a" flood-opacity="0.22"/></filter>
+</defs>
+<rect width="2420" height="1349" fill="#ffffff"/>
+<rect x="3" y="3" width="2414" height="1343" fill="none" stroke="#000" stroke-width="5"/>
+<rect x="14" y="12" width="2392" height="46" rx="12" fill="#ffffff" stroke="#2b4a8a" stroke-width="2.2"/>
+<text x="1210.0" y="44.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="800" fill="#1b2a49" text-anchor="middle">SPRINT 3 · EVALUACIÓN POR ETAPAS · FASE C: RESULTADOS Y ARTEFACTOS (BPMN DETALLADO)</text>
+<rect x="12" y="70" width="2396" height="275" fill="#f1ebfb" stroke="#8d9bb5" stroke-width="1.4"/>
+<rect x="12" y="70" width="76" height="275" fill="#5e3fa3"/>
+<text transform="translate(42.75,207.5) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="25.0" font-weight="800" fill="#fff" letter-spacing="0.5">ENCARGADO DE</text>
+<text transform="translate(69.25,207.5) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="25.0" font-weight="800" fill="#fff" letter-spacing="0.5">LA DNTIC</text>
+<rect x="12" y="345" width="2396" height="190" fill="#e8edfa" stroke="#8d9bb5" stroke-width="1.4"/>
+<rect x="12" y="345" width="76" height="190" fill="#3a4f86"/>
+<text transform="translate(56.0,440.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="25.0" font-weight="800" fill="#fff" letter-spacing="0.5">INTERFAZ</text>
+<rect x="12" y="535" width="2396" height="235" fill="#dfeaf7" stroke="#8d9bb5" stroke-width="1.4"/>
+<rect x="12" y="535" width="76" height="235" fill="#2f6c9f"/>
+<text transform="translate(56.0,652.5) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="25.0" font-weight="800" fill="#fff" letter-spacing="0.5">ORQUESTACIÓN</text>
+<rect x="12" y="770" width="2396" height="235" fill="#fcefd9" stroke="#8d9bb5" stroke-width="1.4"/>
+<rect x="12" y="770" width="76" height="235" fill="#c0801f"/>
+<text transform="translate(56.0,887.5) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="25.0" font-weight="800" fill="#fff" letter-spacing="0.5">SERVICIOS</text>
+<rect x="12" y="1005" width="2396" height="240" fill="#fbe7e2" stroke="#8d9bb5" stroke-width="1.4"/>
+<rect x="12" y="1005" width="76" height="240" fill="#b8432e"/>
+<text transform="translate(32.66666666666667,1125.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="21.8" font-weight="800" fill="#fff" letter-spacing="0.5">EQUIPO DE</text>
+<text transform="translate(56.0,1125.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="21.8" font-weight="800" fill="#fff" letter-spacing="0.5">DESARROLLO</text>
+<text transform="translate(79.33333333333333,1125.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="21.8" font-weight="800" fill="#fff" letter-spacing="0.5">/ GITLAB</text>
+<circle cx="122" cy="887.5" r="30" fill="#e5f6ec" stroke="#2e8b57" stroke-width="4.666666666666667" filter="url(#sh)"/>
+<text x="122" y="893.98" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="800" fill="#1f6f43" text-anchor="middle">Inicio</text>
+<text x="98" y="947.5" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#1f6f43" text-anchor="start" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">Análisis</text>
+<text x="98" y="976.3" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#1f6f43" text-anchor="start" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">completado</text>
+<rect x="248.0" y="783.04" width="200" height="208.92" rx="13" fill="#fbe4b8" stroke="#c98a1a" stroke-width="2.6" filter="url(#sh)"/>
+<text x="348" y="838.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Construir las</text>
+<text x="348" y="870.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">filas de la</text>
+<text x="348" y="902.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">matriz de</text>
+<text x="348" y="934.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">trazabilidad</text>
+<text x="348" y="965.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">de la etapa</text>
+<rect x="263.3648" y="766.88" width="169.27040000000002" height="32.32" rx="16.16" fill="#1b2a49"/>
+<text x="348" y="790.7152" font-family="'Segoe UI', Arial, sans-serif" font-size="21.32" font-weight="700" fill="#fff" text-anchor="middle">Trazabilidad</text>
+<rect x="495.0" y="548.04" width="300" height="208.92" rx="13" fill="#d3eedd" stroke="#2f9e57" stroke-width="2.6" filter="url(#sh)"/>
+<text x="645" y="603.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Crear o actualizar el</text>
+<text x="645" y="635.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Issue TRZ-001, 002,</text>
+<text x="645" y="667.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">003 o 004 con la</text>
+<text x="645" y="699.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">matriz (solo si no</text>
+<text x="645" y="730.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">hubo errores)</text>
+<rect x="536.4864" y="531.88" width="217.02720000000002" height="32.32" rx="16.16" fill="#1b2a49"/>
+<text x="645" y="555.7152" font-family="'Segoe UI', Arial, sans-serif" font-size="21.32" font-weight="700" fill="#fff" text-anchor="middle">Adaptador GitLab</text>
+<rect x="515.0" y="1080.28" width="260" height="89.44" rx="13" fill="#ffffff" stroke="#b8432e" stroke-width="2.6" filter="url(#sh)"/>
+<text x="645" y="1118.0" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Recibir la matriz</text>
+<text x="645" y="1149.7" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">TRZ en GitLab</text>
+<rect x="817.5" y="783.04" width="245" height="208.92" rx="13" fill="#fbe4b8" stroke="#c98a1a" stroke-width="2.6" filter="url(#sh)"/>
+<text x="940" y="838.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Versionar la</text>
+<text x="940" y="870.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">matriz</text>
+<text x="940" y="902.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">(vMAJOR.MINOR):</text>
+<text x="940" y="934.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">sube solo si su</text>
+<text x="940" y="965.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">contenido cambia</text>
+<rect x="843.4256" y="766.88" width="193.14880000000002" height="32.32" rx="16.16" fill="#1b2a49"/>
+<text x="940" y="790.7152" font-family="'Segoe UI', Arial, sans-serif" font-size="21.32" font-weight="700" fill="#fff" text-anchor="middle">Memoria SQLite</text>
+<rect x="1108.0" y="548.04" width="320" height="208.92" rx="13" fill="#d3eedd" stroke="#2f9e57" stroke-width="2.6" filter="url(#sh)"/>
+<text x="1268" y="603.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Actualizar la etiqueta</text>
+<text x="1268" y="635.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">de cada Issue:</text>
+<text x="1268" y="667.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Revisada» o «Requiere</text>
+<text x="1268" y="699.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">modificación» (ERROR</text>
+<text x="1268" y="730.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">no la cambia)</text>
+<rect x="1159.4864" y="531.88" width="217.02720000000002" height="32.32" rx="16.16" fill="#1b2a49"/>
+<text x="1268" y="555.7152" font-family="'Segoe UI', Arial, sans-serif" font-size="21.32" font-weight="700" fill="#fff" text-anchor="middle">Adaptador GitLab</text>
+<rect x="1138.0" y="1080.28" width="260" height="89.44" rx="13" fill="#ffffff" stroke="#b8432e" stroke-width="2.6" filter="url(#sh)"/>
+<text x="1268" y="1118.0" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Recibir la</text>
+<text x="1268" y="1149.7" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">etiqueta del Issue</text>
+<rect x="1400.0" y="363.56" width="270" height="152.88" rx="13" fill="#ffffff" stroke="#2b4a8a" stroke-width="2.6" filter="url(#sh)"/>
+<text x="1535" y="401.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Presentar «Resumen</text>
+<text x="1535" y="433.0" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">general», «Detalle</text>
+<text x="1535" y="464.7" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">por …» y «Matriz y</text>
+<text x="1535" y="496.4" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">documentos»</text>
+<rect x="1410.0" y="108.2" width="250" height="198.6" rx="13" fill="#ffffff" stroke="#6b46b8" stroke-width="2.6" filter="url(#sh)"/>
+<circle cx="1430.0" cy="124.2" r="4.6" fill="none" stroke="#6b46b8" stroke-width="2"/>
+<path d="M1422.0,137.2 q8,-11 16,0" fill="none" stroke="#6b46b8" stroke-width="2"/>
+<text x="1535" y="159.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Revisar cada</text>
+<text x="1535" y="191.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Issue: «Resumen»,</text>
+<text x="1535" y="223.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Calidad»,</text>
+<text x="1535" y="255.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Seguridad» y</text>
+<text x="1535" y="286.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Formalización»</text>
+<rect x="1707.5" y="124.06" width="245" height="166.88" rx="13" fill="#ffffff" stroke="#6b46b8" stroke-width="2.6" filter="url(#sh)"/>
+<circle cx="1727.5" cy="140.06" r="4.6" fill="none" stroke="#6b46b8" stroke-width="2"/>
+<path d="M1719.5,153.06 q8,-11 16,0" fill="none" stroke="#6b46b8" stroke-width="2"/>
+<text x="1830" y="175.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Presionar</text>
+<text x="1830" y="207.5" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Publicar</text>
+<text x="1830" y="239.2" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">retroalimentación</text>
+<text x="1830" y="270.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">en GitLab»</text>
+<rect x="1705.0" y="548.04" width="250" height="208.92" rx="13" fill="#d3eedd" stroke="#2f9e57" stroke-width="2.6" filter="url(#sh)"/>
+<text x="1830" y="603.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Publicar el</text>
+<text x="1830" y="635.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">comentario de</text>
+<text x="1830" y="667.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">retroalimentación</text>
+<text x="1830" y="699.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">y la etiqueta en</text>
+<text x="1830" y="730.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">el Issue</text>
+<rect x="1721.4864" y="531.88" width="217.02720000000002" height="32.32" rx="16.16" fill="#1b2a49"/>
+<text x="1830" y="555.7152" font-family="'Segoe UI', Arial, sans-serif" font-size="21.32" font-weight="700" fill="#fff" text-anchor="middle">Adaptador GitLab</text>
+<rect x="1715.0" y="1064.42" width="230" height="121.16" rx="13" fill="#ffffff" stroke="#b8432e" stroke-width="2.6" filter="url(#sh)"/>
+<text x="1830" y="1102.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Recibir el</text>
+<text x="1830" y="1133.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">comentario en el</text>
+<text x="1830" y="1165.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Issue</text>
+<rect x="1987.5" y="60.620000000000005" width="225" height="293.76" rx="13" fill="#ffffff" stroke="#6b46b8" stroke-width="2.6" filter="url(#sh)"/>
+<circle cx="2007.5" cy="76.62" r="4.6" fill="none" stroke="#6b46b8" stroke-width="2"/>
+<path d="M1999.5,89.62 q8,-11 16,0" fill="none" stroke="#6b46b8" stroke-width="2"/>
+<text x="2100" y="112.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Generar y</text>
+<text x="2100" y="144.0" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">descargar el</text>
+<text x="2100" y="175.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Reporte</text>
+<text x="2100" y="207.5" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Ejecutivo»</text>
+<text x="2100" y="239.2" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">(.pdf), el</text>
+<text x="2100" y="270.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Documento</text>
+<text x="2100" y="302.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Formal» (.docx)</text>
+<text x="2100" y="334.4" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">y la matriz</text>
+<rect x="1950.0" y="783.04" width="300" height="208.92" rx="13" fill="#fbe4b8" stroke="#c98a1a" stroke-width="2.6" filter="url(#sh)"/>
+<text x="2100" y="838.9" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Generar el reporte,</text>
+<text x="2100" y="870.6" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">el documento formal y</text>
+<text x="2100" y="902.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">la matriz (.xlsx;</text>
+<text x="2100" y="934.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">.csv en</text>
+<text x="2100" y="965.8" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Requerimientos)</text>
+<rect x="2033.2736" y="766.88" width="133.45280000000002" height="32.32" rx="16.16" fill="#1b2a49"/>
+<text x="2100" y="790.7152" font-family="'Segoe UI', Arial, sans-serif" font-size="21.32" font-weight="700" fill="#fff" text-anchor="middle">Servicios</text>
+<polygon points="2292,175.5 2324,207.5 2292,239.5 2260,207.5" fill="#fdebc4" stroke="#c98a1a" stroke-width="3" filter="url(#sh)"/>
+<path d="M2280.48,195.98 L2303.52,219.02 M2280.48,219.02 L2303.52,195.98" stroke="#a9701a" stroke-width="4" stroke-linecap="round"/>
+<text x="2292" y="139.5" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#7a4b00" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">¿Quedan</text>
+<text x="2292" y="166.5" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#7a4b00" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">etapas?</text>
+<circle cx="2376" cy="388.0" r="26" fill="#fbe0dc" stroke="#c0392b" stroke-width="5.296296296296296" filter="url(#sh)"/>
+<text x="2376" y="394.48" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="800" fill="#a52a1d" text-anchor="middle">Fin</text>
+<rect x="1968.0" y="1009.84" width="320" height="230.32" rx="13" fill="#ffffff" stroke="#b8432e" stroke-width="2.6" filter="url(#sh)"/>
+<circle cx="1988.0" cy="1025.8400000000001" r="4.6" fill="none" stroke="#b8432e" stroke-width="2"/>
+<path d="M1980.0,1038.8400000000001 q8,-11 16,0" fill="none" stroke="#b8432e" stroke-width="2"/>
+<text x="2128" y="1061.5" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">Revisar etiqueta,</text>
+<text x="2128" y="1093.3" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">comentario y matriz;</text>
+<text x="2128" y="1125.0" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">corregir los Issues</text>
+<text x="2128" y="1156.7" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">«Requiere</text>
+<text x="2128" y="1188.4" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">modificación» y</text>
+<text x="2128" y="1220.1" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="500" fill="#17233d" text-anchor="middle">marcarlos «Pendiente»</text>
+<circle cx="2292" cy="420.0" r="18" fill="#fff" stroke="#1b2a49" stroke-width="2.4"/>
+<circle cx="2292" cy="420.0" r="13.5" fill="none" stroke="#1b2a49" stroke-width="1.8"/>
+<polygon points="2284,414.0 2294,414.0 2294,410.0 2302,420.0 2294,430.0 2294,426.0 2284,426.0" fill="#1b2a49" stroke="#1b2a49" stroke-width="1.8"/>
+<text x="2292" y="466.0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3a4f86" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">Fase A:</text>
+<text x="2292" y="493.0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3a4f86" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">siguiente</text>
+<text x="2292" y="520.0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3a4f86" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">etapa</text>
+<circle cx="2343" cy="1125.0" r="18" fill="#fff" stroke="#1b2a49" stroke-width="2.4"/>
+<circle cx="2343" cy="1125.0" r="13.5" fill="none" stroke="#1b2a49" stroke-width="1.8"/>
+<polygon points="2335,1119.0 2345,1119.0 2345,1115.0 2353,1125.0 2345,1135.0 2345,1131.0 2335,1131.0" fill="#1b2a49" stroke="#1b2a49" stroke-width="1.8"/>
+<text x="2343" y="1171.0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3a4f86" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">Fase A:</text>
+<text x="2343" y="1198.0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3a4f86" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">nueva</text>
+<text x="2343" y="1225.0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3a4f86" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">evaluación</text>
+<path d="M152.0,887.5 L248.0,887.5" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M448.0,887.5 L471.5,887.5 L471.5,652.5 L495.0,652.5" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M795.0,652.5 L940,652.5 L940,766.9" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M1062.5,887.5 L1085.0,887.5 L1085.0,652.5 L1108.0,652.5" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M1428.0,652.5 L1535,652.5 L1535,516.4" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M1535,363.6 L1535,306.8" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M1660.0,207.5 L1707.5,207.5" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M1830,290.9 L1830,531.9" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M1952.5,207.5 L1987.5,207.5" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M2100,354.4 L2100,766.9" fill="none" stroke="#3b5aa0" stroke-width="2.8" stroke-dasharray="3 5" stroke-linejoin="round" marker-end="url(#a)" marker-start="url(#a)"/>
+<path d="M2212.5,207.5 L2260.0,207.5" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<path d="M2324.0,207.5 L2376,207.5 L2376,362.0" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<text x="2370" y="193.5" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3b2a86" text-anchor="middle" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">No</text>
+<path d="M645,757.0 L645,1080.3" fill="none" stroke="#c0392b" stroke-width="2.8" stroke-dasharray="9 6" stroke-linejoin="round" marker-end="url(#ar)"/>
+<path d="M1268,757.0 L1268,1080.3" fill="none" stroke="#c0392b" stroke-width="2.8" stroke-dasharray="9 6" stroke-linejoin="round" marker-end="url(#ar)"/>
+<path d="M1830,757.0 L1830,1064.4" fill="none" stroke="#c0392b" stroke-width="2.8" stroke-dasharray="9 6" stroke-linejoin="round" marker-end="url(#ar)"/>
+<path d="M1945.0,1125.0 L1968.0,1125.0" fill="none" stroke="#c0392b" stroke-width="2.8" stroke-dasharray="9 6" stroke-linejoin="round" marker-end="url(#ar)"/>
+<path d="M2292,239.5 L2292,401.0" fill="none" stroke="#243a63" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#a)"/>
+<text x="2306" y="360.0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#3b2a86" text-anchor="start" stroke="#ffffff" stroke-width="6.0" paint-order="stroke" stroke-linejoin="round">Sí</text>
+<path d="M2288.0,1125.0 L2324.0,1125.0" fill="none" stroke="#c0392b" stroke-width="2.8" stroke-dasharray="9 6" stroke-linejoin="round" marker-end="url(#ar)"/>
+<rect x="14" y="1261" width="2392" height="74" rx="10" fill="#ffffff" stroke="#9fb0cf" stroke-width="1.8"/>
+<rect x="40" y="1275" width="26" height="18" rx="5" fill="#d9e6fa" stroke="#2f6fb3" stroke-width="2.2"/>
+<text x="76" y="1293.0" font-family="'Segoe UI', Arial, sans-serif" font-size="25" font-weight="600" fill="#2f6fb3">Control</text>
+<rect x="209.53125" y="1275" width="26" height="18" rx="5" fill="#d3eedd" stroke="#2f9e57" stroke-width="2.2"/>
+<text x="245.53125" y="1293.0" font-family="'Segoe UI', Arial, sans-serif" font-size="25" font-weight="600" fill="#2f7d4a">Seguimiento</text>
+<rect x="435.9375" y="1275" width="26" height="18" rx="5" fill="#fbe4b8" stroke="#c98a1a" stroke-width="2.2"/>
+<text x="471.9375" y="1293.0" font-family="'Segoe UI', Arial, sans-serif" font-size="25" font-weight="600" fill="#9a6a14">Trazabilidad</text>
+<rect x="676.5625" y="1275" width="26" height="18" rx="5" fill="#ffffff" stroke="#2b4a8a" stroke-width="2.2"/>
+<text x="712.5625" y="1293.0" font-family="'Segoe UI', Arial, sans-serif" font-size="25" font-weight="600" fill="#17233d">Complementario</text>
+<line x1="945.625" y1="1284" x2="995.625" y2="1284" stroke="#c0392b" stroke-width="2.4" stroke-dasharray="9 6"/>
+<text x="1005.625" y="1293.0" font-family="'Segoe UI', Arial, sans-serif" font-size="25" fill="#a52a1d" font-weight="600">Entrada/salida con el Equipo de desarrollo o GitLab</text>
+<line x1="1740.0" y1="1284" x2="1790.0" y2="1284" stroke="#3b5aa0" stroke-width="2.4" stroke-dasharray="3 5"/>
+<text x="1800.0" y="1293.0" font-family="'Segoe UI', Arial, sans-serif" font-size="25" fill="#3b5aa0" font-weight="600">Invocación / lectura de datos</text>
+<text x="1210.0" y="1321" font-family="'Segoe UI', Arial, sans-serif" font-size="23" fill="#4a5878" text-anchor="middle">El chip de cada caja indica el componente de la herramienta que realiza la tarea · los nombres entre «» son los textos reales de la interfaz de TraceDev</text>
+</svg>

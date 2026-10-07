@@ -13,6 +13,10 @@ from pathlib import Path
 import streamlit as st
 
 
+# Único rol existente hoy en la herramienta; se muestra bajo el nombre de la sesión.
+SESSION_ROLE = "Encargado de DNTIC"
+
+
 def _data_uri(path: str | Path, mime_type: str) -> str:
     payload = base64.b64encode(Path(path).read_bytes()).decode("ascii")
     return f"data:{mime_type};base64,{payload}"
@@ -117,39 +121,104 @@ def inject_global_styles() -> None:
             font-weight: 760 !important;
         }
 
-        /* Encabezado institucional + producto */
+        /* Encabezado institucional + producto.
+           Vive en la barra superior (header) de Streamlit, a la izquierda de
+           Deploy / menú. Es position: fixed y queda por debajo del header
+           nativo, que se vuelve transparente: así Deploy, el menú y el botón
+           del sidebar siguen siendo clicables. Solo presentación. */
+        :root {
+            --nexo-header-h: 5.3rem;
+            --nexo-sidebar-w: 292px;
+            --nexo-toolbar-w: 13.4rem; /* Deploy + menú + indicador Running/Stop */
+        }
+
+        .stApp:has(.nexo-hero) [data-testid="stHeader"] {
+            height: var(--nexo-header-h);
+            border-bottom: 0 !important;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            pointer-events: none;
+        }
+
+        .stApp:has(.nexo-hero) [data-testid="stToolbar"] {
+            height: 100%;
+        }
+
+        .stApp:has(.nexo-hero) [data-testid="stHeader"] button,
+        .stApp:has(.nexo-hero) [data-testid="stHeader"] a,
+        .stApp:has(.nexo-hero) [data-testid="stStatusWidget"] {
+            pointer-events: auto;
+        }
+
+        /* Controles nativos sobre el fondo azul del banner */
+        .stApp:has(.nexo-hero) [data-testid="stHeader"] button,
+        .stApp:has(.nexo-hero) [data-testid="stHeader"] button *,
+        .stApp:has(.nexo-hero) [data-testid="stStatusWidget"],
+        .stApp:has(.nexo-hero) [data-testid="stStatusWidget"] * {
+            color: #FFFFFF !important;
+            -webkit-text-fill-color: #FFFFFF !important;
+        }
+
+        .stApp:has(.nexo-hero) [data-testid="stHeader"] button:hover {
+            background: rgba(255,255,255,.14) !important;
+        }
+
+        /* El banner sale del flujo: se anula el hueco que dejaba su contenedor
+           y el contenido arranca justo debajo del header. */
+        .stApp:has(.nexo-hero) [data-testid="stElementContainer"]:has(.nexo-hero) {
+            height: 0 !important;
+            min-height: 0 !important;
+            margin-bottom: -.92rem !important;
+            overflow: visible !important;
+        }
+
+        .stApp:has(.nexo-hero) [data-testid="stMainBlockContainer"] {
+            padding-top: calc(var(--nexo-header-h) + 1.3rem) !important;
+        }
+
         .nexo-hero {
-            position: relative;
-            display: grid;
-            grid-template-columns: minmax(190px, 26%) 1px 1fr;
+            position: fixed;
+            top: 0;
+            left: var(--nexo-sidebar-w);
+            right: 0;
+            z-index: 999989;
+            box-sizing: border-box;
+            display: flex;
             align-items: center;
-            gap: clamp(1.15rem, 2.5vw, 2.2rem);
-            min-height: 154px;
-            margin: .25rem 0 .55rem;
-            padding: 1.35rem clamp(1.25rem, 3vw, 2.5rem);
+            gap: clamp(.75rem, 1.3vw, 1.25rem);
+            height: var(--nexo-header-h);
+            margin: 0;
+            padding: .5rem var(--nexo-toolbar-w) .5rem clamp(1rem, 2vw, 1.75rem);
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,.16);
-            border-radius: var(--nexo-radius-lg);
+            border-bottom: 1px solid rgba(255,255,255,.16);
             background:
                 radial-gradient(circle at 92% 8%, rgba(242,195,0,.19), transparent 24%),
                 linear-gradient(118deg, var(--emi-blue-deep), var(--emi-blue) 72%, #0A63AE);
-            box-shadow: var(--nexo-shadow);
+            box-shadow: 0 6px 22px rgba(5, 47, 86, .16);
+            transition: left .26s ease;
         }
 
-        /* Sesión activa: identidad del usuario visible en el header, esquina
-           superior derecha. Solo presentación (no altera st.login/st.logout). */
+        /* Con el sidebar cerrado el banner arranca donde termina el riel de
+           íconos (todo el ancho en pantallas angostas) y deja libre, a la
+           izquierda, el botón nativo que vuelve a abrir el menú. */
+        .stApp:has([data-testid="stSidebar"][aria-expanded="false"]) .nexo-hero {
+            left: var(--nexo-collapsed-w, 0px);
+            padding-left: 3.6rem;
+        }
+
+        /* Sesión activa: nombre y rol de quien inició sesión, junto al logo de
+           TraceDev en el header. Solo presentación (no altera st.login/st.logout). */
         .nexo-session-badge {
-            position: absolute;
-            top: 1rem;
-            right: 1.35rem;
-            z-index: 2;
             display: inline-flex;
+            grid-area: session;
             align-items: center;
-            gap: .5rem;
-            max-width: min(46%, 260px);
-            padding: .38rem .8rem .38rem .5rem;
+            justify-self: start;
+            gap: .6rem;
+            min-width: 0;
+            max-width: 100%;
+            padding: .3rem .95rem .3rem .4rem;
             border: 1px solid rgba(255,255,255,.32);
-            border-radius: 999px;
+            border-radius: 14px;
             background: rgba(6, 58, 107, .4);
             backdrop-filter: blur(8px);
         }
@@ -158,65 +227,97 @@ def inject_global_styles() -> None:
             display: inline-grid;
             flex: 0 0 auto;
             place-items: center;
-            width: 1.65rem;
-            height: 1.65rem;
+            width: 1.9rem;
+            height: 1.9rem;
             border-radius: 50%;
             background: var(--emi-yellow);
             color: var(--emi-blue-deep);
-            font-size: .74rem;
+            font-size: .8rem;
             font-weight: 820;
         }
 
-        .nexo-session-name {
+        .nexo-session-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            line-height: 1.25;
+        }
+
+        .nexo-session-name,
+        .nexo-session-role {
             overflow: hidden;
-            color: #FFFFFF;
-            font-size: .8rem;
-            font-weight: 700;
             white-space: nowrap;
             text-overflow: ellipsis;
         }
 
+        .nexo-session-name {
+            color: #FFFFFF;
+            font-size: .78rem;
+            font-weight: 700;
+        }
+
+        .nexo-session-role {
+            color: var(--emi-yellow);
+            font-size: .68rem;
+            font-weight: 600;
+        }
+
         .nexo-entity {
             display: flex;
+            flex: 0 0 auto;
             align-items: center;
             justify-content: center;
-            min-height: 112px;
-            padding: .9rem 1rem;
+            height: 100%;
+            padding: .3rem .7rem;
             border: 1px solid rgba(255,255,255,.8);
-            border-radius: 14px;
+            border-radius: 12px;
             background: rgba(255,255,255,.97);
         }
 
         .nexo-entity img {
             display: block;
-            width: min(100%, 240px);
-            max-height: 96px;
+            width: auto;
+            max-width: 170px;
+            height: 100%;
             object-fit: contain;
         }
 
         .nexo-hero-divider {
+            flex: 0 0 auto;
             width: 1px;
-            height: 92px;
+            height: 2.9rem;
             background: linear-gradient(transparent, rgba(255,255,255,.48), transparent);
         }
 
-        .nexo-product { min-width: 0; }
+        .nexo-product {
+            display: grid;
+            flex: 0 6 auto;
+            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-areas:
+                "kicker kicker"
+                "logo   session";
+            align-items: center;
+            column-gap: 1rem;
+            row-gap: .22rem;
+            min-width: 0;
+        }
 
         .nexo-product-kicker {
             display: inline-flex;
+            grid-area: kicker;
             align-items: center;
             gap: .5rem;
-            margin-bottom: .48rem;
             color: var(--emi-yellow);
-            font-size: .72rem;
+            font-size: .62rem;
             font-weight: 800;
             letter-spacing: .15em;
+            line-height: 1.2;
             text-transform: uppercase;
         }
 
         .nexo-product-kicker::before {
             content: "";
-            width: 1.75rem;
+            width: 1.5rem;
             height: 2px;
             border-radius: 2px;
             background: currentColor;
@@ -224,16 +325,12 @@ def inject_global_styles() -> None:
 
         .nexo-product img {
             display: block;
-            width: min(100%, 470px);
-            height: 86px;
+            grid-area: logo;
+            width: auto;
+            max-width: 100%;
+            height: 3rem;
             object-fit: contain;
             object-position: left center;
-        }
-
-        .nexo-product p {
-            margin: .2rem 0 0;
-            color: #DCEAF6 !important;
-            font-size: .95rem;
         }
 
         /* Navegación por etapas */
@@ -353,7 +450,7 @@ def inject_global_styles() -> None:
             box-shadow: var(--nexo-shadow-sm);
         }
 
-        .stage-context-copy span {
+        .stage-context-copy > span {
             color: var(--nexo-muted);
             font-size: .7rem;
             font-weight: 800;
@@ -389,6 +486,99 @@ def inject_global_styles() -> None:
 
         .milestone-chip strong { color: var(--emi-blue-dark); font-size: .88rem; }
 
+        /* Título de área principal (Evaluación por etapas, Fases de la etapa, ...):
+           icono institucional + rótulo con acento amarillo + nombre + línea suave. */
+        .nexo-area-title {
+            display: flex;
+            align-items: center;
+            gap: .9rem;
+            margin: .7rem 0 .1rem;
+        }
+
+        .nexo-area-title-mark {
+            display: grid;
+            flex: 0 0 auto;
+            place-items: center;
+            width: 2.55rem;
+            height: 2.55rem;
+            border-radius: 13px;
+            background: linear-gradient(135deg, var(--emi-blue-deep), var(--emi-blue));
+            color: var(--emi-yellow);
+            box-shadow: 0 7px 16px rgba(7, 84, 154, .22), inset 0 0 0 1px rgba(255,255,255,.14);
+        }
+
+        .nexo-area-title-mark svg { width: 1.3rem; height: 1.3rem; }
+
+        .nexo-area-title-copy { min-width: 0; }
+
+        .nexo-area-title-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            color: var(--emi-blue);
+            font-size: .68rem;
+            font-weight: 800;
+            letter-spacing: .15em;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .nexo-area-title-eyebrow::before {
+            content: "";
+            width: 1.4rem;
+            height: 2px;
+            border-radius: 2px;
+            background: var(--emi-yellow);
+        }
+
+        .nexo-area-title-name {
+            margin: .12rem 0 0;
+            color: var(--emi-blue-dark);
+            font-size: clamp(1.28rem, 1.9vw, 1.6rem);
+            font-weight: 800;
+            letter-spacing: -.025em;
+            line-height: 1.15;
+        }
+
+        .nexo-area-title-desc {
+            margin: .22rem 0 0;
+            color: var(--nexo-muted) !important;
+            font-size: .84rem;
+            line-height: 1.4;
+        }
+
+        .nexo-area-title-rule {
+            flex: 1 1 auto;
+            min-width: 1.5rem;
+            height: 2px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--nexo-line-strong), rgba(200, 214, 226, 0));
+        }
+
+        /* Subtítulo de una acción dentro de un área (p. ej. «Seleccionar etapa»),
+           con el mismo acento amarillo de los títulos de sección. */
+        .nexo-subarea-title {
+            position: relative;
+            margin: .6rem 0 0;
+            padding-left: .85rem;
+            color: var(--emi-blue-dark);
+            font-size: 1.05rem;
+            font-weight: 780;
+            letter-spacing: -.015em;
+            line-height: 1.3;
+        }
+
+        .nexo-subarea-title::before {
+            content: "";
+            position: absolute;
+            top: .12rem;
+            bottom: .1rem;
+            left: 0;
+            width: 4px;
+            border-radius: 10px;
+            background: var(--emi-yellow);
+        }
+
         /* Zona de configuración del proyecto: agrupa título, formulario y
            estado en un único bloque de ancho legible y centrado. */
         .st-key-config_workspace {
@@ -396,16 +586,8 @@ def inject_global_styles() -> None:
             margin: 0 auto !important;
         }
 
-        .st-key-config_back_row {
-            margin: -.25rem 0 .7rem !important;
-        }
-
-        .st-key-config_back_row button {
-            min-height: 2.1rem !important;
-            padding: .3rem .9rem !important;
-            font-size: .82rem !important;
-            border-radius: 999px !important;
-            box-shadow: none !important;
+        .st-key-dashboard_title {
+            margin-bottom: .8rem !important;
         }
 
         .st-key-config_status_panel {
@@ -475,6 +657,37 @@ def inject_global_styles() -> None:
             border-color: var(--emi-blue) !important;
             background: var(--emi-blue-soft) !important;
             color: var(--emi-blue-dark) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 6px 15px rgba(5,47,86,.1) !important;
+        }
+
+        /* Botón de enlace (p. ej. «Editar en GitLab»): mismo aspecto que los demás */
+        [data-testid="stBaseLinkButton-secondary"] {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: .4rem;
+            min-height: 2.75rem !important;
+            border: 1px solid #AFC7DA !important;
+            border-radius: 11px !important;
+            background: #FFFFFF !important;
+            color: var(--emi-blue-dark) !important;
+            font-size: .88rem !important;
+            font-weight: 740 !important;
+            text-decoration: none !important;
+            box-shadow: 0 2px 7px rgba(5,47,86,.05) !important;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease !important;
+        }
+
+        [data-testid="stBaseLinkButton-secondary"] *,
+        [data-testid="stBaseLinkButton-secondary"] p {
+            color: inherit !important;
+            font-weight: 400 !important;
+        }
+
+        [data-testid="stBaseLinkButton-secondary"]:hover {
+            border-color: var(--emi-blue) !important;
+            background: var(--emi-blue-soft) !important;
             transform: translateY(-1px) !important;
             box-shadow: 0 6px 15px rgba(5,47,86,.1) !important;
         }
@@ -606,6 +819,295 @@ def inject_global_styles() -> None:
 
         div[data-testid="stExpander"] details > div {
             padding: .45rem .85rem .9rem !important;
+        }
+
+        /* Fases de la etapa: barra de botones «Ver / Ocultar» y panel visible.
+           Todos los paneles se generan siempre (la lógica de la etapa no
+           cambia); los ocultos solo llevan display:none (clase phase_off_*). */
+        [class*="st-key-phase_bar_"] {
+            margin: .55rem 0 1rem;
+            padding: .5rem;
+            border: 1px solid var(--nexo-line);
+            border-radius: 16px;
+            background: #F1F5F8;
+        }
+
+        [class*="st-key-phase_bar_"] [data-testid="stHorizontalBlock"] {
+            gap: .5rem !important;
+        }
+
+        [class*="st-key-phase_bar_"] button {
+            min-height: 2.8rem;
+            border: 1px solid var(--nexo-line-strong) !important;
+            border-radius: 12px !important;
+            background: #FFFFFF !important;
+            box-shadow: none !important;
+            transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+        }
+
+        [class*="st-key-phase_bar_"] button,
+        [class*="st-key-phase_bar_"] button * {
+            color: var(--emi-blue-dark) !important;
+            -webkit-text-fill-color: var(--emi-blue-dark) !important;
+            font-weight: 740 !important;
+        }
+
+        [class*="st-key-phase_bar_"] button:hover {
+            border-color: var(--emi-blue) !important;
+            background: var(--emi-blue-soft) !important;
+        }
+
+        [class*="st-key-phase_bar_"] button[data-testid="stBaseButton-primary"] {
+            border-color: var(--emi-blue) !important;
+            background: var(--emi-blue) !important;
+            box-shadow: 0 6px 16px rgba(7,84,154,.22) !important;
+        }
+
+        [class*="st-key-phase_bar_"] button[data-testid="stBaseButton-primary"],
+        [class*="st-key-phase_bar_"] button[data-testid="stBaseButton-primary"] * {
+            color: #FFFFFF !important;
+            -webkit-text-fill-color: #FFFFFF !important;
+        }
+
+        /* Selector de resultados: mismo estilo que la barra de fases */
+        [class*="st-key-result_bar_"] {
+            margin: .55rem 0 1rem;
+            padding: .5rem;
+            border: 1px solid var(--nexo-line);
+            border-radius: 16px;
+            background: #F1F5F8;
+        }
+
+        [class*="st-key-result_bar_"] [data-testid="stHorizontalBlock"] {
+            gap: .5rem !important;
+        }
+
+        [class*="st-key-result_bar_"] button {
+            min-height: 2.8rem;
+            border: 1px solid var(--nexo-line-strong) !important;
+            border-radius: 12px !important;
+            background: #FFFFFF !important;
+            box-shadow: none !important;
+            transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+        }
+
+        [class*="st-key-result_bar_"] button,
+        [class*="st-key-result_bar_"] button * {
+            color: var(--emi-blue-dark) !important;
+            -webkit-text-fill-color: var(--emi-blue-dark) !important;
+            font-weight: 740 !important;
+        }
+
+        [class*="st-key-result_bar_"] button:hover {
+            border-color: var(--emi-blue) !important;
+            background: var(--emi-blue-soft) !important;
+        }
+
+        [class*="st-key-result_bar_"] button[data-testid="stBaseButton-primary"] {
+            border-color: var(--emi-blue) !important;
+            background: var(--emi-blue) !important;
+            box-shadow: 0 6px 16px rgba(7,84,154,.22) !important;
+        }
+
+        [class*="st-key-result_bar_"] button[data-testid="stBaseButton-primary"],
+        [class*="st-key-result_bar_"] button[data-testid="stBaseButton-primary"] * {
+            color: #FFFFFF !important;
+            -webkit-text-fill-color: #FFFFFF !important;
+        }
+
+        [class*="st-key-phase_off_"],
+        [data-testid="stLayoutWrapper"]:has(> [class*="st-key-phase_off_"]) {
+            display: none !important;
+        }
+
+        [class*="st-key-phase_on_"] {
+            padding: 1rem 1.2rem 1.25rem;
+            border: 1px solid var(--nexo-line);
+            border-top: 3px solid var(--emi-blue);
+            border-radius: 16px;
+            background: var(--nexo-surface);
+            box-shadow: var(--nexo-shadow-sm);
+        }
+
+        .phase-panel-head {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            margin-bottom: .5rem;
+        }
+
+        .phase-panel-letter {
+            display: inline-grid;
+            flex: 0 0 auto;
+            place-items: center;
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 9px;
+            background: var(--emi-blue);
+            color: #FFFFFF;
+            font-size: .82rem;
+            font-weight: 820;
+        }
+
+        .phase-panel-title {
+            color: var(--emi-blue-dark);
+            font-size: .98rem;
+            font-weight: 780;
+        }
+
+        /* Entradas (issues) con su estado de revisión en GitLab */
+        .entry-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+            margin: .2rem 0 .55rem;
+        }
+
+        .entry-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: .45rem .75rem;
+            margin: .4rem 0;
+            padding: .6rem .85rem;
+            border: 1px solid var(--nexo-line);
+            border-radius: 12px;
+            background: #F9FBFD;
+        }
+
+        .entry-id {
+            color: var(--emi-blue-dark);
+            font-size: .88rem;
+            font-weight: 800;
+        }
+
+        .entry-text {
+            flex: 1 1 14rem;
+            min-width: 0;
+            color: var(--nexo-ink);
+            font-size: .86rem;
+            line-height: 1.4;
+        }
+
+        .wf-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: .16rem .62rem;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            font-size: .7rem;
+            font-weight: 780;
+            letter-spacing: .01em;
+            white-space: nowrap;
+        }
+
+        .wf-chip.pendiente { border-color: #E6C340; background: #FFF6D1; color: #6F5400; }
+        .wf-chip.rework { border-color: #E3A09B; background: #FDE8E6; color: #9A2A24; }
+        .wf-chip.revisada { border-color: #9CC3EA; background: #E4EFFA; color: #17559A; }
+        .wf-chip.sin-estado { border-color: var(--nexo-line-strong); background: #EEF2F6; color: var(--nexo-muted); }
+
+        .wf-chip.tone-ok { border-color: #98D1AB; background: #E3F5E9; color: #176637; }
+        .wf-chip.tone-warn { border-color: #E6C340; background: #FFF6D1; color: #6F5400; }
+        .wf-chip.tone-bad { border-color: #E3A09B; background: #FDE8E6; color: #9A2A24; }
+        .wf-chip.tone-info { border-color: #9CC3EA; background: #E4EFFA; color: #17559A; }
+        .wf-chip.tone-muted { border-color: var(--nexo-line-strong); background: #EEF2F6; color: var(--nexo-muted); }
+
+        /* Tarjeta de estado de una entrada: va al inicio de su propia pestaña */
+        .entry-status-card {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            margin: .1rem 0 .4rem;
+            padding: .85rem 1.05rem;
+            border: 1px solid var(--nexo-line);
+            border-left: 4px solid var(--emi-yellow);
+            border-radius: 14px;
+            background: linear-gradient(145deg, #FFFFFF, #F8FBFD);
+            box-shadow: var(--nexo-shadow-sm);
+        }
+
+        .entry-status-title {
+            color: var(--emi-blue-dark);
+            font-size: .92rem;
+            font-weight: 800;
+            letter-spacing: -.005em;
+        }
+
+        .entry-status-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .35rem;
+        }
+
+        .entry-status-meta {
+            color: var(--nexo-muted);
+            font-size: .74rem;
+            line-height: 1.35;
+        }
+
+        /* Fila de indicadores: mismo aspecto que las tarjetas st.metric, pero en
+           una sola fila para no alargar la pantalla en vertical. */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(8.4rem, 1fr));
+            gap: .6rem;
+            margin: .3rem 0 .75rem;
+        }
+
+        .kpi-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: .25rem;
+            min-height: 5.2rem;
+            padding: .8rem .95rem .75rem 1.1rem;
+            overflow: hidden;
+            border: 1px solid var(--nexo-line);
+            border-radius: 14px;
+            background: linear-gradient(145deg, #FFFFFF, #F8FBFD);
+            box-shadow: var(--nexo-shadow-sm);
+        }
+
+        .kpi-item::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 4px;
+            background: linear-gradient(var(--emi-yellow), #F7D94D);
+        }
+
+        .kpi-value {
+            color: var(--emi-blue-dark);
+            font-size: clamp(1.3rem, 1.9vw, 1.6rem);
+            font-weight: 820;
+            line-height: 1.15;
+        }
+
+        .kpi-label {
+            color: var(--nexo-muted);
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .015em;
+            line-height: 1.25;
+        }
+
+        .kpi-strip.compact { grid-template-columns: repeat(auto-fit, minmax(7.4rem, 1fr)); }
+        .kpi-strip.compact .kpi-item { min-height: 4.3rem; padding: .6rem .8rem .55rem 1rem; }
+        .kpi-strip.compact .kpi-value { font-size: 1.2rem; }
+
+        /* Rótulo de bloque dentro de una subsección (Ficha, Contenido, Acciones…) */
+        .entry-block-label {
+            margin: 1.05rem 0 .4rem;
+            padding-bottom: .3rem;
+            border-bottom: 1px solid var(--nexo-line);
+            color: var(--emi-blue);
+            font-size: .7rem;
+            font-weight: 820;
+            letter-spacing: .12em;
+            text-transform: uppercase;
         }
 
         /* Tabs convertidas en selector claro y estable */
@@ -918,30 +1420,134 @@ def inject_global_styles() -> None:
             box-shadow: none !important;
         }
 
+        /* Riel de íconos: en escritorio, al cerrarse, el sidebar no desaparece por
+           completo; queda una columna angosta con el símbolo de cada botón (el
+           nombre se ve en el tooltip al pasar el cursor). En pantallas angostas
+           se conserva el comportamiento anterior (oculto por completo). */
+        :root {
+            --nexo-rail-w: 4.5rem;
+            --nexo-collapsed-w: 0px;
+        }
+
+        @media (min-width: 769px) {
+            :root { --nexo-collapsed-w: var(--nexo-rail-w); }
+
+            [data-testid="stSidebar"][aria-expanded="false"] {
+                width: var(--nexo-rail-w) !important;
+                min-width: var(--nexo-rail-w) !important;
+                overflow: hidden !important;
+                transform: none !important;
+                box-shadow: 8px 0 28px rgba(5,47,86,.11) !important;
+            }
+
+            [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarHeader"] {
+                display: none;
+            }
+
+            /* Arriba se reserva el lugar del botón que vuelve a abrir el menú
+               (ver más abajo): 1.1rem de margen + 2.9rem del botón. */
+            [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarContent"] {
+                padding: 4rem .55rem 1.5rem !important;
+            }
+
+            [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarContent"]::before {
+                content: "";
+                display: block;
+                height: 1px;
+                margin: .85rem .6rem;
+                background: rgba(255,255,255,.16);
+            }
+
+            /* Flecha para abrir el menú: Streamlit la dibuja en el header; aquí se
+               ancla como primer elemento del riel, sobre los íconos. El header
+               queda por debajo del sidebar en el apilado, así que se sube de
+               capa (sigue sin capturar clics: es transparente y con
+               pointer-events: none salvo sus botones). */
+            .stApp:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stHeader"] {
+                z-index: 999992;
+            }
+
+            .stApp:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stExpandSidebarButton"] {
+                position: fixed;
+                top: 1.1rem;
+                left: calc((var(--nexo-rail-w) - 2.9rem) / 2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 2.9rem;
+                height: 2.9rem;
+                margin: 0;
+                padding: 0;
+                border: 1px solid rgba(255,255,255,.22);
+                border-radius: 13px;
+                background: rgba(255,255,255,.08);
+                transition: background .15s ease, border-color .15s ease;
+            }
+
+            .stApp:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stExpandSidebarButton"]:hover {
+                border-color: var(--emi-yellow) !important;
+                background: var(--emi-yellow) !important;
+            }
+
+            .stApp:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stExpandSidebarButton"]:hover * {
+                color: var(--emi-blue-deep) !important;
+                -webkit-text-fill-color: var(--emi-blue-deep) !important;
+            }
+
+            /* Con la flecha en el riel, el banner ya no necesita dejarle sitio */
+            .stApp:has([data-testid="stSidebar"][aria-expanded="false"]) .nexo-hero {
+                padding-left: clamp(1rem, 2vw, 1.75rem);
+            }
+
+            /* La tarjeta del proyecto y el rótulo que le sigue no se muestran en el riel */
+            [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stElementContainer"]:has(.sidebar-project-card),
+            [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stElementContainer"]:has(.sidebar-project-card) + [data-testid="stElementContainer"] {
+                display: none;
+            }
+
+            /* Los rótulos de grupo pasan a ser separadores finos */
+            [data-testid="stSidebar"][aria-expanded="false"] .sidebar-section-label {
+                height: 1px;
+                margin: .85rem .6rem;
+                padding: 0;
+                overflow: hidden;
+                background: rgba(255,255,255,.16);
+                font-size: 0;
+            }
+
+            [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stTooltipHoverTarget"] {
+                justify-content: center !important;
+            }
+
+            /* En el riel las etapas son íconos alineados con el resto: sin sangría */
+            [data-testid="stSidebar"][aria-expanded="false"] .st-key-nav_stages {
+                width: 100% !important;
+                margin: 0;
+                padding-left: 0;
+                border-left: 0;
+            }
+
+            [data-testid="stSidebar"][aria-expanded="false"] .stButton button {
+                width: 2.9rem !important;
+                min-width: 2.9rem !important;
+                height: 2.9rem;
+                min-height: 2.9rem;
+                padding: 0 !important;
+                border-radius: 13px;
+            }
+
+            [data-testid="stSidebar"][aria-expanded="false"] .stButton button [data-testid="stMarkdownContainer"] {
+                display: none;
+            }
+
+            /* Confirmaciones (p. ej. «Base de datos limpia»): solo el ícono */
+            [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stAlertContent"] {
+                display: none;
+            }
+        }
+
         [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
             padding: 1.1rem .9rem 2rem !important;
-        }
-
-        .nexo-sidebar-brand {
-            padding: .78rem .78rem .9rem;
-            border: 1px solid rgba(255,255,255,.14);
-            border-radius: 15px;
-            background: rgba(255,255,255,.055);
-        }
-
-        .nexo-sidebar-brand img {
-            display: block;
-            width: 100%;
-            height: 72px;
-            object-fit: contain;
-            object-position: left center;
-        }
-
-        .nexo-sidebar-brand p {
-            margin: .3rem 0 0;
-            color: #CFE0EF !important;
-            font-size: .76rem;
-            line-height: 1.45;
         }
 
         .sidebar-section-label {
@@ -1002,7 +1608,7 @@ def inject_global_styles() -> None:
             border-color: rgba(255,255,255,.14) !important;
         }
 
-        [data-testid="stSidebar"] .stButton > button {
+        [data-testid="stSidebar"] .stButton button {
             width: 100% !important;
             border-color: rgba(255,255,255,.22) !important;
             background: rgba(255,255,255,.08) !important;
@@ -1011,10 +1617,57 @@ def inject_global_styles() -> None:
             box-shadow: none !important;
         }
 
-        [data-testid="stSidebar"] .stButton > button:hover {
+        [data-testid="stSidebar"] .stButton button:hover {
             border-color: var(--emi-yellow) !important;
             background: var(--emi-yellow) !important;
             color: var(--emi-blue-deep) !important;
+        }
+
+        /* Elemento activo del menú (etapa en curso o Panel del proyecto): relleno
+           amarillo institucional, el mismo color del resalte al pasar el cursor,
+           pero fijo y con texto en negrita para distinguirlo a simple vista. */
+        [data-testid="stSidebar"] .stButton button[data-testid="stBaseButton-primary"] {
+            border-color: var(--emi-yellow) !important;
+            background: var(--emi-yellow) !important;
+            color: var(--emi-blue-deep) !important;
+            font-weight: 780 !important;
+            box-shadow: 0 0 0 3px rgba(242,195,0,.22) !important;
+        }
+
+        [data-testid="stSidebar"] .stButton button[data-testid="stBaseButton-primary"] *,
+        [data-testid="stSidebar"] .stButton button[data-testid="stBaseButton-primary"]:hover * {
+            color: var(--emi-blue-deep) !important;
+            -webkit-text-fill-color: var(--emi-blue-deep) !important;
+        }
+
+        /* Los nombres de las etapas se alinean a la izquierda (ícono + texto), para
+           que queden alineados entre sí. Solo con el menú abierto: en el riel de
+           íconos cada botón es solo un ícono centrado. */
+        [data-testid="stSidebar"][aria-expanded="true"] .st-key-nav_stages .stButton button,
+        [data-testid="stSidebar"][aria-expanded="true"] .st-key-nav_stages .stButton button > div,
+        [data-testid="stSidebar"][aria-expanded="true"] .st-key-nav_stages .stButton button > div > span {
+            justify-content: flex-start !important;
+            text-align: left !important;
+        }
+
+        [data-testid="stSidebar"][aria-expanded="true"] .st-key-nav_stages .stButton button {
+            padding-left: 1rem !important;
+        }
+
+        /* Las 4 etapas se despliegan bajo «Evaluación por etapas», con una guía
+           lateral que las agrupa visualmente bajo ese elemento. */
+        [data-testid="stSidebar"] .st-key-nav_stages {
+            gap: .45rem !important;
+            width: calc(100% - 1.15rem) !important;
+            margin: -.2rem 0 0 1.15rem;
+            padding-left: .7rem;
+            border-left: 1px solid rgba(255,255,255,.2);
+        }
+
+        /* En pantallas angostas el sidebar se abre como panel superpuesto: el
+           banner ocupa todo el ancho y queda por debajo de él. */
+        @media (max-width: 768px) {
+            .nexo-hero { left: 0; }
         }
 
         @media (max-width: 900px) {
@@ -1023,35 +1676,29 @@ def inject_global_styles() -> None:
                 padding: 1rem 1rem 3.5rem !important;
             }
 
-            .nexo-hero {
-                grid-template-columns: 150px 1px 1fr;
-                min-height: 132px;
-                padding: 1rem;
-            }
-
-            .nexo-entity { min-height: 90px; padding: .65rem; }
-            .nexo-product img { height: 72px; }
             .finding-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 640px) {
-            .nexo-hero {
-                grid-template-columns: 1fr;
-                gap: .75rem;
-            }
-
-            .nexo-entity { min-height: 76px; }
-            .nexo-entity img { max-height: 68px; }
-            .nexo-hero-divider { width: 100%; height: 1px; }
-            .nexo-product-kicker { margin-top: .15rem; }
-            .nexo-product img { height: 62px; }
-            .nexo-session-badge { top: .6rem; right: .6rem; max-width: 55%; padding: .3rem .6rem .3rem .4rem; }
-            .nexo-session-name { font-size: .72rem; }
+            :root { --nexo-toolbar-w: 7.8rem; }
+            .stApp:has([data-testid="stSidebar"][aria-expanded="false"]) .nexo-hero { padding-left: 3.2rem; }
+            .nexo-area-title-rule { display: none; }
+            .nexo-hero-divider,
+            .nexo-product-kicker,
+            .nexo-session-text { display: none; }
+            .nexo-session-badge { padding: .3rem; border-radius: 999px; }
+            .nexo-entity { padding: .3rem .45rem; }
+            .nexo-entity img { max-width: 84px; }
+            .nexo-product img { height: 1.7rem; }
             .stage-context-card { align-items: flex-start; flex-direction: column; }
             .milestone-chip { width: 100%; min-width: 0; }
             .st-key-stage_shell { padding-inline: .45rem !important; }
             .st-key-stage_shell [data-testid="stHorizontalBlock"] { gap: .2rem !important; }
             .stage-label { font-size: .65rem !important; }
+        }
+
+        @media (max-width: 480px) {
+            .nexo-session-badge { display: none; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1071,6 +1718,7 @@ def render_brand_header(
     entity_logo_path: str | Path,
     tool_logo_path: str | Path,
     session_name: str | None = None,
+    session_role: str = SESSION_ROLE,
 ) -> None:
     entity_logo = _data_uri(entity_logo_path, "image/png")
     tool_logo = _data_uri(tool_logo_path, "image/svg+xml")
@@ -1082,7 +1730,10 @@ def render_brand_header(
         session_badge_html = (
             '<div class="nexo-session-badge" title="Sesión activa">'
             f'<span class="nexo-session-avatar">{inicial}</span>'
+            '<span class="nexo-session-text">'
             f'<span class="nexo-session-name">{escape(nombre)}</span>'
+            f'<span class="nexo-session-role">{escape(session_role)}</span>'
+            "</span>"
             "</div>"
         )
 
@@ -1095,10 +1746,8 @@ def render_brand_header(
             <div class="nexo-hero-divider" aria-hidden="true"></div>
             <div class="nexo-product">
                 <div class="nexo-product-kicker">Herramienta multiagente</div>
-                <img src="{tool_logo}" alt="TraceDev — Desarrollo, trazabilidad y decisión">
-                <p>Proceso adaptativo para el desarrollo y la trazabilidad de software.</p>
+                <img src="{tool_logo}" alt="TraceDev — Desarrollo, trazabilidad y decisión">{session_badge_html}
             </div>
-            {session_badge_html}
         </header>
         """,
         unsafe_allow_html=True,
@@ -1119,6 +1768,83 @@ def render_stage_context(stage_name: str, milestone: str) -> None:
             </div>
         </section>
         """,
+        unsafe_allow_html=True,
+    )
+
+
+_AREA_ICON_ATTRS = (
+    'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'
+)
+
+_AREA_ICONS = {
+    # Ruta con nodos: flujo no lineal de etapas.
+    "etapas": (
+        f"<svg {_AREA_ICON_ATTRS}>"
+        '<circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="18" r="2.2"/>'
+        '<path d="M7.2 6H14a3 3 0 0 1 0 6h-4a3 3 0 0 0 0 6h6.8"/></svg>'
+    ),
+    # Engranaje: configuración del proyecto.
+    "configuracion": (
+        f"<svg {_AREA_ICON_ATTRS}>"
+        '<circle cx="12" cy="12" r="3"/>'
+        '<path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 '
+        '1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1'
+        'a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1'
+        'a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0'
+        'a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1'
+        'a1.7 1.7 0 0 0-1.5 1z"/></svg>'
+    ),
+    # Tablero: panel de seguimiento del proyecto.
+    "panel": (
+        f"<svg {_AREA_ICON_ATTRS}>"
+        '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/>'
+        '<rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>'
+    ),
+    # Lista de verificación: fases internas de una etapa.
+    "fases": (
+        f"<svg {_AREA_ICON_ATTRS}>"
+        '<path d="M9 6h11M9 12h11M9 18h11"/>'
+        '<path d="m3.5 6 1.2 1.2L7 4.8M3.5 12l1.2 1.2L7 10.8M3.5 18l1.2 1.2L7 16.8"/></svg>'
+    ),
+}
+
+
+def render_section_title(
+    title: str,
+    eyebrow: str = "",
+    description: str = "",
+    icon: str = "etapas",
+) -> None:
+    """Título visual de un área principal de la herramienta. Solo presentación."""
+    eyebrow_html = f'<span class="nexo-area-title-eyebrow">{escape(eyebrow)}</span>' if eyebrow else ""
+    description_html = f'<p class="nexo-area-title-desc">{escape(description)}</p>' if description else ""
+    st.markdown(
+        '<div class="nexo-area-title">'
+        f'<div class="nexo-area-title-mark">{_AREA_ICONS.get(icon, _AREA_ICONS["etapas"])}</div>'
+        '<div class="nexo-area-title-copy">'
+        f"{eyebrow_html}"
+        f'<div class="nexo-area-title-name" role="heading" aria-level="2">{escape(title)}</div>'
+        f"{description_html}"
+        "</div>"
+        '<div class="nexo-area-title-rule" aria-hidden="true"></div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_subsection_title(text: str) -> None:
+    """Subtítulo de una acción dentro de un área principal. Solo presentación."""
+    st.markdown(
+        f'<div class="nexo-subarea-title" role="heading" aria-level="3">{escape(text)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_sidebar_section_label(text: str) -> None:
+    """Rótulo de grupo del sidebar, con el mismo estilo que «Proyecto activo»."""
+    st.markdown(
+        f'<div class="sidebar-section-label">{escape(text)}</div>',
         unsafe_allow_html=True,
     )
 
@@ -1340,22 +2066,22 @@ def render_login_help(card: "st.delta_generator.DeltaGenerator") -> None:
     )
 
 
-def render_sidebar_brand(tool_logo_path: str | Path, project_config: dict) -> None:
-    tool_logo = _data_uri(tool_logo_path, "image/svg+xml")
-    project_name = escape(str(project_config.get("name", "")))
-    context_version = escape(str(project_config.get("context_version", "")))
+def render_sidebar_project(project_config) -> None:
+    configurado = project_config is not None
+    project_config = project_config or {}
+    project_name = escape(str(project_config.get("name", "") or "Sin proyecto configurado"))
+    context_version = escape(str(project_config.get("context_version", "") or "—"))
+    estado_gitlab = (
+        '<i class="sidebar-dot">●</i> Conectado' if configurado else "Pendiente"
+    )
     st.markdown(
         f"""
-        <div class="nexo-sidebar-brand">
-            <img src="{tool_logo}" alt="TraceDev">
-            <p>Herramienta Multiagente<br>Control y seguimiento del Desarrollo de Software</p>
-        </div>
         <div class="sidebar-section-label">Proyecto activo</div>
         <div class="sidebar-project-card">
             <small>Proyecto</small>
             <strong>{project_name}</strong>
             <div class="sidebar-meta">
-                <span>GitLab</span><b><i class="sidebar-dot">●</i> Conectado</b>
+                <span>GitLab</span><b>{estado_gitlab}</b>
                 <span>Contexto</span><b>{context_version}</b>
             </div>
         </div>

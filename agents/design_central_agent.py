@@ -4,7 +4,8 @@ from agents.llm_invocation import (
     RemoteLLMError, invocar_con_fallback, rechazar_respuesta_remota_truncada,
     registrar_resumen_respuesta,
 )
-from core.llm_factory import crear_llm_local, obtener_llm_para_agente
+from openai import LengthFinishReasonError
+from core.llm_factory import crear_llm_local, crear_llm_nvidia, obtener_llm_para_agente
 from core.config import OLLAMA_MODEL
 from core.performance_audit import auditar_llamada_agente
 from core.batch_contract import calcular_num_predict
@@ -66,10 +67,27 @@ def procesar_diseno_central(
         from core.remote_execution import REMOTE_PACER, reintentar_con_backoff
         if selection.provider in ("groq", "nvidia"):
             REMOTE_PACER.before_call(selection.provider, "DesignCentral")
+        def invoke_selected():
+            try:
+                return chain.invoke(prompt_values)
+            except LengthFinishReasonError:
+                # La decodificación guiada JSON de nemotron a veces entra en una
+                # generación descontrolada hasta agotar max_tokens (salida normal ~1.5k).
+                # Se reintenta una vez sin response_format; analizar_respuesta_lote
+                # valida/repara el JSON resultante.
+                if selection.provider != "nvidia":
+                    raise
+                logger.warning(
+                    "Design_Central: respuesta agotó max_tokens con response_format; "
+                    "reintentando sin decodificación guiada."
+                )
+                retry_llm = crear_llm_nvidia(selection.model, 4096, json_mode=False)
+                return (prompt | retry_llm).invoke(prompt_values)
+
         try:
             invoke_fn = lambda: invocar_con_fallback(
                 "Design_Central", selection,
-                lambda: chain.invoke(prompt_values),
+                invoke_selected,
                 lambda: ((prompt | crear_llm_local(
                     json_mode=True, num_predict=num_predict, num_ctx=8192, temperature=0.1,
                 )).invoke(prompt_values), OLLAMA_MODEL),

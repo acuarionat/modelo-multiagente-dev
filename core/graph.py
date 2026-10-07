@@ -963,14 +963,6 @@ def nodo_design_central(state: AgentState):
     design_context = state["design_context"]
     contexto = design_context[0]
 
-    respuesta = procesar_diseno_central(
-        project_name=state["project_name"],
-        issues_json_str=json.dumps(design_context, ensure_ascii=False),
-        sprint_context=state["sprint_context"],
-    )
-    parsed = analizar_respuesta_lote(respuesta, "Design_Central")
-    resultado = parsed["resultados"][0]
-
     valid_requirement_codes = {
         requerimiento["codigo"] for requerimiento in contexto["requerimientos_contextualizados"]
     }
@@ -978,23 +970,71 @@ def nodo_design_central(state: AgentState):
         elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
     }
 
-    for campo in ("trazabilidad_diseno", "requisitos_sin_relacion_evidente"):
-        items = resultado.get(campo) or []
-        vistos = set()
-        deduplicados = []
-        for item in items:
-            requisito = item.get("requisito")
-            if requisito in vistos:
-                logger.warning("Design_Central: requisito duplicado %r en %s — se elimina.", requisito, campo)
-                continue
-            vistos.add(requisito)
-            deduplicados.append(item)
-        if len(deduplicados) != len(items):
-            resultado[campo] = deduplicados
+    # Si la salida incumple el contrato (p. ej. un requisito clasificado en ambos grupos) se
+    # reintenta una sola vez; no se decide en Python a cuál grupo pertenece el requisito.
+    for intento in (1, 2):
+        respuesta = procesar_diseno_central(
+            project_name=state["project_name"],
+            issues_json_str=json.dumps(design_context, ensure_ascii=False),
+            sprint_context=state["sprint_context"],
+        )
+        parsed = analizar_respuesta_lote(respuesta, "Design_Central")
+        resultado = parsed["resultados"][0]
 
-    validacion = validar_salida_central_diseno(
-        resultado, [contexto["issue_iid"]], valid_requirement_codes, valid_element_ids,
-    )
+        for campo in ("trazabilidad_diseno", "requisitos_sin_relacion_evidente"):
+            items = resultado.get(campo) or []
+            vistos = set()
+            deduplicados = []
+            for item in items:
+                requisito = item.get("requisito")
+                if requisito in vistos:
+                    logger.warning("Design_Central: requisito duplicado %r en %s — se elimina.", requisito, campo)
+                    continue
+                vistos.add(requisito)
+                deduplicados.append(item)
+            if len(deduplicados) != len(items):
+                resultado[campo] = deduplicados
+
+        # El LLM puede citar un ED que no existe en el Issue: se descarta esa referencia
+        # (nunca se acepta). Si el requisito se queda sin ningún elemento real, pasa a
+        # "sin relación evidente" en vez de abortar todo el análisis.
+        trazabilidad_saneada = []
+        for item in resultado.get("trazabilidad_diseno") or []:
+            elementos = item.get("elementos_relacionados") or []
+            validos = [e for e in elementos if e in valid_element_ids]
+            descartados = [e for e in elementos if e not in valid_element_ids]
+            if descartados:
+                logger.warning(
+                    "Design_Central: ED inexistente(s) %s descartado(s) del requisito %r.",
+                    descartados, item.get("requisito"),
+                )
+            if validos:
+                item["elementos_relacionados"] = validos
+                trazabilidad_saneada.append(item)
+            else:
+                resultado.setdefault("requisitos_sin_relacion_evidente", []).append({
+                    "requisito": item.get("requisito"),
+                    "justificacion": (
+                        "El Diseño no contiene un elemento existente que sustente la relación "
+                        f"(el modelo refirió elementos inexistentes: {descartados})."
+                    ),
+                    "confianza": "baja",
+                })
+        resultado["trazabilidad_diseno"] = trazabilidad_saneada
+
+        validacion = validar_salida_central_diseno(
+            resultado, [contexto["issue_iid"]], valid_requirement_codes, valid_element_ids,
+        )
+        if validacion["valido"]:
+            break
+        if intento == 1:
+            logger.warning(
+                "Design_Central: salida inválida %s. Reintentando una sola vez.",
+                validacion["errores"],
+            )
+            registrar_evento_grafo(
+                "agent_retry", "Design_Central", reason=str(validacion["errores"]),
+            )
     if not validacion["valido"]:
         raise ValueError(f"Design_Central: salida inválida: {validacion['errores']}")
 
@@ -1087,22 +1127,57 @@ def nodo_design_security(state: AgentState):
     design_context = state["design_context"]
     contexto = design_context[0]
 
-    respuesta = analizar_seguridad_diseno(
-        issues_json_str=json.dumps(design_context, ensure_ascii=False),
-    )
-    parsed = analizar_respuesta_lote(respuesta, "Design_Security")
-    resultado = parsed["resultados"][0]
-
-    for control in (resultado.get("cobertura_controles") or {}).get("controles_definidos", []):
-        control["elementos_responsables"] = normalizar_elementos_responsables(control)
-        control.pop("elemento_responsable", None)
-
     valid_element_ids = {
         elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
     }
-    validacion = validar_salida_seguridad_diseno(
-        resultado, contexto["issue_iid"], contexto["diseno_id"], valid_element_ids,
-    )
+
+    # Si la salida incumple el contrato (p. ej. un control aplicable sin clasificar como
+    # definido o faltante) se reintenta una sola vez; no se completa ni se adivina la
+    # clasificación porque alteraría MS-04.
+    for intento in (1, 2):
+        respuesta = analizar_seguridad_diseno(
+            issues_json_str=json.dumps(design_context, ensure_ascii=False),
+        )
+        parsed = analizar_respuesta_lote(respuesta, "Design_Security")
+        resultado = parsed["resultados"][0]
+
+        for control in (resultado.get("cobertura_controles") or {}).get("controles_definidos", []):
+            control["elementos_responsables"] = normalizar_elementos_responsables(control)
+            control.pop("elemento_responsable", None)
+
+        # Referencias a ED inexistentes (el LLM las inventa a pesar del prompt): se descartan
+        # de las listas de IDs. Son datos de presentación; MS-03/MS-04 no dependen de ellas.
+        cobertura_amenazas = resultado.get("cobertura_amenazas") or {}
+        cobertura_controles = resultado.get("cobertura_controles") or {}
+        grupos_ed = (
+            [(i, "elementos_afectados", "amenaza") for i in cobertura_amenazas.get("amenazas_identificadas") or []]
+            + [(i, "elementos_responsables", "control") for i in cobertura_controles.get("controles_definidos") or []]
+        )
+        for item, campo, etiqueta in grupos_ed:
+            ids = item.get(campo)
+            if not isinstance(ids, list):
+                continue
+            validos = [e for e in ids if e in valid_element_ids]
+            if len(validos) != len(ids):
+                logger.warning(
+                    "Design_Security: ED inexistente(s) %s descartado(s) de %s en %s.",
+                    [e for e in ids if e not in valid_element_ids], campo, etiqueta,
+                )
+                item[campo] = validos
+
+        validacion = validar_salida_seguridad_diseno(
+            resultado, contexto["issue_iid"], contexto["diseno_id"], valid_element_ids,
+        )
+        if validacion["valido"]:
+            break
+        if intento == 1:
+            logger.warning(
+                "Design_Security: salida inválida %s. Reintentando una sola vez.",
+                validacion["errores"],
+            )
+            registrar_evento_grafo(
+                "agent_retry", "Design_Security", reason=str(validacion["errores"]),
+            )
     if not validacion["valido"]:
         raise ValueError(f"Design_Security: salida inválida: {validacion['errores']}")
 
@@ -1159,22 +1234,36 @@ def nodo_design_evaluator(state: AgentState):
         "evidencia_seguridad": security_result["raw"],
     }
 
-    respuesta = analizar_evaluador_diseno(
-        issues_json_str=json.dumps([entrada_evaluador], ensure_ascii=False),
-    )
-    parsed = analizar_respuesta_lote(respuesta, "Design_Evaluator")
-    resultado = parsed["resultados"][0]
-
     valid_element_ids = {
         elemento["elemento_id"] for elemento in contexto["elementos_diseno"]
     }
     valid_requirement_codes = {
         requerimiento["codigo"] for requerimiento in contexto["requerimientos_contextualizados"]
     }
-    validacion = validar_salida_evaluador_diseno(
-        resultado, contexto["issue_iid"], contexto["diseno_id"],
-        valid_element_ids, valid_requirement_codes,
-    )
+
+    # Si la salida incumple el contrato (p. ej. el LLM omite las listas de hallazgos) se
+    # reintenta una sola vez. No se rellenan campos faltantes con [] porque un hallazgo
+    # omitido falsearía el estado orientativo calculado por Python.
+    for intento in (1, 2):
+        respuesta = analizar_evaluador_diseno(
+            issues_json_str=json.dumps([entrada_evaluador], ensure_ascii=False),
+        )
+        parsed = analizar_respuesta_lote(respuesta, "Design_Evaluator")
+        resultado = parsed["resultados"][0]
+        validacion = validar_salida_evaluador_diseno(
+            resultado, contexto["issue_iid"], contexto["diseno_id"],
+            valid_element_ids, valid_requirement_codes,
+        )
+        if validacion["valido"]:
+            break
+        if intento == 1:
+            logger.warning(
+                "Design_Evaluator: salida inválida %s. Reintentando una sola vez.",
+                validacion["errores"],
+            )
+            registrar_evento_grafo(
+                "agent_retry", "Design_Evaluator", reason=str(validacion["errores"]),
+            )
     if not validacion["valido"]:
         raise ValueError(f"Design_Evaluator: salida inválida: {validacion['errores']}")
 

@@ -26,17 +26,25 @@ from core.ui_components import (
     _lista_ui as lista_ui,
     _texto_hallazgo_ui as texto_hallazgo_ui,
     create_stage_step_panels,
+    entrada_fila_html,
+    kpi_strip_html,
     render_findings_section,
     render_gitlab_feedback,
     render_next_phase_button,
     render_state_badge,
+    resumen_estados_entradas_html,
+    selector_resultados,
+    titulo_item,
 )
 from core.ui_theme import (
     inject_global_styles,
     render_brand_header,
     render_login_card,
     render_login_help,
-    render_sidebar_brand,
+    render_section_title,
+    render_sidebar_project,
+    render_sidebar_section_label,
+    render_subsection_title,
     render_stage_context,
 )
 
@@ -715,6 +723,15 @@ STAGES = (
     ("pruebas", "Pruebas", "Pruebas", "✓"),
 )
 
+# Íconos de cada etapa en el menú lateral (el selector de la pantalla de etapas
+# conserva sus propios símbolos).
+STAGE_MENU_ICONS = {
+    "requerimientos": ":material/assignment:",
+    "diseno": ":material/architecture:",
+    "codificacion": ":material/code:",
+    "pruebas": ":material/fact_check:",
+}
+
 MILESTONES_BY_STAGE = {
     "requerimientos": "Recepción de Requerimientos",
     "diseno": "Diseño",
@@ -730,24 +747,34 @@ def render_stage_navigation():
         st.session_state["etapa_actual"] = "requerimientos"
 
     current = st.session_state["etapa_actual"]
+    render_section_title(
+        "Evaluación por etapas",
+        eyebrow="Flujo de trabajo",
+        description=(
+            "Navega libremente entre las etapas del desarrollo de software, aquí o desde "
+            "el menú lateral. La etapa actual se resalta en ambos lugares."
+        ),
+        icon="etapas",
+    )
+    render_subsection_title("Seleccionar etapa")
     with st.container(key="stage_shell"):
         st.markdown('<div class="stage-track"></div>', unsafe_allow_html=True)
         columns = st.columns(4)
-        for index, (stage_id, short_name, full_name, icon) in enumerate(STAGES, start=1):
+        for index, (stage_id, short_name, _full_name, icon) in enumerate(STAGES, start=1):
             with columns[index - 1]:
                 state_suffix = "active" if current == stage_id else "pending"
                 if st.button(
                     icon,
                     key=f"stage_nav_{stage_id}_{state_suffix}",
-                    help=full_name,
+                    help=short_name,
                     width="content",
                 ):
                     st.session_state["etapa_actual"] = stage_id
                     st.session_state["vista"] = "etapa"
                     st.rerun()
                 label_class = "stage-label active" if current == stage_id else "stage-label"
-                st.markdown(f'<div class="{label_class}" title="{full_name}">{short_name}</div>', unsafe_allow_html=True)
-        current_name = next(stage[2] for stage in STAGES if stage[0] == current)
+                st.markdown(f'<div class="{label_class}" title="{short_name}">{short_name}</div>', unsafe_allow_html=True)
+        current_name = next(stage[1] for stage in STAGES if stage[0] == current)
         st.markdown(f'<div class="stage-status">Etapa actual: {current_name}</div>', unsafe_allow_html=True)
 
 
@@ -757,7 +784,7 @@ def render_coming_soon(stage_id):
         f"""
         <div class="coming-soon">
             <div class="coming-soon-icon">{stage[3]}</div>
-            <h2>Etapa de {stage[2]}</h2>
+            <h2>{stage[1]}</h2>
             <p>Esta etapa forma parte del flujo de control, seguimiento y trazabilidad del
             desarrollo de software. Su funcionalidad será incorporada en una siguiente
             versión del sistema.</p>
@@ -768,9 +795,87 @@ def render_coming_soon(stage_id):
     )
     _, center, _ = st.columns([1, 1.3, 1])
     with center:
-        if st.button("← Volver a Recepción de requerimientos", type="primary", width="stretch"):
+        if st.button("← Volver a Requerimientos", type="primary", width="stretch"):
             st.session_state["etapa_actual"] = "requerimientos"
             st.rerun()
+
+def render_sidebar(saved_config, editing_config):
+    """Menú lateral: se muestra en todas las pantallas posteriores al inicio de sesión.
+
+    Los botones llevan el mismo nombre que el título de la pantalla a la que llevan.
+    Mientras no hay un proyecto configurado solo están disponibles «Configuración del
+    proyecto» y las acciones de administración y sesión.
+    """
+    hay_proyecto = saved_config is not None
+    en_configuracion = editing_config or not hay_proyecto
+    en_panel = hay_proyecto and not en_configuracion and st.session_state.get("vista") == "dashboard"
+    en_etapas = hay_proyecto and not en_configuracion and not en_panel
+    if st.session_state.get("etapa_actual") not in {stage[0] for stage in STAGES}:
+        st.session_state["etapa_actual"] = "requerimientos"
+
+    def ir_a(vista=None, etapa=None):
+        # Salir de la edición de la configuración (sin limpiar estado ni resultados).
+        st.session_state["editing_project_config"] = False
+        if vista:
+            st.session_state["vista"] = vista
+        if etapa:
+            st.session_state["etapa_actual"] = etapa
+        st.rerun()
+
+    with st.sidebar:
+        render_sidebar_project(saved_config)
+        render_sidebar_section_label("Gestión del proyecto")
+        if st.button(
+            "Panel del proyecto",
+            icon=":material/dashboard:",
+            help="Panel del proyecto",
+            type="primary" if en_panel else "secondary",
+            width="stretch",
+            disabled=not hay_proyecto,
+        ):
+            ir_a(vista="dashboard")
+        if st.button(
+            "Configuración del proyecto",
+            icon=":material/settings:",
+            help="Configuración del proyecto",
+            type="primary" if en_configuracion else "secondary",
+            width="stretch",
+        ):
+            st.session_state["editing_project_config"] = True
+            st.rerun()
+        if st.button(
+            "Evaluación por etapas", icon=":material/route:", help="Evaluación por etapas",
+            width="stretch", disabled=not hay_proyecto,
+        ):
+            ir_a(vista="etapa")
+        # Las 4 etapas desplegadas bajo «Evaluación por etapas». Hacen lo mismo que el
+        # selector de la pantalla de etapas; la etapa actual se resalta (solo estilo).
+        with st.container(key="nav_stages"):
+            for stage_key, stage_short, _stage_full, _ in STAGES:
+                etapa_activa = en_etapas and st.session_state.get("etapa_actual") == stage_key
+                if st.button(
+                    stage_short,
+                    key=f"side_stage_{stage_key}",
+                    icon=STAGE_MENU_ICONS[stage_key],
+                    help=f"{stage_short} (etapa actual)" if etapa_activa else stage_short,
+                    type="primary" if etapa_activa else "secondary",
+                    width="stretch",
+                    disabled=not hay_proyecto,
+                ):
+                    ir_a(vista="etapa", etapa=stage_key)
+        render_sidebar_section_label("Administración")
+        if st.button(
+            "Limpiar Base de Seguimiento (Caché e Historial)",
+            icon=":material/delete_sweep:",
+            help="Limpiar Base de Seguimiento (Caché e Historial)",
+        ):
+            limpiar_datos_seguimiento()
+            st.success("Base de datos limpia.")
+        # «Cerrar sesión» va al final del menú, debajo de todos los demás botones.
+        render_sidebar_section_label("Sesión")
+        if st.button("Cerrar sesión", icon=":material/logout:", help="Cerrar sesión", width="stretch"):
+            st.logout()
+
 
 render_brand_header(
     EMI_LOGO_PATH, TRACEDEV_LOGO_PATH,
@@ -780,17 +885,19 @@ render_brand_header(
 saved_config = load_project_config()
 editing_config = st.session_state.get("editing_project_config", False)
 
+# El menú lateral va en todas las pantallas, también en la de configuración.
+render_sidebar(saved_config, editing_config)
+
 if saved_config is None or editing_config:
     with st.container(key="config_workspace"):
-        st.subheader("Configuración del Proyecto")
-        st.caption("Identifica el proyecto y valida la conexión con GitLab para habilitar las etapas.")
-        # Volver a las etapas sin reconfigurar (solo si ya hay proyecto). Únicamente cierra
-        # la edición; NO limpia el estado ni la persistencia de resultados.
-        if editing_config and saved_config is not None:
-            with st.container(key="config_back_row"):
-                if st.button("← Volver a las etapas", key="volver_a_etapas"):
-                    st.session_state["editing_project_config"] = False
-                    st.rerun()
+        # Para salir sin reconfigurar se usa el menú lateral (no limpia el estado ni
+        # la persistencia de resultados).
+        render_section_title(
+            "Configuración del proyecto",
+            eyebrow="Proyecto",
+            description="Identifica el proyecto y valida la conexión con GitLab para habilitar las etapas.",
+            icon="configuracion",
+        )
         defaults = saved_config or {}
         with st.form("project_configuration"):
             st.markdown("### Identificación")
@@ -856,26 +963,10 @@ if saved_config is None or editing_config:
     st.stop()
 
 project_config = saved_config
-render_stage_navigation()
-
-st.info("Las métricas e indicadores son valoraciones asistidas basadas en la evidencia disponible. Apoyan la decisión del responsable y no constituyen aprobación automática ni certificación.")
-
-# Sidebar options
-with st.sidebar:
-    render_sidebar_brand(TRACEDEV_LOGO_PATH, project_config)
-    if st.button("Cerrar sesión", width="stretch"):
-        st.logout()
-    st.divider()
-    if st.button("Panel del proyecto", width="stretch"):
-        st.session_state["vista"] = "dashboard"
-        st.rerun()
-    if st.button("Editar configuración", width="stretch"):
-        st.session_state["editing_project_config"] = True
-        st.rerun()
-    st.header("Administración")
-    if st.button("Limpiar Base de Seguimiento (Caché e Historial)"):
-        limpiar_datos_seguimiento()
-        st.success("Base de datos limpia.")
+# El panel del proyecto es transversal a las etapas: ahí no se muestra la selección
+# de etapa (se vuelve a ella con «Evaluación por etapas» en el menú lateral).
+if st.session_state.get("vista") != "dashboard":
+    render_stage_navigation()
 
 try:
     adapter = GitLabAdapter(project_config["gitlab_url"], project_config["gitlab_token"], project_config["gitlab_project"])
@@ -890,14 +981,14 @@ project_name = project_config["name"]
 
 # Panel del proyecto (dashboard): vista de solo lectura, transversal a las etapas.
 # Se despacha antes de la lógica de etapa/milestone para no renderizar el banner
-# de etapa. Se sale volviendo a elegir cualquier etapa en la navegación superior.
+# de etapa. Se sale con «Evaluación por etapas» en el menú lateral.
 if st.session_state.get("vista") == "dashboard":
     render_dashboard(project_name, project_config, adapter)
     st.stop()
 
 stage_id = st.session_state["etapa_actual"]
 milestone_val = MILESTONES_BY_STAGE[stage_id]
-stage_name = next(stage[2] for stage in STAGES if stage[0] == stage_id)
+stage_name = next(stage[1] for stage in STAGES if stage[0] == stage_id)
 render_stage_context(stage_name, milestone_val)
 
 # Las etapas de Diseño y Codificación tienen su propio bloque, separado del
@@ -935,22 +1026,28 @@ if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
 
 if "issues_by_stage" not in st.session_state:
     st.session_state.issues_by_stage = {}
-refresh_issues = paso_entrada.button("Actualizar desde GitLab", width="stretch")
+refresh_issues = paso_entrada.button("Actualizar desde GitLab", icon=":material/refresh:", width="stretch")
 if refresh_issues or stage_id not in st.session_state.issues_by_stage:
     with paso_entrada.spinner("Consultando issues del milestone..."):
         st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_pendientes(milestone_title=milestone_val)
 issues = st.session_state.issues_by_stage[stage_id]
-paso_entrada.write(f"**Issues encontrados:** {len(issues)}")
 if issues:
-    with paso_entrada.expander("Lista de issues", expanded=True):
-        for issue in issues:
-            st.markdown(f"- **#{issue.iid}** — {issue.title}")
+    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
+    # Requiere modificación), en vez de ocultarlas en un desplegable. El total y
+    # los estados van en una sola línea.
+    paso_entrada.markdown(
+        resumen_estados_entradas_html([i.labels for i in issues], con_total=True), unsafe_allow_html=True,
+    )
+    for issue in issues:
+        paso_entrada.markdown(entrada_fila_html(f"#{issue.iid}", issue.title, issue.labels), unsafe_allow_html=True)
 else:
     paso_entrada.info("No se encontraron issues abiertos en este milestone.")
 
 render_next_phase_button(paso_entrada, _req_step_key, 1)
 
-start_analysis = paso_analisis.button("Iniciar análisis", type="primary", width="stretch", disabled=not issues)
+start_analysis = paso_analisis.button(
+    "Iniciar análisis", icon=":material/play_arrow:", type="primary", width="stretch", disabled=not issues,
+)
 if start_analysis:
     for stale_key in ("last_batch_result", "batch_pdf", "batch_docx"):
         st.session_state.pop(stale_key, None)
@@ -1235,53 +1332,6 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         ["Resumen general", "Detalle por historia", "Matriz y documentos"]
     )
 
-    resumen_general.subheader("Resumen general de resultados")
-    resumen_general.caption(
-        f"Milestone: {st.session_state.last_milestone}"
-    )
-
-    r1, r2, r3 = resumen_general.columns(3)
-
-    r1.metric(
-        "Historias procesadas",
-        summary["procesadas"],
-    )
-
-    r2.metric(
-        "Requieren corrección",
-        summary["requieren_correccion"],
-    )
-
-    r3.metric(
-        "Con error",
-        summary["errores"],
-    )
-
-    r4, r5, r6 = resumen_general.columns(3)
-
-    r4.metric(
-        "Calidad promedio",
-        (
-            f"{summary['calidad_promedio'] * 100:.0f} %"
-            if summary["calidad_promedio"] is not None
-            else "N/D"
-        ),
-    )
-
-    r5.metric(
-        "Seguridad promedio",
-        (
-            f"{summary['seguridad_promedio'] * 100:.0f} %"
-            if summary["seguridad_promedio"] is not None
-            else "N/D"
-        ),
-    )
-
-    r6.metric(
-        "Requerimientos formalizados propuestos",
-        summary["requerimientos"],
-    )
-
     quality_min = (
         f"{summary['calidad_minima'] * 100:.0f} %"
         if summary["calidad_minima"] is not None
@@ -1294,7 +1344,31 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         else "N/D"
     )
 
+    resumen_general.subheader("Resumen general de resultados")
+    resumen_general.markdown(
+        kpi_strip_html([
+            (summary["procesadas"], "Historias procesadas"),
+            (summary["requieren_correccion"], "Requieren corrección"),
+            (summary["errores"], "Con error"),
+            (
+                f"{summary['calidad_promedio'] * 100:.0f} %"
+                if summary["calidad_promedio"] is not None
+                else "N/D",
+                "Calidad promedio",
+            ),
+            (
+                f"{summary['seguridad_promedio'] * 100:.0f} %"
+                if summary["seguridad_promedio"] is not None
+                else "N/D",
+                "Seguridad promedio",
+            ),
+            (summary["requerimientos"], "Requerimientos propuestos"),
+        ]),
+        unsafe_allow_html=True,
+    )
+
     resumen_general.caption(
+        f"Milestone: {st.session_state.last_milestone} · "
         f"Calidad mínima: {quality_min} · "
         f"Seguridad mínima: {security_min} · "
         f"Información insuficiente: "
@@ -1302,7 +1376,20 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         f"Historias bajo meta: {summary['historias_bajo_meta']}"
     )
 
-    detalle_resultados.subheader("Resultados por historia")
+    # Un resultado a la vez: el selector evita una lista larga de historias en vertical.
+    historia_elegida = selector_resultados(
+        detalle_resultados,
+        "req",
+        [
+            (
+                (result.get("central") or {}).get("historia_id", f"HU-{result.get('issue_iid', '???')}"),
+                result.get("estado_orientativo") or result.get("estado_evaluacion") or "REVISIÓN HUMANA",
+            )
+            for result in results
+            if result.get("estado_procesamiento") != "informacion_insuficiente" and result["status"] == "ok"
+        ],
+    )
+
     for result in results:
         if result.get("estado_procesamiento") == "informacion_insuficiente":
             detalle_resultados.warning(f"HU-{result['issue_iid']:03d} — Información insuficiente: {', '.join(result['validacion_entrada']['campos_faltantes'])}")
@@ -1335,14 +1422,12 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             or "REVISIÓN HUMANA"
         )
 
-        expander_title = (
-            f"{historia_id} — {titulo} · {estado}"
-        )
+        if historia_id != historia_elegida:
+            continue
 
-        with detalle_resultados.expander(
-            expander_title,
-            expanded=False,
-        ):
+        with detalle_resultados.container(border=True):
+            st.markdown(f"### {titulo_item(historia_id, titulo, estado)}")
+
             actor = str(
                 central.get("actor") or "No identificado"
             ).strip()
@@ -1367,26 +1452,14 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                 if isinstance(req, dict)
             ]
 
-            m1, m2, m3, m4 = st.columns(4)
-
-            m1.metric(
-                "Calidad",
-                _porcentaje_ui(quality.get("indice")),
-            )
-
-            m2.metric(
-                "Seguridad",
-                _porcentaje_ui(security.get("indice")),
-            )
-
-            m3.metric(
-                "LoT recomendado",
-                security.get("lot_recomendado", "N/D"),
-            )
-
-            m4.metric(
-                "Requerimientos",
-                len(requirements),
+            st.markdown(
+                kpi_strip_html([
+                    (_porcentaje_ui(quality.get("indice")), "Calidad"),
+                    (_porcentaje_ui(security.get("indice")), "Seguridad"),
+                    (security.get("lot_recomendado", "N/D"), "LoT recomendado"),
+                    (len(requirements), "Requerimientos"),
+                ], compact=True),
+                unsafe_allow_html=True,
             )
 
             st.info(
@@ -1432,160 +1505,166 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                 mc01 = quality_metrics.get("cobertura_funcional") or {}
                 mc02 = quality_metrics.get("adecuacion_funcional") or {}
 
-                st.markdown("### MC-01 — Cobertura Funcional")
+                metrica_pct = _porcentaje_metrica_ui(mc01)
+                with st.expander(f"MC-01 — Cobertura Funcional · {metrica_pct}", expanded=False):
 
-                mc01_pct = _porcentaje_metrica_ui(mc01)
+                    mc01_pct = _porcentaje_metrica_ui(mc01)
 
-                documentadas = _funciones_documentadas_mc01(mc01)
-                faltantes = _gaps_mc01(mc01)
-                total_necesarias = len(documentadas) + len(faltantes)
+                    documentadas = _funciones_documentadas_mc01(mc01)
+                    faltantes = _gaps_mc01(mc01)
+                    total_necesarias = len(documentadas) + len(faltantes)
 
-                st.metric("Resultado MC-01", mc01_pct)
-
-                st.markdown(
-                    "**Fórmula aplicada:** "
-                    "Funciones necesarias documentadas / "
-                    "Total de funciones necesarias identificadas"
-                )
-
-                st.markdown(
-                    f"**Cálculo:** "
-                    f"{len(documentadas)} / {total_necesarias} = {mc01_pct}"
-                )
-
-                q1, q2, q3 = st.columns(3)
-
-                q1.metric("Documentadas", len(documentadas))
-                q2.metric("Necesarias faltantes", len(faltantes))
-                q3.metric("Total necesarias", total_necesarias)
-
-                st.markdown(
-                    f"#### Documentadas en la evidencia original "
-                    f"({len(documentadas)})"
-                )
-
-                if documentadas:
-                    for funcion in documentadas:
-                        st.markdown(f"- {funcion}")
-                else:
-                    st.caption("Ninguna.")
-
-                st.markdown(
-                    f"#### Funciones necesarias no documentadas "
-                    f"({len(faltantes)})"
-                )
-
-                if faltantes:
-                    for gap in faltantes:
-                        funcion = str(
-                            gap.get("funcion") or "Función no identificada"
-                        ).strip()
-
-                        st.markdown(f"**{funcion}**")
-
-                        evidencia = str(
-                            gap.get("evidencia_relacionada") or ""
-                        ).strip()
-
-                        motivo = str(
-                            gap.get("justificacion_necesidad")
-                            or gap.get("motivo_necesidad")
-                            or ""
-                        ).strip()
-
-                        consecuencia = str(
-                            gap.get("consecuencia_ausencia") or ""
-                        ).strip()
-
-                        confianza = str(
-                            gap.get("confianza") or ""
-                        ).strip()
-
-                        if evidencia:
-                            st.caption(f"Evidencia relacionada: {evidencia}")
-
-                        if motivo:
-                            st.markdown(f"**Motivo de necesidad:** {motivo}")
-
-                        if consecuencia:
-                            st.markdown(
-                                f"**Consecuencia de la ausencia:** {consecuencia}"
-                            )
-
-                        if confianza:
-                            st.markdown(
-                                f"**Confianza de la inferencia:** "
-                                f"{confianza.capitalize()}"
-                            )
-
-                        st.divider()
-                else:
-                    st.success(
-                        "No se identificaron funciones "
-                        "necesarias faltantes con confianza alta."
+                    st.markdown(
+                        kpi_strip_html([
+                            (mc01_pct, "Resultado MC-01"),
+                            (len(documentadas), "Documentadas"),
+                            (len(faltantes), "Necesarias faltantes"),
+                            (total_necesarias, "Total necesarias"),
+                        ], compact=True),
+                        unsafe_allow_html=True,
                     )
 
-                if faltantes:
-                    st.info(
-                        f"Si se formalizan las {len(faltantes)} funciones "
-                        f"necesarias faltantes identificadas, MC-01 podría "
-                        f"alcanzar una cobertura potencial del 100 %."
-                    )
-                else:
-                    st.caption(
-                        "La cobertura funcional evaluada ya alcanza el 100 %."
+                    st.markdown(
+                        "**Fórmula aplicada:** "
+                        "Funciones necesarias documentadas / "
+                        "Total de funciones necesarias identificadas"
                     )
 
-                st.divider()
+                    st.markdown(
+                        f"**Cálculo:** "
+                        f"{len(documentadas)} / {total_necesarias} = {mc01_pct}"
+                    )
 
-                st.markdown("### MC-02 — Adecuación Funcional")
+                    st.markdown(
+                        f"#### Documentadas en la evidencia original "
+                        f"({len(documentadas)})"
+                    )
 
-                mc02_pct = _porcentaje_metrica_ui(mc02)
+                    if documentadas:
+                        for funcion in documentadas:
+                            st.markdown(f"- {funcion}")
+                    else:
+                        st.caption("Ninguna.")
 
-                alineadas = _lista_ui(mc02.get("funciones_alineadas"))
-                no_alineadas = _lista_ui(mc02.get("funciones_no_alineadas"))
+                    st.markdown(
+                        f"#### Funciones necesarias no documentadas "
+                        f"({len(faltantes)})"
+                    )
 
-                objetivo_evaluado = str(
-                    mc02.get("objetivo_evaluado")
-                    or central.get("objetivo")
-                    or ""
-                ).strip()
+                    if faltantes:
+                        for gap in faltantes:
+                            funcion = str(
+                                gap.get("funcion") or "Función no identificada"
+                            ).strip()
 
-                total_mc02 = len(alineadas) + len(no_alineadas)
+                            st.markdown(f"**{funcion}**")
 
-                st.metric("Resultado MC-02", mc02_pct)
+                            evidencia = str(
+                                gap.get("evidencia_relacionada") or ""
+                            ).strip()
 
-                st.markdown(
-                    "**Fórmula aplicada:** "
-                    "Funciones alineadas / "
-                    "Funciones documentadas evaluables"
-                )
+                            motivo = str(
+                                gap.get("justificacion_necesidad")
+                                or gap.get("motivo_necesidad")
+                                or ""
+                            ).strip()
 
-                st.markdown(
-                    f"**Cálculo:** "
-                    f"{len(alineadas)} / {total_mc02} = {mc02_pct}"
-                )
+                            consecuencia = str(
+                                gap.get("consecuencia_ausencia") or ""
+                            ).strip()
 
-                if objetivo_evaluado:
-                    st.markdown(f"**Objetivo evaluado:** {objetivo_evaluado}")
+                            confianza = str(
+                                gap.get("confianza") or ""
+                            ).strip()
 
-                st.markdown(f"#### Funciones alineadas ({len(alineadas)})")
+                            if evidencia:
+                                st.caption(f"Evidencia relacionada: {evidencia}")
 
-                if alineadas:
-                    for value in alineadas:
-                        st.markdown(f"- {value}")
-                else:
-                    st.caption("Ninguna.")
+                            if motivo:
+                                st.markdown(f"**Motivo de necesidad:** {motivo}")
 
-                st.markdown(
-                    f"#### Funciones no alineadas ({len(no_alineadas)})"
-                )
+                            if consecuencia:
+                                st.markdown(
+                                    f"**Consecuencia de la ausencia:** {consecuencia}"
+                                )
 
-                if no_alineadas:
-                    for value in no_alineadas:
-                        st.markdown(f"- {value}")
-                else:
-                    st.caption("Ninguna.")
+                            if confianza:
+                                st.markdown(
+                                    f"**Confianza de la inferencia:** "
+                                    f"{confianza.capitalize()}"
+                                )
+
+                            st.divider()
+                    else:
+                        st.success(
+                            "No se identificaron funciones "
+                            "necesarias faltantes con confianza alta."
+                        )
+
+                    if faltantes:
+                        st.info(
+                            f"Si se formalizan las {len(faltantes)} funciones "
+                            f"necesarias faltantes identificadas, MC-01 podría "
+                            f"alcanzar una cobertura potencial del 100 %."
+                        )
+                    else:
+                        st.caption(
+                            "La cobertura funcional evaluada ya alcanza el 100 %."
+                        )
+
+
+                metrica_pct = _porcentaje_metrica_ui(mc02)
+                with st.expander(f"MC-02 — Adecuación Funcional · {metrica_pct}", expanded=False):
+
+                    mc02_pct = _porcentaje_metrica_ui(mc02)
+
+                    alineadas = _lista_ui(mc02.get("funciones_alineadas"))
+                    no_alineadas = _lista_ui(mc02.get("funciones_no_alineadas"))
+
+                    objetivo_evaluado = str(
+                        mc02.get("objetivo_evaluado")
+                        or central.get("objetivo")
+                        or ""
+                    ).strip()
+
+                    total_mc02 = len(alineadas) + len(no_alineadas)
+
+                    st.markdown(
+                        kpi_strip_html([(mc02_pct, "Resultado MC-02")], compact=True),
+                        unsafe_allow_html=True,
+                    )
+
+                    st.markdown(
+                        "**Fórmula aplicada:** "
+                        "Funciones alineadas / "
+                        "Funciones documentadas evaluables"
+                    )
+
+                    st.markdown(
+                        f"**Cálculo:** "
+                        f"{len(alineadas)} / {total_mc02} = {mc02_pct}"
+                    )
+
+                    if objetivo_evaluado:
+                        st.markdown(f"**Objetivo evaluado:** {objetivo_evaluado}")
+
+                    st.markdown(f"#### Funciones alineadas ({len(alineadas)})")
+
+                    if alineadas:
+                        for value in alineadas:
+                            st.markdown(f"- {value}")
+                    else:
+                        st.caption("Ninguna.")
+
+                    st.markdown(
+                        f"#### Funciones no alineadas ({len(no_alineadas)})"
+                    )
+
+                    if no_alineadas:
+                        for value in no_alineadas:
+                            st.markdown(f"- {value}")
+                    else:
+                        st.caption("Ninguna.")
 
             with tab_seguridad:
                 security_metrics = (
@@ -1597,86 +1676,84 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
                 ms01 = security_metrics.get("cobertura_seguridad") or {}
                 ms02 = security_metrics.get("clasificacion_datos") or {}
 
-                st.markdown("### MS-01 — Cobertura de Seguridad")
+                metrica_pct = _porcentaje_metrica_ui(ms01)
+                with st.expander(f"MS-01 — Cobertura de Seguridad · {metrica_pct}", expanded=False):
 
-                st.metric(
-                    "Resultado MS-01",
-                    _porcentaje_metrica_ui(ms01),
-                )
+                    aplicables = _lista_ui(ms01.get("aspectos_aplicables"))
+                    documentados_seg = _lista_ui(ms01.get("aspectos_documentados"))
+                    faltantes_seg = _lista_ui(ms01.get("aspectos_faltantes"))
 
-                aplicables = _lista_ui(ms01.get("aspectos_aplicables"))
-                documentados_seg = _lista_ui(ms01.get("aspectos_documentados"))
-                faltantes_seg = _lista_ui(ms01.get("aspectos_faltantes"))
-
-                s1, s2, s3 = st.columns(3)
-
-                s1.metric("Aplicables", len(aplicables))
-                s2.metric("Documentados", len(documentados_seg))
-                s3.metric("Pendientes", len(faltantes_seg))
-
-                st.markdown("#### Aspectos documentados")
-
-                if documentados_seg:
-                    for value in documentados_seg:
-                        st.markdown(f"- {value}")
-                else:
-                    st.caption("Ninguno.")
-
-                st.markdown("#### Aspectos pendientes")
-
-                if faltantes_seg:
-                    for value in faltantes_seg:
-                        st.markdown(f"- {value}")
-                else:
-                    st.success(
-                        "No existen aspectos aplicables pendientes."
+                    st.markdown(
+                        kpi_strip_html([
+                            (_porcentaje_metrica_ui(ms01), "Resultado MS-01"),
+                            (len(aplicables), "Aplicables"),
+                            (len(documentados_seg), "Documentados"),
+                            (len(faltantes_seg), "Pendientes"),
+                        ], compact=True),
+                        unsafe_allow_html=True,
                     )
 
-                st.divider()
+                    st.markdown("#### Aspectos documentados")
 
-                st.markdown("### MS-02 — Clasificación de Datos")
+                    if documentados_seg:
+                        for value in documentados_seg:
+                            st.markdown(f"- {value}")
+                    else:
+                        st.caption("Ninguno.")
 
-                st.metric(
-                    "Resultado MS-02",
-                    _porcentaje_metrica_ui(ms02),
-                )
+                    st.markdown("#### Aspectos pendientes")
 
-                identificados = _lista_ui(ms02.get("datos_identificados"))
-                clasificados = _lista_ui(ms02.get("datos_clasificados"))
-                sin_clasificacion = _lista_ui(
-                    ms02.get("datos_sin_clasificacion")
-                )
-
-                d1, d2, d3 = st.columns(3)
-
-                d1.metric("Identificados", len(identificados))
-                d2.metric("Clasificados", len(clasificados))
-                d3.metric("Pendientes", len(sin_clasificacion))
-
-                st.markdown("#### Datos identificados")
-
-                if identificados:
-                    for value in identificados:
-                        st.markdown(
-                            f"- {_texto_hallazgo_ui(value) or value}"
+                    if faltantes_seg:
+                        for value in faltantes_seg:
+                            st.markdown(f"- {value}")
+                    else:
+                        st.success(
+                            "No existen aspectos aplicables pendientes."
                         )
-                else:
-                    st.caption("Ninguno.")
 
-                st.markdown("#### Pendientes de clasificación")
 
-                if sin_clasificacion:
-                    for value in sin_clasificacion:
-                        st.markdown(
-                            f"- {_texto_hallazgo_ui(value) or value}"
-                        )
-                else:
-                    st.success(
-                        "No existen datos identificados "
-                        "pendientes de clasificación."
+                metrica_pct = _porcentaje_metrica_ui(ms02)
+                with st.expander(f"MS-02 — Clasificación de Datos · {metrica_pct}", expanded=False):
+
+                    identificados = _lista_ui(ms02.get("datos_identificados"))
+                    clasificados = _lista_ui(ms02.get("datos_clasificados"))
+                    sin_clasificacion = _lista_ui(
+                        ms02.get("datos_sin_clasificacion")
                     )
 
-                st.divider()
+                    st.markdown(
+                        kpi_strip_html([
+                            (_porcentaje_metrica_ui(ms02), "Resultado MS-02"),
+                            (len(identificados), "Identificados"),
+                            (len(clasificados), "Clasificados"),
+                            (len(sin_clasificacion), "Pendientes"),
+                        ], compact=True),
+                        unsafe_allow_html=True,
+                    )
+
+                    st.markdown("#### Datos identificados")
+
+                    if identificados:
+                        for value in identificados:
+                            st.markdown(
+                                f"- {_texto_hallazgo_ui(value) or value}"
+                            )
+                    else:
+                        st.caption("Ninguno.")
+
+                    st.markdown("#### Pendientes de clasificación")
+
+                    if sin_clasificacion:
+                        for value in sin_clasificacion:
+                            st.markdown(
+                                f"- {_texto_hallazgo_ui(value) or value}"
+                            )
+                    else:
+                        st.success(
+                            "No existen datos identificados "
+                            "pendientes de clasificación."
+                        )
+
 
                 lot = security.get("lot_recomendado", "No informado")
 

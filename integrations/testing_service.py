@@ -87,7 +87,7 @@ def construir_comentario_pruebas(testing_summary: dict) -> str:
     return "\n".join(lineas) + "\n"
 
 
-def publicar_comentario_pruebas(project_id, issue_iid, testing_summary: dict):
+def publicar_comentario_pruebas(project_id, issue_iid, testing_summary: dict, adapter=None):
     """Publica en GitLab el comentario de retroalimentación operativa de Pruebas."""
     if not testing_summary:
         raise ValueError("No existe resumen de Pruebas para publicar.")
@@ -99,7 +99,7 @@ def publicar_comentario_pruebas(project_id, issue_iid, testing_summary: dict):
 
     comentario = construir_comentario_pruebas(testing_summary)
 
-    adapter = GitLabAdapter(project_id=project_id)
+    adapter = adapter or GitLabAdapter(project_id=project_id)
     nota = adapter.agregar_comentario(issue_iid, comentario)
     issue = adapter.obtener_issue(issue_iid)
     nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
@@ -131,12 +131,12 @@ def construir_comentario_referencias_invalidas_pruebas(prueba_id: str, referenci
     return "\n".join(lineas) + "\n"
 
 
-def publicar_aviso_referencias_invalidas_pruebas(project_id, issue_iid, prueba_id, referencias_invalidas):
+def publicar_aviso_referencias_invalidas_pruebas(project_id, issue_iid, prueba_id, referencias_invalidas, adapter=None):
     """Publica en GitLab el aviso de un Issue de Pruebas bloqueado por codificaciones
     inexistentes: comentario + etiqueta 'Requiere modificación' (reutiliza el ciclo de
     etiquetas de evaluación técnica con estado CORREGIR)."""
     comentario = construir_comentario_referencias_invalidas_pruebas(prueba_id, referencias_invalidas)
-    adapter = GitLabAdapter(project_id=project_id)
+    adapter = adapter or GitLabAdapter(project_id=project_id)
     nota = adapter.agregar_comentario(issue_iid, comentario)
     issue = adapter.obtener_issue(issue_iid)
     nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(issue.labels, "CORREGIR")

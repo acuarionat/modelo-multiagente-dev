@@ -33,13 +33,22 @@ from core.coding_traceability import (
 from core.graph import construir_grafo_codificacion
 from core.traceability_export import exportar_filas_xlsx, importar_matriz_csv, importar_matriz_xlsx
 from core.ui_components import (
+    chip_html,
+    contar,
     create_coding_step_panels,
+    crear_subsecciones_entrada,
+    entrada_fila_html,
+    kpi_strip_html,
     promedio_indices,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
     render_next_phase_button,
     render_stage_summary,
+    rotulo_bloque_html,
+    selector_resultados,
+    tarjeta_estado_entrada_html,
+    titulo_item,
 )
 from core.utils import (
     extraer_porcentaje,
@@ -64,13 +73,6 @@ from agents.coding_repository_discovery import (
 )
 
 SPRINT_CONTEXT_CODIFICACION = "Codificación"
-
-CODIFICACION_AVISO = (
-    "El modelo multiagente apoya el control, seguimiento y trazabilidad de la codificación. "
-    "Las métricas provienen de herramientas reales (seleccionadas según la tecnología del "
-    "repositorio: Radon o ESLint, Semgrep, pip-audit o npm audit, Gitleaks) y las "
-    "recomendaciones son orientativas: requieren revisión del responsable del proyecto."
-)
 
 
 # ---------------------------------------------------------
@@ -367,8 +369,6 @@ def render_coding_repository_info(session, adapter) -> None:
 def render_coding_stage(project_name: str, project_config: dict, adapter) -> None:
     import streamlit as st
 
-    st.warning(CODIFICACION_AVISO)
-
     session = st.session_state
     if "codificacion_resultados" not in session:
         persisted = cargar_estado_etapa("codificacion")
@@ -398,15 +398,21 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     )
 
     # ============================================================
-    # A. Entrada de Codificación — TRZ-002
+    # A. Entradas: matriz de Diseño (TRZ-002) + Issues de Codificación
     # ============================================================
+    # La fase se ordena en un resumen de estado y dos subsecciones (pestañas).
+    # Los contenedores se crean por adelantado y se rellenan cuando hay datos; la
+    # lógica de carga, validación y sincronización es la misma de siempre.
 
-    paso_entrada.markdown("### Entrada de Codificación")
-    paso_entrada.markdown("#### Matriz de Trazabilidad — Etapa Diseño")
+    sub = crear_subsecciones_entrada(paso_entrada, "Issues de Codificación")
 
-    actualizar_gitlab = paso_entrada.button("Actualizar desde GitLab", key="coding_actualizar_trz002")
+    sub.acciones.markdown(rotulo_bloque_html("Acciones sobre la matriz"), unsafe_allow_html=True)
+    col_actualizar, col_gitlab, col_excel = sub.acciones.columns(3)
+    actualizar_gitlab = col_actualizar.button(
+        "Actualizar desde GitLab", icon=":material/refresh:", key="coding_actualizar_trz002", width="stretch",
+    )
     if "coding_matriz_carga" not in session or actualizar_gitlab:
-        with paso_entrada.spinner("Consultando TRZ-002 en GitLab..."):
+        with sub.avisos.spinner("Consultando TRZ-002 en GitLab..."):
             issue_trz002, matriz_trz002 = obtener_issue_matriz_trazabilidad_diseno(adapter.project_id)
         if matriz_trz002 is not None:
             session["coding_matriz_carga"] = matriz_trz002
@@ -418,11 +424,19 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             session["coding_matriz_confirmada"] = False
 
     if "coding_matriz_carga" not in session:
-        paso_entrada.info(
+        sub.avisos.info(
             "TRZ-002 no está disponible en GitLab. Ejecute primero la etapa de Diseño "
             "o cargue la matriz de trazabilidad exportada desde Diseño."
         )
-        archivo_matriz = paso_entrada.file_uploader(
+        sub.resumen_matriz.markdown(
+            tarjeta_estado_entrada_html("Matriz de trazabilidad · Diseño", [chip_html("No disponible", "bad")]),
+            unsafe_allow_html=True,
+        )
+        sub.resumen_issues.markdown(
+            tarjeta_estado_entrada_html("Issues de Codificación", [chip_html("Requiere la matriz", "muted")]),
+            unsafe_allow_html=True,
+        )
+        archivo_matriz = sub.acciones.file_uploader(
             "Cargar matriz de Diseño (Excel)", type=["xlsx", "csv"], key="coding_matriz_upload_inicial",
         )
         if archivo_matriz is None:
@@ -441,36 +455,45 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         session["coding_matriz_original"], matriz_entrada, session.get("coding_matriz_fuente", "Diseño"),
     )
 
-    # Bloque de información de la matriz de entrada (mismos campos en todas las etapas:
+    # Resumen de la matriz de entrada (mismos datos en todas las etapas:
     # Fuente vigente · Versión · Estado · Validación · Filas de la matriz).
-    paso_entrada.markdown("#### Matriz de trazabilidad")
-    paso_entrada.write(f"**Fuente vigente:** {preparacion_matriz['coding_matrix_source']}")
-    paso_entrada.write(f"**Versión:** {leer_version_matriz('diseno') or preparacion_matriz.get('coding_matrix_version') or 'No informada'}")
-    paso_entrada.write(f"**Estado:** {preparacion_matriz['coding_matrix_status']}")
-    paso_entrada.write(f"**Validación:** {'INVÁLIDA' if preparacion_matriz['coding_matrix_status'] == ESTADO_MATRIZ_INVALIDA else 'VÁLIDA'}")
-    paso_entrada.write(f"**Filas de la matriz:** {len(matriz_entrada)}")
+    estado_matriz = preparacion_matriz["coding_matrix_status"]
+    matriz_invalida_ui = estado_matriz == ESTADO_MATRIZ_INVALIDA
+    tono_estado = {"ORIGINAL": "ok", "EDITADA": "warn", ESTADO_MATRIZ_INVALIDA: "bad"}.get(estado_matriz, "muted")
+    version_matriz = leer_version_matriz("diseno") or preparacion_matriz.get("coding_matrix_version") or "No informada"
+    sub.resumen_matriz.markdown(
+        tarjeta_estado_entrada_html(
+            "Matriz de trazabilidad · Diseño",
+            [
+                chip_html(estado_matriz, tono_estado),
+                chip_html("INVÁLIDA" if matriz_invalida_ui else "VÁLIDA", "bad" if matriz_invalida_ui else "ok"),
+                chip_html(contar(len(matriz_entrada), "fila", "filas"), "info"),
+            ],
+            meta=f"{preparacion_matriz['coding_matrix_source']} · Versión {version_matriz}",
+        ),
+        unsafe_allow_html=True,
+    )
 
     if preparacion_matriz["coding_matrix_status"] == ESTADO_MATRIZ_INVALIDA:
-        paso_entrada.error("Estado: INVÁLIDA. Se encontraron errores estructurales:")
+        sub.avisos.error("Estado: INVÁLIDA. Se encontraron errores estructurales:")
         for error in preparacion_matriz["coding_matrix_changes"]["errores_estructura"]:
-            paso_entrada.markdown(f"• {error}")
+            sub.avisos.markdown(f"• {error}")
     elif preparacion_matriz["coding_matrix_changes"]["hay_cambios"]:
         cambios = preparacion_matriz["coding_matrix_changes"]
-        paso_entrada.markdown(
-            f"**Cambios respecto a la carga inicial:** "
+        sub.avisos.caption(
+            f"Cambios respecto a la carga inicial: "
             f"+{len(cambios['agregados'])} agregados · "
             f"~{len(cambios['modificados'])} modificados · "
             f"-{len(cambios['retirados'])} retirados"
         )
     else:
-        paso_entrada.info("Estado: Original. No se detectaron modificaciones respecto a la carga inicial de esta sesión.")
+        sub.avisos.caption("Estado: Original. No se detectaron modificaciones respecto a la carga inicial de esta sesión.")
 
-    paso_entrada.dataframe(matriz_entrada, width="stretch")
+    sub.tabla.dataframe(matriz_entrada, width="stretch")
 
-    col_gitlab, col_excel = paso_entrada.columns(2)
     issue_trz002 = session.get("coding_issue_trz002")
     if issue_trz002 is not None:
-        col_gitlab.markdown(f"[Editar en GitLab]({issue_trz002.web_url})")
+        col_gitlab.link_button("Editar en GitLab", issue_trz002.web_url, icon=":material/open_in_new:", width="stretch")
     else:
         col_gitlab.caption("TRZ-002 no está disponible en GitLab.")
 
@@ -482,14 +505,14 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         col_excel.download_button(
             "Editar con Excel", handle.read(), file_name="matriz_entrada_codificacion.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="coding_descargar_excel",
+            key="coding_descargar_excel", icon=":material/download:", width="stretch",
         )
 
-    archivo_modificado = paso_entrada.file_uploader(
+    archivo_modificado = sub.acciones.file_uploader(
         "Cargar matriz de Diseño modificada", type=["xlsx", "csv"], key="coding_matriz_upload",
     )
     if archivo_modificado is not None and session.get("coding_matriz_upload_nombre") != archivo_modificado.name:
-        with paso_entrada.spinner("Validando la matriz cargada..."):
+        with sub.acciones.spinner("Validando la matriz cargada..."):
             matriz_excel = (
                 importar_matriz_xlsx(archivo_modificado) if archivo_modificado.name.lower().endswith(".xlsx")
                 else importar_matriz_csv(archivo_modificado)
@@ -504,12 +527,11 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     elementos_diseno_validos = set(preparacion_matriz["elementos_diseno_validos"])
 
     # ============================================================
-    # B. Issues de Codificación detectados
+    # Issues de Codificación detectados
     # ============================================================
 
-    paso_entrada.markdown("### Issues de Codificación detectados")
     if "coding_issues_detectados" not in session:
-        with paso_entrada.spinner("Consultando Issues de Codificación en GitLab..."):
+        with sub.tab_issues.spinner("Consultando Issues de Codificación en GitLab..."):
             session["coding_issues_detectados"] = obtener_issues_codificacion(
                 adapter.project_id, milestone_title="Codificación",
             )
@@ -520,26 +542,50 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         matriz_entrada, {fila["codificacion_id"]: estado_entrada["validaciones"][fila["codificacion_id"]] for fila in estado_entrada["filas"]},
     )
 
-    c1, c2, c3 = paso_entrada.columns(3)
-    c1.metric("Elementos de Diseño vigentes", prevalidacion["elementos_diseno_vigentes"])
-    c2.metric("Issues de Codificación válidos", len(prevalidacion["issues_validos"]))
-    c3.metric("Issues bloqueados", len(prevalidacion["issues_bloqueados"]))
+    # Los issues válidos y bloqueados ya se ven en el resumen de arriba: aquí solo
+    # se indica contra cuántos elementos de Diseño se validan.
+    sub.tab_issues.markdown(
+        kpi_strip_html([(prevalidacion["elementos_diseno_vigentes"], "Elementos de Diseño vigentes")], compact=True),
+        unsafe_allow_html=True,
+    )
 
-    if paso_entrada.button("Actualizar issues", key="coding_actualizar_issues"):
+    sub.resumen_issues.markdown(
+        tarjeta_estado_entrada_html("Issues de Codificación", [
+            chip_html(contar(len(estado_entrada["filas"]), "detectado", "detectados"), "info"),
+            chip_html(contar(len(prevalidacion["issues_validos"]), "válido", "válidos"), "ok"),
+            chip_html(
+                contar(len(prevalidacion["issues_bloqueados"]), "bloqueado", "bloqueados"),
+                "bad" if prevalidacion["issues_bloqueados"] else "muted",
+            ),
+        ]),
+        unsafe_allow_html=True,
+    )
+
+    if sub.tab_issues.button(
+        "Actualizar issues", icon=":material/refresh:", key="coding_actualizar_issues", width="content",
+    ):
         session.pop("coding_issues_detectados", None)
         st.rerun()
 
     if not estado_entrada["filas"]:
-        paso_entrada.info("No se encontraron Issues de Codificación en el milestone.")
+        sub.tab_issues.info("No se encontraron Issues de Codificación en el milestone.")
         return
 
+    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
+    # Requiere modificación) junto a la validez de su entrada.
+    labels_por_iid = {issue.get("issue_iid"): issue.get("labels") for issue in issues_codificacion}
     for fila in estado_entrada["filas"]:
         icono = "🟢" if fila["entrada_valida"] else "🔴"
-        paso_entrada.markdown(f"{icono} **{fila['codificacion_id']}** — {fila['estado_entrada']}")
+        sub.tab_issues.markdown(
+            entrada_fila_html(
+                f"{icono} {fila['codificacion_id']}", fila["estado_entrada"], labels_por_iid.get(fila["issue_iid"]),
+            ),
+            unsafe_allow_html=True,
+        )
         if fila["campos_faltantes"]:
-            paso_entrada.caption(f"Campos faltantes: {', '.join(fila['campos_faltantes'])}")
+            sub.tab_issues.caption(f"Campos faltantes: {', '.join(fila['campos_faltantes'])}")
         if fila["referencias_invalidas"]:
-            paso_entrada.caption(f"Elementos de Diseño inexistentes en la matriz heredada: {', '.join(fila['referencias_invalidas'])}")
+            sub.tab_issues.caption(f"Elementos de Diseño inexistentes en la matriz heredada: {', '.join(fila['referencias_invalidas'])}")
 
     codificaciones_validas = [fila["codificacion_id"] for fila in estado_entrada["filas"] if fila["entrada_valida"]]
 
@@ -579,7 +625,8 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         and sin_bloqueos
     )
     ejecutar = paso_analisis.button(
-        "Iniciar análisis de Codificación", type="primary", disabled=not puede_ejecutar, key="coding_ejecutar",
+        "Iniciar análisis de Codificación", icon=":material/play_arrow:", type="primary",
+        disabled=not puede_ejecutar, key="coding_ejecutar",
     )
     if ejecutar:
         matriz_snapshot = copy.deepcopy(matriz_entrada)
@@ -630,7 +677,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             try:
                 publicar_aviso_referencias_invalidas_codificacion(
                     adapter.project_id, fila["issue_iid"], fila["codificacion_id"],
-                    fila["referencias_invalidas"],
+                    fila["referencias_invalidas"], adapter=adapter,
                 )
                 avisos_publicados.add(fila["codificacion_id"])
                 paso_analisis.info(
@@ -694,8 +741,8 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
 
     # Tras el análisis, actualizar automáticamente la etiqueta de flujo de cada
     # Issue de Codificación evaluado (Revisada / Requiere modificación). Los
-    # estados ERROR no modifican la etiqueta. La publicación del comentario
-    # detallado sigue disponible manualmente en cada ficha de resultado.
+    # estados ERROR no modifican la etiqueta. El comentario de retroalimentación
+    # también se publica automáticamente en GitLab (sin botón).
     if ejecutar:
         for codificacion_id, p in presentaciones.items():
             if p["estado_orientativo"] == "ERROR":
@@ -703,6 +750,15 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             actualizar_etiqueta_resultado_tecnico(
                 adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
             )
+            try:
+                publicar_comentario_codificacion(
+                    adapter.project_id, p["issue_iid"], resultados[codificacion_id]["coding_summary"],
+                    adapter=adapter,
+                )
+                session[f"coding_publicado_{codificacion_id}"] = True
+            except Exception as exc:
+                session[f"coding_publicado_{codificacion_id}"] = False
+                st.warning(f"{codificacion_id}: no se pudo publicar la retroalimentación en GitLab ({exc}).")
 
     resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
         ["Resumen general", "Detalle por codificación", "Matriz y documentos"]
@@ -725,12 +781,19 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         ),
     )
 
+    elegido = selector_resultados(
+        detalle_resultados, "codificacion",
+        [(identificador, pres["estado_orientativo"]) for identificador, pres in presentaciones.items()],
+    )
     for codificacion_id, p in presentaciones.items():
+        if codificacion_id != elegido:
+            continue
         resultado_grafo = resultados[codificacion_id]
-        expander_title = f"{p['codificacion_id']} — {p['titulo']} · {p['estado_orientativo']}"
+        expander_title = titulo_item(p['codificacion_id'], p['titulo'], p['estado_orientativo'])
 
-        # Mantener el detalle bajo demanda facilita comparar varios resultados.
-        with detalle_resultados.expander(expander_title, expanded=False):
+        # Un resultado a la vez (selector de arriba): evita una página larga en vertical.
+        with detalle_resultados.container(border=True):
+            st.markdown(f"### {expander_title}")
             render_evaluation_header(
                 titulo="Resultado de evaluación asistida",
                 estado=p["estado_orientativo"],
@@ -758,19 +821,10 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
                 )
 
                 st.markdown("#### Retroalimentación")
-                estado_tecnico_error = p["estado_orientativo"] == "ERROR"
-                gitlab_key = f"coding_publicado_{codificacion_id}"
-                if st.button(
-                    "Publicar retroalimentación en GitLab", key=f"coding_publicar_{codificacion_id}",
-                    disabled=estado_tecnico_error,
-                ):
-                    publicar_comentario_codificacion(
-                        adapter.project_id, p["issue_iid"], resultado_grafo["coding_summary"],
-                    )
-                    session[gitlab_key] = True
-
-                if session.get(gitlab_key):
-                    render_gitlab_feedback(True)
+                if p["estado_orientativo"] == "ERROR":
+                    st.caption("No se publica retroalimentación cuando existe error técnico.")
+                else:
+                    render_gitlab_feedback(bool(session.get(f"coding_publicado_{codificacion_id}")))
 
             with tab_calidad:
                 with st.expander(f"MC-05 — {mc05['nombre']} · {extraer_porcentaje(mc05['valor'])}", expanded=False):

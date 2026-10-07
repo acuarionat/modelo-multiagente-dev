@@ -27,13 +27,22 @@ from core.traceability_export import (
     importar_matriz_xlsx,
 )
 from core.ui_components import (
+    chip_html,
+    contar,
     create_stage_step_panels,
+    crear_subsecciones_entrada,
+    entrada_fila_html,
+    kpi_strip_html,
     promedio_indices,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
     render_next_phase_button,
     render_stage_summary,
+    rotulo_bloque_html,
+    selector_resultados,
+    tarjeta_estado_entrada_html,
+    titulo_item,
 )
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
 from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
@@ -49,12 +58,6 @@ from integrations.issue_service import (
 
 SPRINT_CONTEXT_DISENO = "Diseño"
 COLUMNAS_MATRIZ_ENTRADA_UI = ("Código", "Tipo", "Nombre", "Descripción", "Historia de origen", "Estado de revisión")
-
-DISENO_AVISO = (
-    "El modelo multiagente apoya el control, seguimiento y trazabilidad del diseño. "
-    "Las métricas y recomendaciones son orientativas y requieren revisión del "
-    "responsable del proyecto."
-)
 
 
 # ---------------------------------------------------------
@@ -268,8 +271,6 @@ def _cargar_entrada_desde_gitlab(adapter) -> dict:
 def render_design_stage(project_name: str, project_config: dict, adapter) -> None:
     import streamlit as st
 
-    st.warning(DISENO_AVISO)
-
     session = st.session_state
     if "diseno_resultados" not in session:
         persisted = cargar_estado_etapa("diseno")
@@ -292,65 +293,82 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     )
 
     # ============================================================
-    # A. Entrada de trazabilidad
+    # A. Entradas: matriz de trazabilidad heredada + Issues de Diseño
     # ============================================================
+    # La fase se ordena en un resumen de estado y dos subsecciones (pestañas).
+    # Los contenedores se crean por adelantado y se rellenan cuando hay datos; la
+    # lógica de carga, validación y sincronización es la misma de siempre.
 
-    paso_entrada.markdown("### Entrada de trazabilidad")
+    sub = crear_subsecciones_entrada(paso_entrada, "Issues de Diseño")
 
-    actualizar_gitlab = paso_entrada.button("Actualizar desde GitLab", key="diseno_actualizar_matriz")
+    sub.acciones.markdown(rotulo_bloque_html("Acciones sobre la matriz"), unsafe_allow_html=True)
+    sub.acciones.caption(
+        "Recomendación no bloqueante: revise la matriz antes de iniciar el análisis de Diseño. "
+        "Puede realizar ajustes desde GitLab o mediante Excel si los requerimientos han cambiado."
+    )
+    col_actualizar, col_gitlab, col_excel = sub.acciones.columns(3)
+    actualizar_gitlab = col_actualizar.button(
+        "Actualizar desde GitLab", icon=":material/refresh:", key="diseno_actualizar_matriz", width="stretch",
+    )
     if "matriz_carga" not in session or actualizar_gitlab:
-        with paso_entrada.spinner("Consultando TRZ-001 en GitLab y comparando con la matriz original..."):
+        with sub.avisos.spinner("Consultando TRZ-001 en GitLab y comparando con la matriz original..."):
             session["matriz_carga"] = _cargar_entrada_desde_gitlab(adapter)
         session["matriz_confirmada"] = False
 
     carga = session["matriz_carga"]
 
     # ---- Procedencia y estado (sección 4) ----
-    # Bloque de información de la matriz de entrada (mismos campos en todas las etapas:
+    # Resumen de la matriz de entrada (mismos datos en todas las etapas:
     # Fuente vigente · Versión · Estado · Validación · Filas de la matriz).
-    paso_entrada.markdown("#### Matriz de trazabilidad")
-    paso_entrada.write(f"**Fuente vigente:** {_describir_fuente(carga['matriz_fuente'], carga['issue_trz001'], carga.get('archivo_excel_nombre'))}")
-    paso_entrada.write(f"**Versión:** {leer_version_matriz('requerimientos') or carga.get('matriz_version') or 'No informada'}")
-    paso_entrada.write(f"**Estado:** {carga['matriz_estado']}")
-    paso_entrada.write(f"**Validación:** {'VÁLIDA' if carga['matriz_validacion']['valida'] else 'INVÁLIDA'}")
-    paso_entrada.write(f"**Filas de la matriz:** {len(carga['matriz_entrada_diseno'])}")
+    matriz_valida_ui = carga["matriz_validacion"]["valida"]
+    tono_estado = {"ORIGINAL": "ok", "EDITADA": "warn", ESTADO_MATRIZ_INVALIDA: "bad"}.get(carga["matriz_estado"], "muted")
+    fuente_vigente = _describir_fuente(carga["matriz_fuente"], carga["issue_trz001"], carga.get("archivo_excel_nombre"))
+    version_matriz = leer_version_matriz("requerimientos") or carga.get("matriz_version") or "No informada"
+    sub.resumen_matriz.markdown(
+        tarjeta_estado_entrada_html(
+            "Matriz de trazabilidad · Requerimientos",
+            [
+                chip_html(carga["matriz_estado"], tono_estado),
+                chip_html("VÁLIDA" if matriz_valida_ui else "INVÁLIDA", "ok" if matriz_valida_ui else "bad"),
+                chip_html(contar(len(carga["matriz_entrada_diseno"]), "fila", "filas"), "info"),
+            ],
+            meta=f"{fuente_vigente} · Versión {version_matriz}",
+        ),
+        unsafe_allow_html=True,
+    )
 
     if carga["matriz_estado"] == "EDITADA":
         cambios = carga["matriz_cambios_pre_diseno"]
-        paso_entrada.markdown(
-            f"**Cambios respecto a Requerimientos:** "
+        sub.avisos.caption(
+            f"Cambios respecto a Requerimientos: "
             f"+{len(cambios['agregados'])} agregados · "
             f"~{len(cambios['modificados'])} modificados · "
             f"-{len(cambios['retirados'])} retirados"
         )
     elif carga["matriz_estado"] == "ORIGINAL":
-        paso_entrada.info(
+        sub.avisos.caption(
             "Estado: Original. No se detectaron modificaciones respecto a la matriz "
             "generada al finalizar Recepción de Requerimientos."
         )
 
     if carga["matriz_estado"] == ESTADO_MATRIZ_INVALIDA:
-        paso_entrada.error("Estado: INVÁLIDA. Se encontraron errores:")
+        sub.avisos.error("Estado: INVÁLIDA. Se encontraron errores:")
         for error in carga["matriz_validacion"]["errores"]:
-            paso_entrada.markdown(f"• {error}")
-
-    paso_entrada.caption(
-        "Recomendación no bloqueante: revise la matriz antes de iniciar el análisis de Diseño. "
-        "Puede realizar ajustes desde GitLab o mediante Excel si los requerimientos han cambiado."
-    )
+            sub.avisos.markdown(f"• {error}")
 
     # ---- Tabla completa (solo las 6 columnas permitidas antes de Diseño) ----
-    paso_entrada.dataframe(_filas_matriz_para_tabla_ui(carga["matriz_entrada_diseno"]), width="stretch")
+    sub.tabla.dataframe(_filas_matriz_para_tabla_ui(carga["matriz_entrada_diseno"]), width="stretch")
 
     # ---- Cambios detectados (sección 10) ----
     if carga["matriz_estado"] == "EDITADA":
-        with paso_entrada.expander("Cambios detectados respecto a Requerimientos"):
+        with sub.tabla.expander("Cambios detectados respecto a Requerimientos"):
             tablas_cambios = preparar_tabla_cambios_pre_diseno(carga["matriz_cambios_pre_diseno"])
             st.table(tablas_cambios["resumen"])
     # ---- Botones de edición ----
-    col_gitlab, col_excel = paso_entrada.columns(2)
     if carga["issue_trz001"] is not None:
-        col_gitlab.markdown(f"[Editar en GitLab]({carga['issue_trz001'].web_url})")
+        col_gitlab.link_button(
+            "Editar en GitLab", carga["issue_trz001"].web_url, icon=":material/open_in_new:", width="stretch",
+        )
     else:
         col_gitlab.caption("TRZ-001 todavía no existe en GitLab (se publica al finalizar Requerimientos).")
 
@@ -363,15 +381,15 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         col_excel.download_button(
             "Editar con Excel", handle.read(), file_name="matriz_entrada_diseno.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="diseno_descargar_excel",
+            key="diseno_descargar_excel", icon=":material/download:", width="stretch",
         )
 
     # ---- Cargar matriz modificada (Excel/CSV) ----
-    archivo_modificado = paso_entrada.file_uploader(
+    archivo_modificado = sub.acciones.file_uploader(
         "Cargar matriz modificada", type=["xlsx", "csv"], key="diseno_matriz_upload",
     )
     if archivo_modificado is not None and session.get("diseno_matriz_upload_nombre") != archivo_modificado.name:
-        with paso_entrada.spinner("Validando la matriz cargada..."):
+        with sub.acciones.spinner("Validando la matriz cargada..."):
             if archivo_modificado.name.lower().endswith(".xlsx"):
                 matriz_excel = importar_matriz_xlsx(archivo_modificado)
             else:
@@ -400,8 +418,8 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
             matriz_gitlab_actual or [], carga["matriz_entrada_diseno"],
         )
         if diferencia_con_gitlab["hay_cambios"]:
-            paso_entrada.info("La matriz cargada contiene cambios respecto a la versión de GitLab.")
-            if paso_entrada.button("Actualizar matriz en GitLab", key="diseno_sync_gitlab"):
+            sub.acciones.info("La matriz cargada contiene cambios respecto a la versión de GitLab.")
+            if sub.acciones.button("Actualizar matriz en GitLab", key="diseno_sync_gitlab"):
                 from integrations.issue_service import crear_o_actualizar_issue_matriz_trazabilidad
                 filas_capitalizadas = [
                     {
@@ -416,15 +434,14 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                     for fila in carga["matriz_entrada_diseno"]
                 ]
                 crear_o_actualizar_issue_matriz_trazabilidad(adapter.project_id, filas_capitalizadas)
-                paso_entrada.success("TRZ-001 actualizado en GitLab con la matriz cargada.")
+                sub.acciones.success("TRZ-001 actualizado en GitLab con la matriz cargada.")
 
     # ============================================================
-    # B. Issues de Diseño detectados (vista previa contra la matriz de entrada)
+    # Issues de Diseño detectados (vista previa contra la matriz de entrada)
     # ============================================================
 
-    paso_entrada.markdown("### Issues de Diseño detectados")
     if "diseno_issues_detectados" not in session:
-        with paso_entrada.spinner("Consultando Issues de Diseño en GitLab..."):
+        with sub.tab_issues.spinner("Consultando Issues de Diseño en GitLab..."):
             session["diseno_issues_detectados"] = obtener_issues_diseno(
                 adapter.project_id, milestone_title="Diseño",
             )
@@ -435,27 +452,52 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     }
 
     prevalidacion = preparar_prevalidacion_diseno(carga["matriz_entrada_diseno"], contextos_por_diseno_id)
-    c1, c2, c3, c4, c5 = paso_entrada.columns(5)
-    c1.metric("Requisitos totales", prevalidacion["requisitos_totales"])
-    c2.metric("Referencias válidas", prevalidacion["referencias_validas"])
-    c3.metric("Referencias inválidas", prevalidacion["referencias_invalidas"])
-    c4.metric("Issues de Diseño válidos", len(prevalidacion["issues_validos"]))
-    c5.metric("Issues bloqueados", len(prevalidacion["issues_bloqueados"]))
+    # Los issues válidos y bloqueados ya se ven en el resumen de arriba: aquí solo
+    # se detalla la validación de referencias contra la matriz.
+    sub.tab_issues.markdown(
+        kpi_strip_html([
+            (prevalidacion["requisitos_totales"], "Requisitos totales"),
+            (prevalidacion["referencias_validas"], "Referencias válidas"),
+            (prevalidacion["referencias_invalidas"], "Referencias inválidas"),
+        ], compact=True),
+        unsafe_allow_html=True,
+    )
 
-    if paso_entrada.button("Actualizar issues", key="diseno_actualizar_issues"):
+    if sub.tab_issues.button(
+        "Actualizar issues", icon=":material/refresh:", key="diseno_actualizar_issues", width="content",
+    ):
         session.pop("diseno_issues_detectados", None)
         st.rerun()
 
     estado_entrada = preparar_estado_entrada_diseno(contextos_por_diseno_id)
+    sub.resumen_issues.markdown(
+        tarjeta_estado_entrada_html("Issues de Diseño", [
+            chip_html(contar(len(estado_entrada), "detectado", "detectados"), "info"),
+            chip_html(contar(len(prevalidacion["issues_validos"]), "válido", "válidos"), "ok"),
+            chip_html(
+                contar(len(prevalidacion["issues_bloqueados"]), "bloqueado", "bloqueados"),
+                "bad" if prevalidacion["issues_bloqueados"] else "muted",
+            ),
+        ]),
+        unsafe_allow_html=True,
+    )
     if not estado_entrada:
-        paso_entrada.info("No se encontraron Issues de Diseño en el milestone.")
+        sub.tab_issues.info("No se encontraron Issues de Diseño en el milestone.")
         return
 
+    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
+    # Requiere modificación) junto a la validez de su trazabilidad.
+    labels_por_iid = {issue.get("issue_iid"): issue.get("labels") for issue in issues_diseno}
     for fila in estado_entrada:
         icono = "🟢" if fila["entrada_valida"] else "🔴"
-        paso_entrada.markdown(f"{icono} **{fila['diseno_id']}** — {fila['estado_entrada']}")
+        sub.tab_issues.markdown(
+            entrada_fila_html(
+                f"{icono} {fila['diseno_id']}", fila["estado_entrada"], labels_por_iid.get(fila["issue_iid"]),
+            ),
+            unsafe_allow_html=True,
+        )
         if not fila["entrada_valida"]:
-            paso_entrada.caption(f"Referencias inválidas: {', '.join(fila['referencias_invalidas'])}")
+            sub.tab_issues.caption(f"Referencias inválidas: {', '.join(fila['referencias_invalidas'])}")
 
     disenos_validos = [fila["diseno_id"] for fila in estado_entrada if fila["entrada_valida"]]
 
@@ -476,7 +518,8 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
 
     puede_ejecutar = matriz_valida and session["matriz_confirmada"] and bool(disenos_validos)
     ejecutar = paso_analisis.button(
-        "Iniciar análisis de Diseño", type="primary", disabled=not puede_ejecutar, key="diseno_ejecutar",
+        "Iniciar análisis de Diseño", icon=":material/play_arrow:", type="primary",
+        disabled=not puede_ejecutar, key="diseno_ejecutar",
     )
     if ejecutar:
         # Congelar la matriz de entrada: todo el análisis usa esta misma versión (snapshot).
@@ -510,7 +553,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
             try:
                 publicar_aviso_referencias_invalidas_diseno(
                     adapter.project_id, fila["issue_iid"], fila["diseno_id"],
-                    fila["referencias_invalidas"],
+                    fila["referencias_invalidas"], adapter=adapter,
                 )
                 avisos_publicados.add(fila["diseno_id"])
                 paso_analisis.info(
@@ -569,8 +612,8 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
 
     # Tras el análisis, actualizar automáticamente la etiqueta de flujo de cada
     # Issue de Diseño evaluado (Revisada / Requiere modificación). Los estados
-    # ERROR no modifican la etiqueta. La publicación del comentario detallado
-    # sigue disponible manualmente en cada ficha de resultado.
+    # ERROR no modifican la etiqueta. El comentario de retroalimentación también
+    # se publica automáticamente en GitLab (sin botón).
     if ejecutar:
         for diseno_id, p in presentaciones.items():
             if p["estado_orientativo"] == "ERROR":
@@ -578,6 +621,15 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
             actualizar_etiqueta_resultado_tecnico(
                 adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
             )
+            try:
+                publicar_comentario_diseno(
+                    adapter.project_id, p["issue_iid"], resultados[diseno_id]["design_summary"],
+                    adapter=adapter,
+                )
+                session[f"diseno_publicado_{diseno_id}"] = True
+            except Exception as exc:
+                session[f"diseno_publicado_{diseno_id}"] = False
+                st.warning(f"{diseno_id}: no se pudo publicar la retroalimentación en GitLab ({exc}).")
 
     resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
         ["Resumen general", "Detalle por diseño", "Matriz y documentos"]
@@ -602,15 +654,19 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     )
 
     # ---- Resultado por Issue de Diseño ----
-    detalle_resultados.subheader("Resultado de evaluación asistida")
-
+    elegido = selector_resultados(
+        detalle_resultados, "diseno",
+        [(identificador, pres["estado_orientativo"]) for identificador, pres in presentaciones.items()],
+    )
     for diseno_id, p in presentaciones.items():
+        if diseno_id != elegido:
+            continue
         resultado_grafo = resultados[diseno_id]
-        expander_title = f"{p['diseno_id']} — {p['titulo']} · {p['estado_orientativo']}"
+        expander_title = titulo_item(p['diseno_id'], p['titulo'], p['estado_orientativo'])
 
-        # Cada resultado se presenta como una ficha resumida y desplegable para
-        # evitar una página excesivamente larga cuando existen varios diseños.
-        with detalle_resultados.expander(expander_title, expanded=False):
+        # Un resultado a la vez (selector de arriba): evita una página larga en vertical.
+        with detalle_resultados.container(border=True):
+            st.markdown(f"### {expander_title}")
             render_evaluation_header(
                 titulo="Resultado de evaluación asistida",
                 estado=p["estado_orientativo"],
@@ -635,19 +691,10 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
                 )
 
                 st.markdown("#### Retroalimentación")
-                estado_tecnico_error = p["estado_orientativo"] == "ERROR"
-                gitlab_key = f"diseno_publicado_{diseno_id}"
-                if st.button(
-                    "Publicar retroalimentación en GitLab", key=f"diseno_publicar_{diseno_id}",
-                    disabled=estado_tecnico_error,
-                ):
-                    publicar_comentario_diseno(
-                        adapter.project_id, p["issue_iid"], resultado_grafo["design_summary"],
-                    )
-                    session[gitlab_key] = True
-
-                if session.get(gitlab_key):
-                    render_gitlab_feedback(True)
+                if p["estado_orientativo"] == "ERROR":
+                    st.caption("No se publica retroalimentación cuando existe error técnico.")
+                else:
+                    render_gitlab_feedback(bool(session.get(f"diseno_publicado_{diseno_id}")))
 
             with tab_calidad:
                 with st.expander(f"MC-03 — {mc03['nombre']} · {extraer_porcentaje(mc03['valor'])}", expanded=False):

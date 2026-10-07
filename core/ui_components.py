@@ -7,9 +7,14 @@ Extraídos del patrón de Recepción de Requerimientos para que Diseño
 Solo presentación: no recalcula métricas ni modifica datos.
 """
 
+import re
 from html import escape
+from types import SimpleNamespace
 
 import streamlit as st
+
+from core.dashboard_ui import clasificar_estado_flujo
+from core.ui_theme import render_section_title
 
 
 # ---------------------------------------------------------
@@ -41,45 +46,110 @@ def _texto_hallazgo_ui(item):
 # Navegación interna de una etapa
 # ---------------------------------------------------------
 
-def create_stage_step_panels(stage_prefix: str, resultados_presentes: bool = False):
-    """Crea las tres vistas progresivas comunes sin alterar su contenido.
+# Cada fase: (título completo del panel, nombre corto para el botón, ícono del botón).
+_FASE_ENTRADAS = ("Revisión de entradas", "entradas", ":material/inventory_2:")
+_FASE_ANALISIS = ("Ejecución del análisis", "análisis", ":material/play_circle:")
+_FASE_RESULTADOS = ("Resultados y artefactos", "resultados", ":material/fact_check:")
+_FASE_REPOSITORIO = ("Información técnica del repositorio", "repositorio", ":material/account_tree:")
 
-    El panel abierto se rastrea con un único índice en `st.session_state`
-    (`<stage_prefix>_active_step`), recalculado en cada ejecución igual que
-    antes lo hacía `resultados_presentes`. Esto permite que
-    `render_next_phase_button` avance de panel sin depender del `key` nativo
-    de `st.expander`, que no admite reabrirse/cerrarse por programación.
+
+def _crear_flujo_de_fases(
+    stage_prefix: str,
+    fases: tuple,
+    indice_resultados: int,
+    resultados_presentes: bool,
+    descripcion: str,
+):
+    """Barra de fases (botones «Ver / Ocultar») y un panel por cada fase.
+
+    La fase visible se rastrea con un único índice en `st.session_state`
+    (`<stage_prefix>_active_step`; `None` = todas ocultas), de modo que
+    `render_next_phase_button` avanza de fase por programación. Presionar el
+    botón de la fase visible la oculta; presionar otro la muestra.
+
+    El contenido de todas las fases se sigue generando en cada ejecución (la
+    lógica de cada etapa no cambia): las fases ocultas solo se ocultan con CSS
+    mediante la clase de su `key` (`phase_off_*`).
+
+    Si ya hay resultados, la primera vez se abre la fase de resultados (igual
+    que antes); desde que la persona elige una fase se respeta su elección.
     """
     step_key = f"{stage_prefix}_active_step"
+    manual_key = f"{stage_prefix}_step_manual"
     if step_key not in st.session_state:
-        st.session_state[step_key] = 2 if resultados_presentes else 0
-    elif resultados_presentes:
-        st.session_state[step_key] = 2
+        st.session_state[step_key] = indice_resultados if resultados_presentes else 0
+    elif resultados_presentes and not st.session_state.get(manual_key):
+        st.session_state[step_key] = indice_resultados
+    if not resultados_presentes:
+        st.session_state[manual_key] = False
     active_step = st.session_state[step_key]
 
-    paso_entrada = st.expander("A. Revisión de entradas", expanded=active_step == 0)
-    paso_analisis = st.expander("B. Ejecución del análisis", expanded=active_step == 1)
-    paso_resultados = st.expander("C. Resultados y artefactos", expanded=active_step == 2)
-    return paso_entrada, paso_analisis, paso_resultados, step_key
+    render_section_title(
+        "Fases de la etapa",
+        eyebrow="Paso a paso",
+        description=descripcion,
+        icon="fases",
+    )
+
+    with st.container(key=f"phase_bar_{stage_prefix}"):
+        columnas = st.columns(len(fases))
+        for indice, (columna, (titulo, corto, icono)) in enumerate(zip(columnas, fases)):
+            abierta = active_step == indice
+            if columna.button(
+                f"{'Ocultar' if abierta else 'Ver'} {corto}",
+                key=f"{stage_prefix}_phase_btn_{indice}",
+                icon=icono,
+                help=f"{chr(65 + indice)}. {titulo}",
+                type="primary" if abierta else "secondary",
+                width="stretch",
+            ):
+                st.session_state[step_key] = None if abierta else indice
+                st.session_state[manual_key] = True
+                st.rerun()
+
+    paneles = []
+    for indice, (titulo, _corto, _icono) in enumerate(fases):
+        estado = "on" if active_step == indice else "off"
+        panel = st.container(key=f"phase_{estado}_{stage_prefix}_{indice}")
+        panel.markdown(
+            '<div class="phase-panel-head">'
+            f'<span class="phase-panel-letter">{chr(65 + indice)}</span>'
+            f'<span class="phase-panel-title">{escape(titulo)}</span>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        paneles.append(panel)
+    return (*paneles, step_key)
+
+
+def create_stage_step_panels(stage_prefix: str, resultados_presentes: bool = False):
+    """Crea las tres fases comunes (entradas, análisis, resultados) sin alterar su contenido."""
+    return _crear_flujo_de_fases(
+        stage_prefix,
+        (_FASE_ENTRADAS, _FASE_ANALISIS, _FASE_RESULTADOS),
+        indice_resultados=2,
+        resultados_presentes=resultados_presentes,
+        descripcion="Revisión de entradas, ejecución del análisis y resultados.",
+    )
 
 
 def create_coding_step_panels(stage_prefix: str, resultados_presentes: bool = False):
-    """Crea la navegación progresiva propia de la etapa de Codificación.
+    """Crea las cuatro fases propias de la etapa de Codificación.
 
-    Ver `create_stage_step_panels` para el propósito del índice de paso activo.
+    Ver `_crear_flujo_de_fases` para el manejo de la fase visible.
     """
-    step_key = f"{stage_prefix}_active_step"
-    if step_key not in st.session_state:
-        st.session_state[step_key] = 3 if resultados_presentes else 0
-    elif resultados_presentes:
-        st.session_state[step_key] = 3
-    active_step = st.session_state[step_key]
-
-    paso_entrada = st.expander("A. Entrada de codificación", expanded=active_step == 0)
-    paso_repositorio = st.expander("B. Información técnica del repositorio", expanded=active_step == 1)
-    paso_analisis = st.expander("C. Ejecución del análisis", expanded=active_step == 2)
-    paso_resultados = st.expander("D. Resultados y artefactos", expanded=active_step == 3)
-    return paso_entrada, paso_repositorio, paso_analisis, paso_resultados, step_key
+    return _crear_flujo_de_fases(
+        stage_prefix,
+        (
+            ("Entrada de codificación", "entradas", _FASE_ENTRADAS[2]),
+            _FASE_REPOSITORIO,
+            _FASE_ANALISIS,
+            _FASE_RESULTADOS,
+        ),
+        indice_resultados=3,
+        resultados_presentes=resultados_presentes,
+        descripcion="Entrada, información técnica del repositorio, ejecución del análisis y resultados.",
+    )
 
 
 # ---------------------------------------------------------
@@ -90,23 +160,196 @@ def render_next_phase_button(
     container,
     step_key: str,
     target_step: int,
-    label: str = "Siguiente fase →",
+    label: str = "Siguiente fase",
 ) -> None:
-    """Botón discreto que cierra el panel actual y abre el siguiente.
+    """Botón discreto que oculta la fase actual y muestra la siguiente.
 
-    Solo afecta el estado visual (abierto/cerrado) de los expanders creados por
-    `create_stage_step_panels` / `create_coding_step_panels`; no altera datos ni
-    lógica de la etapa.
+    Solo afecta la fase visible creada por `create_stage_step_panels` /
+    `create_coding_step_panels`; no altera datos ni lógica de la etapa.
     """
     container.divider()
     _, col_button = container.columns([5, 1.4])
     if col_button.button(
         label,
         key=f"next_phase__{step_key}__{target_step}",
+        icon=":material/arrow_forward:",
+        icon_position="right",
         width="stretch",
     ):
         st.session_state[step_key] = target_step
+        st.session_state[f"{step_key.removesuffix('_active_step')}_step_manual"] = True
         st.rerun()
+
+
+# ---------------------------------------------------------
+# Entradas con su estado de revisión (etiquetas de GitLab)
+# ---------------------------------------------------------
+
+_CLASES_ESTADO_FLUJO = {
+    "Pendiente": "pendiente",
+    "Requiere modificación": "rework",
+    "Revisada": "revisada",
+    "Sin estado": "sin-estado",
+}
+
+
+def chip_estado_flujo_html(labels) -> str:
+    """Etiqueta visual del estado de revisión de un Issue (Pendiente, Requiere modificación…)."""
+    estado = clasificar_estado_flujo(labels)
+    return f'<span class="wf-chip {_CLASES_ESTADO_FLUJO[estado]}">{escape(estado)}</span>'
+
+
+def entrada_fila_html(identificador: str, texto: str = "", labels=None) -> str:
+    """Fila de una entrada: identificador, descripción y estado de revisión."""
+    texto_html = f'<span class="entry-text">{escape(str(texto))}</span>' if texto else ""
+    return (
+        '<div class="entry-row">'
+        f'<span class="entry-id">{escape(str(identificador))}</span>'
+        f"{texto_html}"
+        f"{chip_estado_flujo_html(labels)}"
+        "</div>"
+    )
+
+
+# ---------------------------------------------------------
+# Fase de entradas con matriz heredada + issues (Diseño, Codificación, Pruebas)
+# ---------------------------------------------------------
+
+def contar(n: int, singular: str, plural: str) -> str:
+    """«1 válido» / «2 válidos»."""
+    return f"{n} {singular if n == 1 else plural}"
+
+
+def chip_html(texto, tono: str = "muted") -> str:
+    """Etiqueta redondeada. Tonos: ok, warn, bad, info, muted."""
+    return f'<span class="wf-chip tone-{tono}">{escape(str(texto))}</span>'
+
+
+def tarjeta_estado_entrada_html(titulo: str, chips: list, meta: str = "") -> str:
+    """Tarjeta del resumen de entradas: título, etiquetas de estado (ya en HTML) y una línea de contexto."""
+    meta_html = f'<span class="entry-status-meta">{escape(meta)}</span>' if meta else ""
+    return (
+        '<div class="entry-status-card">'
+        f'<span class="entry-status-title">{escape(titulo)}</span>'
+        f'<div class="entry-status-chips">{"".join(chips)}</div>'
+        f"{meta_html}"
+        "</div>"
+    )
+
+
+def rotulo_bloque_html(texto: str) -> str:
+    """Rótulo pequeño que titula un bloque dentro de una subsección."""
+    return f'<div class="entry-block-label">{escape(texto)}</div>'
+
+
+def crear_subsecciones_entrada(paso_entrada, etiqueta_issues: str) -> SimpleNamespace:
+    """Ordena la fase de entradas en dos subsecciones (pestañas), cada una con su propio resumen.
+
+    - Pestaña «Matriz de trazabilidad»: `resumen_matriz` (tarjeta de estado), `avisos`
+      (cambios y errores, solo si los hay), `tabla` (contenido) y `acciones`
+      (actualizar, editar, cargar).
+    - Pestaña de issues: `resumen_issues` (tarjeta de estado) y luego `tab_issues`.
+
+    Los contenedores se crean por adelantado y se rellenan cuando la etapa tiene los
+    datos: el orden en pantalla es el de creación, no el de ejecución del script, así
+    que la lógica de cada etapa no cambia. Las etiquetas de las pestañas son fijas
+    (si cambiaran, Streamlit reiniciaría la pestaña activa en cada ejecución).
+    """
+    tab_matriz, tab_issues = paso_entrada.tabs(["Matriz de trazabilidad", etiqueta_issues])
+    return SimpleNamespace(
+        tab_matriz=tab_matriz,
+        tab_issues=tab_issues,
+        resumen_matriz=tab_matriz.container(),
+        avisos=tab_matriz.container(),
+        tabla=tab_matriz.container(),
+        acciones=tab_matriz.container(),
+        resumen_issues=tab_issues.container(),
+    )
+
+
+_ICONO_ESTADO_RESULTADO = {
+    "CORREGIR": "🔴",
+    "CONFORME CON MEJORAS": "🟡",
+    "CONFORME": "🟢",
+    "APROBADO": "🟢",
+    "REVISAR": "🟡",
+}
+
+
+def selector_resultados(container, stage_prefix: str, items: list, columnas: int = 4):
+    """Barra de botones para elegir qué resultado se muestra (uno a la vez).
+
+    `items` es una lista de (identificador, estado). Devuelve el identificador elegido
+    (por omisión, el primero). La elección se guarda en `st.session_state`
+    (`<stage_prefix>_resultado_sel`); si el resultado elegido ya no existe (p. ej. tras
+    un nuevo análisis) se vuelve al primero.
+    """
+    clave = f"{stage_prefix}_resultado_sel"
+    ids = [identificador for identificador, _ in items]
+    if not ids:
+        return None
+    if st.session_state.get(clave) not in ids:
+        st.session_state[clave] = ids[0]
+    elegido = st.session_state[clave]
+
+    with container.container(key=f"result_bar_{stage_prefix}"):
+        for inicio in range(0, len(items), columnas):
+            fila = items[inicio:inicio + columnas]
+            for columna, (identificador, estado) in zip(st.columns(columnas), fila):
+                activo = identificador == elegido
+                if columna.button(
+                    f"{_ICONO_ESTADO_RESULTADO.get(estado, '⚪')} {identificador}",
+                    key=f"{stage_prefix}_resultado_btn_{identificador}",
+                    help=f"{identificador} · {estado}",
+                    type="primary" if activo else "secondary",
+                    width="stretch",
+                ):
+                    st.session_state[clave] = identificador
+                    st.rerun()
+    return elegido
+
+
+def kpi_strip_html(items: list, compact: bool = False) -> str:
+    """Fila de indicadores livianos: pares (valor, rótulo). Reemplaza varias tarjetas st.metric."""
+    celdas = "".join(
+        f'<div class="kpi-item"><span class="kpi-value">{escape(str(valor))}</span>'
+        f'<span class="kpi-label">{escape(str(rotulo))}</span></div>'
+        for valor, rotulo in items
+    )
+    return f'<div class="kpi-strip{" compact" if compact else ""}">{celdas}</div>'
+
+
+def titulo_item(identificador, titulo, estado=None) -> str:
+    """Título de un resultado sin repetir el identificador: «DIS-001 — Módulo · CORREGIR».
+
+    Los Issues suelen llamarse «DIS-001 - Módulo…»: sin este ajuste el identificador
+    se mostraba dos veces («DIS-001 — DIS-001 - Módulo…»).
+    """
+    ident = str(identificador or "").strip()
+    texto = str(titulo or "").strip()
+    resto = re.sub(rf"^{re.escape(ident)}\s*[-–—:]*\s*", "", texto, flags=re.IGNORECASE) if ident else texto
+    base = f"{ident} — {resto}" if ident and resto else (ident or resto)
+    return f"{base} · {estado}" if estado else base
+
+
+def resumen_estados_entradas_html(lista_de_labels, con_total: bool = False) -> str:
+    """Conteo de entradas por estado de revisión, en el orden Pendiente · Requiere modificación · …
+
+    Con `con_total` antepone el total («4 issues encontrados»), de modo que el total y
+    los estados se lean en una sola línea.
+    """
+    conteo = {}
+    total = 0
+    for labels in lista_de_labels:
+        estado = clasificar_estado_flujo(labels)
+        conteo[estado] = conteo.get(estado, 0) + 1
+        total += 1
+    chips = (chip_html(contar(total, "issue encontrado", "issues encontrados"), "info") if con_total else "") + "".join(
+        f'<span class="wf-chip {_CLASES_ESTADO_FLUJO[estado]}">{conteo[estado]} · {escape(estado)}</span>'
+        for estado in ("Pendiente", "Requiere modificación", "Revisada", "Sin estado")
+        if conteo.get(estado)
+    )
+    return f'<div class="entry-summary">{chips}</div>' if chips else ""
 
 
 # ---------------------------------------------------------
@@ -117,6 +360,7 @@ _BADGE_CLASSES = {
     "CORREGIR": "state-corregir",
     "CONFORME CON MEJORAS": "state-mejoras",
     "CONFORME": "state-conforme",
+    "APROBADO": "state-conforme",
 }
 
 
@@ -159,22 +403,24 @@ def render_stage_summary(
 ) -> None:
     """Resumen general homogéneo para todas las etapas.
 
-    Primera fila: conteos (ítems evaluados · requieren corrección · con error).
-    Segunda fila: porcentajes promedio de la etapa (calidad y seguridad).
-    Cierra con el aviso de decisión humana. Solo presentación: no recalcula.
+    Una sola fila de tarjetas (ítems evaluados · requieren corrección · con error ·
+    calidad y seguridad promedio) y el aviso de decisión humana. Solo presentación:
+    no recalcula.
     """
     container.subheader("Resumen general de resultados")
     if subtitulo:
         container.caption(subtitulo)
 
-    fila_conteos = container.columns(3)
-    fila_conteos[0].metric(etiqueta_items, total_items)
-    fila_conteos[1].metric("Requieren corrección", requieren_correccion)
-    fila_conteos[2].metric("Con error", con_error)
-
-    fila_promedios = container.columns(2)
-    fila_promedios[0].metric("Calidad promedio", _formatear_promedio(calidad_promedio))
-    fila_promedios[1].metric("Seguridad promedio", _formatear_promedio(seguridad_promedio))
+    container.markdown(
+        kpi_strip_html([
+            (total_items, etiqueta_items),
+            (requieren_correccion, "Requieren corrección"),
+            (con_error, "Con error"),
+            (_formatear_promedio(calidad_promedio), "Calidad promedio"),
+            (_formatear_promedio(seguridad_promedio), "Seguridad promedio"),
+        ]),
+        unsafe_allow_html=True,
+    )
 
     with container:
         render_human_decision_notice(aviso)
@@ -191,7 +437,11 @@ def render_evaluation_header(
     indice_seguridad: str,
     explicacion_estado: str = "",
 ) -> None:
-    st.subheader(titulo)
+    """Estado, índices y explicación de un resultado.
+
+    `titulo` se conserva por compatibilidad: el contenedor del resultado ya muestra
+    su título, así que no se repite aquí.
+    """
     render_state_badge(estado)
 
     m1, m2 = st.columns(2)

@@ -24,13 +24,22 @@ from core.testing_traceability import (
 from core.testing_validation import validar_entrada_pruebas
 from core.traceability_export import exportar_filas_xlsx
 from core.ui_components import (
+    chip_html,
+    contar,
     create_stage_step_panels,
+    crear_subsecciones_entrada,
+    entrada_fila_html,
+    kpi_strip_html,
     promedio_indices,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
     render_next_phase_button,
     render_stage_summary,
+    rotulo_bloque_html,
+    selector_resultados,
+    tarjeta_estado_entrada_html,
+    titulo_item,
 )
 from core.utils import (
     extraer_porcentaje,
@@ -52,13 +61,6 @@ from datetime import datetime
 import copy
 
 SPRINT_CONTEXT_PRUEBAS = "Pruebas"
-
-PRUEBAS_AVISO = (
-    "El modelo multiagente apoya el control, seguimiento y trazabilidad de las pruebas. "
-    "MC-06, MC-07, MS-08 y MS-09 se calculan de forma determinística a partir de lo "
-    "registrado en cada Issue PRU-xxx; la interpretación de calidad y seguridad es "
-    "orientativa y requiere revisión del responsable del proyecto."
-)
 
 
 # ---------------------------------------------------------
@@ -149,8 +151,6 @@ def _indicador_general_pruebas(presentacion: dict, codigos: tuple[str, ...]):
 def render_testing_stage(project_name: str, project_config: dict, adapter) -> None:
     import streamlit as st
 
-    st.warning(PRUEBAS_AVISO)
-
     session = st.session_state
     if "pruebas_resultados" not in session:
         persisted = cargar_estado_etapa("pruebas")
@@ -178,15 +178,25 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
     )
 
     # ============================================================
-    # A. Entrada de Pruebas — TRZ-003
+    # A. Entradas: matriz de Codificación (TRZ-003) + Issues de Pruebas
     # ============================================================
+    # La fase se ordena en un resumen de estado y dos subsecciones (pestañas).
+    # Los contenedores se crean por adelantado y se rellenan cuando hay datos; la
+    # lógica de carga y validación es la misma de siempre.
 
-    paso_entrada.markdown("### Entrada de Pruebas")
-    paso_entrada.markdown("#### Matriz de trazabilidad")
+    sub = crear_subsecciones_entrada(paso_entrada, "Issues de Pruebas")
 
-    actualizar_gitlab = paso_entrada.button("Actualizar desde GitLab", key="pruebas_actualizar_trz003")
+    sub.acciones.markdown(rotulo_bloque_html("Acciones sobre la matriz"), unsafe_allow_html=True)
+    sub.acciones.caption(
+        "La matriz de Pruebas se usa tal como la dejó Codificación (solo lectura): "
+        "para modificarla, edítala en GitLab y presiona «Actualizar desde GitLab»."
+    )
+    col_actualizar, col_gitlab = sub.acciones.columns(2)
+    actualizar_gitlab = col_actualizar.button(
+        "Actualizar desde GitLab", icon=":material/refresh:", key="pruebas_actualizar_trz003", width="stretch",
+    )
     if "pruebas_matriz_carga" not in session or actualizar_gitlab:
-        with paso_entrada.spinner("Consultando TRZ-003 en GitLab..."):
+        with sub.avisos.spinner("Consultando TRZ-003 en GitLab..."):
             issue_trz003, matriz_trz003 = obtener_issue_matriz_trazabilidad_codificacion(adapter.project_id)
         if matriz_trz003 is not None:
             session["pruebas_matriz_carga"] = matriz_trz003
@@ -195,47 +205,69 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             session["pruebas_matriz_confirmada"] = False
 
     if "pruebas_matriz_carga" not in session:
-        paso_entrada.info(
+        sub.avisos.info(
             "TRZ-003 no está disponible en GitLab todavía. Ejecute primero la etapa de "
             "Codificación para generarla."
+        )
+        sub.resumen_matriz.markdown(
+            tarjeta_estado_entrada_html("Matriz de trazabilidad · Codificación", [chip_html("No disponible", "bad")]),
+            unsafe_allow_html=True,
+        )
+        sub.resumen_issues.markdown(
+            tarjeta_estado_entrada_html("Issues de Pruebas", [chip_html("Requiere la matriz", "muted")]),
+            unsafe_allow_html=True,
         )
         return
 
     matriz_codificacion = session["pruebas_matriz_carga"]
-    # Bloque de información de la matriz de entrada (mismos campos en todas las etapas:
+    # Resumen de la matriz de entrada (mismos datos en todas las etapas:
     # Fuente vigente · Versión · Estado · Validación · Filas de la matriz). La etapa de
     # Pruebas usa la matriz heredada de Codificación (TRZ-003) tal cual, sin edición ni
     # recomparación local: por eso Estado y Validación son constantes.
-    paso_entrada.write(f"**Fuente vigente:** {session.get('pruebas_matriz_fuente', 'GitLab — TRZ-003')}")
-    paso_entrada.write(f"**Versión:** {leer_version_matriz('codificacion') or 'No informada'}")
-    paso_entrada.write("**Estado:** Original")
-    paso_entrada.write("**Validación:** VÁLIDA")
-    paso_entrada.write(f"**Filas de la matriz:** {len(matriz_codificacion)}")
-    paso_entrada.dataframe(matriz_codificacion, width="stretch")
+    sub.resumen_matriz.markdown(
+        tarjeta_estado_entrada_html(
+            "Matriz de trazabilidad · Codificación",
+            [
+                chip_html("ORIGINAL", "ok"),
+                chip_html("VÁLIDA", "ok"),
+                chip_html(contar(len(matriz_codificacion), "fila", "filas"), "info"),
+            ],
+            meta=(
+                f"{session.get('pruebas_matriz_fuente', 'GitLab — TRZ-003')} · "
+                f"Versión {leer_version_matriz('codificacion') or 'No informada'}"
+            ),
+        ),
+        unsafe_allow_html=True,
+    )
+    sub.tabla.dataframe(matriz_codificacion, width="stretch")
 
     issue_trz003 = session.get("pruebas_issue_trz003")
     if issue_trz003 is not None:
-        paso_entrada.markdown(f"[Ver TRZ-003 en GitLab]({issue_trz003.web_url})")
+        col_gitlab.link_button("Ver TRZ-003 en GitLab", issue_trz003.web_url, icon=":material/open_in_new:", width="stretch")
 
     # ============================================================
-    # B. Issues de Pruebas detectados
+    # Issues de Pruebas detectados
     # ============================================================
 
-    paso_entrada.markdown("### Issues de Pruebas detectados")
     if "pruebas_issues_detectados" not in session:
-        with paso_entrada.spinner("Consultando Issues de Pruebas en GitLab..."):
+        with sub.tab_issues.spinner("Consultando Issues de Pruebas en GitLab..."):
             session["pruebas_issues_detectados"] = obtener_issues_pruebas(
                 adapter.project_id, milestone_title="Pruebas",
             )
     issues_pruebas = session["pruebas_issues_detectados"]
 
-    if paso_entrada.button("Actualizar issues", key="pruebas_actualizar_issues"):
+    if sub.tab_issues.button(
+        "Actualizar issues", icon=":material/refresh:", key="pruebas_actualizar_issues", width="content",
+    ):
         session.pop("pruebas_issues_detectados", None)
         st.rerun()
 
-    paso_entrada.write(f"**Issues encontrados:** {len(issues_pruebas)}")
     if not issues_pruebas:
-        paso_entrada.info("No se encontraron Issues de Pruebas en el milestone.")
+        sub.resumen_issues.markdown(
+            tarjeta_estado_entrada_html("Issues de Pruebas", [chip_html(contar(0, "detectado", "detectados"), "muted")]),
+            unsafe_allow_html=True,
+        )
+        sub.tab_issues.info("No se encontraron Issues de Pruebas en el milestone.")
         return
 
     validaciones = preparar_prevalidacion_pruebas(issues_pruebas, matriz_codificacion)
@@ -248,20 +280,29 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         pid for pid, v in validaciones.items() if not v["entrada_valida"]
     ]
 
-    c1, c2, c3 = paso_entrada.columns(3)
-    c1.metric("Issues de Pruebas", len(issues_pruebas))
-    c2.metric("Válidos", len(pruebas_validas))
-    c3.metric("Bloqueados", len(bloqueadas))
+    sub.resumen_issues.markdown(
+        tarjeta_estado_entrada_html("Issues de Pruebas", [
+            chip_html(contar(len(issues_pruebas), "detectado", "detectados"), "info"),
+            chip_html(contar(len(pruebas_validas), "válido", "válidos"), "ok"),
+            chip_html(contar(len(bloqueadas), "bloqueado", "bloqueados"), "bad" if bloqueadas else "muted"),
+        ]),
+        unsafe_allow_html=True,
+    )
 
+    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
+    # Requiere modificación) junto a la validez de su entrada.
     for issue in issues_pruebas:
         prueba_id = issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"
         validacion = validaciones[prueba_id]
         icono = "🟢" if validacion["entrada_valida"] else "🔴"
-        paso_entrada.markdown(f"{icono} **{prueba_id}** — {validacion['estado']}")
+        sub.tab_issues.markdown(
+            entrada_fila_html(f"{icono} {prueba_id}", validacion["estado"], issue.get("labels")),
+            unsafe_allow_html=True,
+        )
         if validacion["campos_faltantes"]:
-            paso_entrada.caption(f"Campos faltantes: {', '.join(validacion['campos_faltantes'])}")
+            sub.tab_issues.caption(f"Campos faltantes: {', '.join(validacion['campos_faltantes'])}")
         if validacion["referencias_invalidas"]:
-            paso_entrada.caption(
+            sub.tab_issues.caption(
                 f"Codificaciones inexistentes en TRZ-003: {', '.join(validacion['referencias_invalidas'])}"
             )
 
@@ -281,7 +322,8 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
 
     puede_ejecutar = session["pruebas_matriz_confirmada"] and bool(pruebas_validas)
     ejecutar = paso_analisis.button(
-        "Iniciar análisis de Pruebas", type="primary", disabled=not puede_ejecutar, key="pruebas_ejecutar",
+        "Iniciar análisis de Pruebas", icon=":material/play_arrow:", type="primary",
+        disabled=not puede_ejecutar, key="pruebas_ejecutar",
     )
     if ejecutar:
         matriz_snapshot = copy.deepcopy(matriz_codificacion)
@@ -315,7 +357,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
                 continue
             try:
                 publicar_aviso_referencias_invalidas_pruebas(
-                    adapter.project_id, issue.get("issue_iid"), prueba_id, referencias_invalidas,
+                    adapter.project_id, issue.get("issue_iid"), prueba_id, referencias_invalidas, adapter=adapter,
                 )
                 avisos_publicados.add(prueba_id)
                 paso_analisis.info(
@@ -375,8 +417,8 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
 
     # Tras el análisis, actualizar automáticamente la etiqueta de flujo de cada
     # Issue de Pruebas evaluado (Revisada / Requiere modificación). Los estados
-    # ERROR no modifican la etiqueta. La publicación del comentario detallado
-    # sigue disponible manualmente en cada ficha de resultado.
+    # ERROR no modifican la etiqueta. El comentario de retroalimentación también
+    # se publica automáticamente en GitLab (sin botón).
     if ejecutar:
         for prueba_id, p in presentaciones.items():
             if p["estado_orientativo"] == "ERROR":
@@ -384,6 +426,15 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             actualizar_etiqueta_resultado_tecnico(
                 adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
             )
+            try:
+                publicar_comentario_pruebas(
+                    adapter.project_id, p["issue_iid"], resultados[prueba_id]["testing_summary"],
+                    adapter=adapter,
+                )
+                session[f"pruebas_publicado_{prueba_id}"] = True
+            except Exception as exc:
+                session[f"pruebas_publicado_{prueba_id}"] = False
+                st.warning(f"{prueba_id}: no se pudo publicar la retroalimentación en GitLab ({exc}).")
 
     resumen_general, detalle_resultados, artefactos = paso_resultados.tabs(
         ["Resumen general", "Detalle por prueba", "Matriz y documentos"]
@@ -414,14 +465,19 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         ),
     )
 
-    detalle_resultados.subheader("Resultado de evaluación asistida")
-
+    elegido = selector_resultados(
+        detalle_resultados, "pruebas",
+        [(identificador, pres["estado_orientativo"]) for identificador, pres in presentaciones.items()],
+    )
     for prueba_id, p in presentaciones.items():
+        if prueba_id != elegido:
+            continue
         resultado_grafo = resultados[prueba_id]
-        expander_title = f"{p['prueba_id']} — {p['titulo']} · {p['estado_orientativo']}"
+        expander_title = titulo_item(p['prueba_id'], p['titulo'], p['estado_orientativo'])
 
-        # Mantener el detalle bajo demanda facilita comparar varios resultados.
-        with detalle_resultados.expander(expander_title, expanded=False):
+        # Un resultado a la vez (selector de arriba): evita una página larga en vertical.
+        with detalle_resultados.container(border=True):
+            st.markdown(f"### {expander_title}")
             render_evaluation_header(
                 titulo="Resultado de evaluación asistida",
                 estado=p["estado_orientativo"],
@@ -442,19 +498,10 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
                 )
 
                 st.markdown("#### Retroalimentación")
-                estado_tecnico_error = p["estado_orientativo"] == "ERROR"
-                gitlab_key = f"pruebas_publicado_{prueba_id}"
-                if st.button(
-                    "Publicar retroalimentación en GitLab", key=f"pruebas_publicar_{prueba_id}",
-                    disabled=estado_tecnico_error,
-                ):
-                    publicar_comentario_pruebas(
-                        adapter.project_id, p["issue_iid"], resultado_grafo["testing_summary"],
-                    )
-                    session[gitlab_key] = True
-
-                if session.get(gitlab_key):
-                    render_gitlab_feedback(True)
+                if p["estado_orientativo"] == "ERROR":
+                    st.caption("No se publica retroalimentación cuando existe error técnico.")
+                else:
+                    render_gitlab_feedback(bool(session.get(f"pruebas_publicado_{prueba_id}")))
 
             with tab_calidad:
                 mc07 = p["metricas"]["MC-07"]

@@ -17,6 +17,7 @@ from integrations.gitlab_adapter import (
     LEGACY_COMPLETED_LABELS,
     _normalizar_etiqueta,
 )
+from core.ui_theme import render_section_title
 from database.repository import obtener_historial, obtener_versiones_matrices
 
 # Mismos milestones que MILESTONES_BY_STAGE en app.py. Se replican aquí para no
@@ -146,11 +147,17 @@ def recolectar_trazabilidad(project_id) -> dict:
 # Vista Streamlit
 # ---------------------------------------------------------------------------
 def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
-    st.header(f"Panel del proyecto — {project_name}")
-    st.caption(
-        "Vista de solo lectura: agrega información del proyecto desde la base de "
-        "seguimiento local y GitLab. No modifica Issues ni ejecuta análisis."
-    )
+    # El título coincide con el nombre del botón del menú lateral.
+    with st.container(key="dashboard_title"):
+        render_section_title(
+            "Panel del proyecto",
+            eyebrow="Seguimiento",
+            description=(
+                f"{project_name} · Vista de solo lectura: agrega información del proyecto desde la base de "
+                "seguimiento local y GitLab. No modifica Issues ni ejecuta análisis."
+            ),
+            icon="panel",
+        )
 
     if st.button("Actualizar datos de GitLab"):
         st.session_state.pop("dashboard_avance", None)

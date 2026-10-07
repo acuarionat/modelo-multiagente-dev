@@ -208,7 +208,7 @@ def construir_comentario_diseno(resumen_diseno: dict) -> str:
     return "\n".join(lineas) + "\n"
 
 
-def publicar_comentario_diseno(project_id, issue_iid, resumen_diseno: dict):
+def publicar_comentario_diseno(project_id, issue_iid, resumen_diseno: dict, adapter=None):
     """Publica en GitLab el comentario de retroalimentación operativa de Diseño (reutiliza GitLabAdapter.agregar_comentario, sin duplicar llamadas HTTP)."""
     if not resumen_diseno:
         raise ValueError("No existe resumen de Diseño para publicar.")
@@ -220,7 +220,7 @@ def publicar_comentario_diseno(project_id, issue_iid, resumen_diseno: dict):
 
     comentario = construir_comentario_diseno(resumen_diseno)
 
-    adapter = GitLabAdapter(project_id=project_id)
+    adapter = adapter or GitLabAdapter(project_id=project_id)
     nota = adapter.agregar_comentario(issue_iid, comentario)
     issue = adapter.obtener_issue(issue_iid)
     nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
@@ -252,12 +252,12 @@ def construir_comentario_referencias_invalidas_diseno(diseno_id: str, referencia
     return "\n".join(lineas) + "\n"
 
 
-def publicar_aviso_referencias_invalidas_diseno(project_id, issue_iid, diseno_id, referencias_invalidas):
+def publicar_aviso_referencias_invalidas_diseno(project_id, issue_iid, diseno_id, referencias_invalidas, adapter=None):
     """Publica en GitLab el aviso de un Issue de Diseño bloqueado por referencias
     inexistentes: comentario + etiqueta 'Requiere modificación' (reutiliza el ciclo
     de etiquetas de evaluación técnica con estado CORREGIR)."""
     comentario = construir_comentario_referencias_invalidas_diseno(diseno_id, referencias_invalidas)
-    adapter = GitLabAdapter(project_id=project_id)
+    adapter = adapter or GitLabAdapter(project_id=project_id)
     nota = adapter.agregar_comentario(issue_iid, comentario)
     issue = adapter.obtener_issue(issue_iid)
     nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(issue.labels, "CORREGIR")
@@ -316,7 +316,7 @@ def construir_comentario_codificacion(resumen_codificacion: dict) -> str:
     return "\n".join(lineas) + "\n"
 
 
-def publicar_comentario_codificacion(project_id, issue_iid, resumen_codificacion: dict):
+def publicar_comentario_codificacion(project_id, issue_iid, resumen_codificacion: dict, adapter=None):
     """Publica en GitLab el comentario de retroalimentación operativa de Codificación (reutiliza GitLabAdapter.agregar_comentario, sin duplicar llamadas HTTP)."""
     if not resumen_codificacion:
         raise ValueError("No existe resumen de Codificación para publicar.")
@@ -328,7 +328,7 @@ def publicar_comentario_codificacion(project_id, issue_iid, resumen_codificacion
 
     comentario = construir_comentario_codificacion(resumen_codificacion)
 
-    adapter = GitLabAdapter(project_id=project_id)
+    adapter = adapter or GitLabAdapter(project_id=project_id)
     nota = adapter.agregar_comentario(issue_iid, comentario)
     issue = adapter.obtener_issue(issue_iid)
     nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(
@@ -360,12 +360,12 @@ def construir_comentario_referencias_invalidas_codificacion(codificacion_id: str
     return "\n".join(lineas) + "\n"
 
 
-def publicar_aviso_referencias_invalidas_codificacion(project_id, issue_iid, codificacion_id, referencias_invalidas):
+def publicar_aviso_referencias_invalidas_codificacion(project_id, issue_iid, codificacion_id, referencias_invalidas, adapter=None):
     """Publica en GitLab el aviso de un Issue de Codificación bloqueado por elementos
     de Diseño inexistentes: comentario + etiqueta 'Requiere modificación' (reutiliza el
     ciclo de etiquetas de evaluación técnica con estado CORREGIR)."""
     comentario = construir_comentario_referencias_invalidas_codificacion(codificacion_id, referencias_invalidas)
-    adapter = GitLabAdapter(project_id=project_id)
+    adapter = adapter or GitLabAdapter(project_id=project_id)
     nota = adapter.agregar_comentario(issue_iid, comentario)
     issue = adapter.obtener_issue(issue_iid)
     nuevas_etiquetas = construir_etiquetas_resultado_evaluacion_tecnica(issue.labels, "CORREGIR")
