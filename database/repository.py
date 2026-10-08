@@ -34,9 +34,15 @@ def inicializar_bd():
             security_index REAL,
             verdict TEXT,
             execution_time REAL,
-            observations TEXT
+            observations TEXT,
+            stage TEXT DEFAULT 'requerimientos'
         )
     ''')
+
+    # Bases creadas antes de registrar la etapa: todo lo guardado entonces es de Requerimientos.
+    columnas_historial = {fila[1] for fila in cursor.execute('PRAGMA table_info(history)')}
+    if 'stage' not in columnas_historial:
+        cursor.execute("ALTER TABLE history ADD COLUMN stage TEXT DEFAULT 'requerimientos'")
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cache_results (
@@ -105,6 +111,15 @@ def cargar_estado_etapa(stage: str):
         return json.loads(row[0])
     return None
 
+def obtener_fecha_estado_etapa(stage: str):
+    """Fecha ('AAAA-MM-DD HH:MM:SS', UTC) en que se persistió el último resultado de una etapa, o None."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT updated_at FROM stage_snapshots WHERE stage = ?', (stage,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
 def limpiar_estado_etapas():
     """Borra los resultados de análisis persistidos de todas las etapas."""
     conn = sqlite3.connect(DB_PATH)
@@ -157,13 +172,13 @@ def insertar_o_actualizar_issue(gitlab_iid: int, content_hash: str, status: str)
     conn.commit()
     conn.close()
 
-def guardar_historial(gitlab_iid: int, quality_index: float, security_index: float, verdict: str, execution_time: float, observations: str):
+def guardar_historial(gitlab_iid: int, quality_index: float, security_index: float, verdict: str, execution_time: float, observations: str, stage: str = "requerimientos"):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO history (gitlab_iid, quality_index, security_index, verdict, execution_time, observations)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (gitlab_iid, quality_index, security_index, verdict, execution_time, observations))
+        INSERT INTO history (gitlab_iid, quality_index, security_index, verdict, execution_time, observations, stage)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (gitlab_iid, quality_index, security_index, verdict, execution_time, observations, stage))
     conn.commit()
     conn.close()
 
@@ -175,7 +190,7 @@ def obtener_historial(limite: int | None = None) -> list:
     cursor = conn.cursor()
     query = (
         'SELECT gitlab_iid, analysis_date, quality_index, security_index, '
-        'verdict, execution_time, observations FROM history '
+        'verdict, execution_time, observations, stage FROM history '
         'ORDER BY analysis_date ASC, id ASC'
     )
     if limite:
@@ -193,6 +208,7 @@ def obtener_historial(limite: int | None = None) -> list:
             "verdict": fila[4],
             "execution_time": fila[5],
             "observations": fila[6],
+            "stage": fila[7] or "requerimientos",
         }
         for fila in filas
     ]

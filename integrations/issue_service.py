@@ -569,9 +569,10 @@ La historia quedará como **Requiere modificación**. Después de corregirla, vu
 
 
 def obtener_issues_diseno(project_id, milestone_title="Diseño"):
-    """Obtiene los Issues de Diseño pendientes o que requieren modificación y los estructura."""
+    """Obtiene TODOS los Issues abiertos de Diseño y los estructura (cada uno conserva sus
+    etiquetas; solo se analizan los Pendiente o Requiere modificación)."""
     adapter = GitLabAdapter(project_id=project_id)
-    issues = adapter.listar_issues_pendientes(milestone_title=milestone_title)
+    issues = adapter.listar_issues_abiertos(milestone_title=milestone_title)
     return [mapear_issue_diseno(issue) for issue in issues]
 
 

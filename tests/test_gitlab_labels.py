@@ -1,6 +1,6 @@
 import unittest
 
-from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente
+from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente, etiquetas_son_analizables
 
 
 class GitLabLabelWorkflowTests(unittest.TestCase):
@@ -12,6 +12,13 @@ class GitLabLabelWorkflowTests(unittest.TestCase):
         self.assertFalse(es_issue_pendiente(issue(["Historia de Usuario", "Analizada"])))
         self.assertTrue(es_issue_pendiente(issue(["Historia de Usuario", "Requiere modificación"])))
         self.assertFalse(es_issue_pendiente(issue(["Pendiente", "Revisada"])))
+
+    def test_labels_decide_which_listed_issues_are_analyzed(self):
+        self.assertTrue(etiquetas_son_analizables(["Pendiente"]))
+        self.assertTrue(etiquetas_son_analizables(["Requiere modificación"]))
+        self.assertFalse(etiquetas_son_analizables(["Revisada"]))
+        self.assertFalse(etiquetas_son_analizables([]))
+        self.assertFalse(etiquetas_son_analizables(None))
 
     def test_adapter_lists_pending_and_rework_but_not_reviewed(self):
         issue = lambda iid, labels: type("Issue", (), {"iid": iid, "labels": labels})()

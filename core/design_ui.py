@@ -32,8 +32,11 @@ from core.ui_components import (
     create_stage_step_panels,
     crear_subsecciones_entrada,
     entrada_fila_html,
+    fila_matriz_resultados,
+    filas_metricas_presentacion,
     kpi_strip_html,
     promedio_indices,
+    render_alcance_entradas,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
@@ -45,7 +48,8 @@ from core.ui_components import (
     titulo_item,
 )
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
-from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
+from database.repository import cargar_estado_etapa, guardar_estado_etapa, guardar_historial, leer_version_matriz
+from integrations.gitlab_adapter import etiquetas_son_analizables
 from integrations.issue_service import (
     actualizar_etiqueta_resultado_tecnico,
     crear_o_actualizar_issue_matriz_trazabilidad_diseno,
@@ -451,7 +455,17 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         for issue in issues_diseno
     }
 
-    prevalidacion = preparar_prevalidacion_diseno(carga["matriz_entrada_diseno"], contextos_por_diseno_id)
+    # Se listan todos los issues del milestone; solo se analizan (y se validan para el
+    # análisis) los Pendiente o Requiere modificación.
+    analizable_por_diseno_id = {
+        issue.get("diseno_id"): etiquetas_son_analizables(issue.get("labels")) for issue in issues_diseno
+    }
+    contextos_analizables = {
+        diseno_id: contexto for diseno_id, contexto in contextos_por_diseno_id.items()
+        if analizable_por_diseno_id.get(diseno_id)
+    }
+
+    prevalidacion = preparar_prevalidacion_diseno(carga["matriz_entrada_diseno"], contextos_analizables)
     # Los issues válidos y bloqueados ya se ven en el resumen de arriba: aquí solo
     # se detalla la validación de referencias contra la matriz.
     sub.tab_issues.markdown(
@@ -473,6 +487,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     sub.resumen_issues.markdown(
         tarjeta_estado_entrada_html("Issues de Diseño", [
             chip_html(contar(len(estado_entrada), "detectado", "detectados"), "info"),
+            chip_html(contar(len(contextos_analizables), "a analizar", "a analizar"), "info"),
             chip_html(contar(len(prevalidacion["issues_validos"]), "válido", "válidos"), "ok"),
             chip_html(
                 contar(len(prevalidacion["issues_bloqueados"]), "bloqueado", "bloqueados"),
@@ -485,9 +500,10 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         sub.tab_issues.info("No se encontraron Issues de Diseño en el milestone.")
         return
 
-    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
-    # Requiere modificación) junto a la validez de su trazabilidad.
+    # Cada entrada se muestra con su estado de revisión en GitLab y si se analiza o
+    # queda solo como referencia, junto a la validez de su trazabilidad.
     labels_por_iid = {issue.get("issue_iid"): issue.get("labels") for issue in issues_diseno}
+    render_alcance_entradas(sub.tab_issues, list(labels_por_iid.values()))
     for fila in estado_entrada:
         icono = "🟢" if fila["entrada_valida"] else "🔴"
         sub.tab_issues.markdown(
@@ -499,7 +515,10 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         if not fila["entrada_valida"]:
             sub.tab_issues.caption(f"Referencias inválidas: {', '.join(fila['referencias_invalidas'])}")
 
-    disenos_validos = [fila["diseno_id"] for fila in estado_entrada if fila["entrada_valida"]]
+    disenos_validos = [
+        fila["diseno_id"] for fila in estado_entrada
+        if fila["entrada_valida"] and analizable_por_diseno_id.get(fila["diseno_id"])
+    ]
 
     render_next_phase_button(paso_entrada, step_key, 1)
 
@@ -548,7 +567,10 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         # deja constancia en GitLab (comentario + etiqueta 'Requiere modificación').
         avisos_publicados = session.setdefault("diseno_avisos_referencias_publicados", set())
         for fila in estado_entrada:
-            if fila["entrada_valida"] or fila["diseno_id"] in avisos_publicados:
+            if (
+                fila["entrada_valida"] or fila["diseno_id"] in avisos_publicados
+                or not analizable_por_diseno_id.get(fila["diseno_id"])
+            ):
                 continue
             try:
                 publicar_aviso_referencias_invalidas_diseno(
@@ -621,6 +643,13 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
             actualizar_etiqueta_resultado_tecnico(
                 adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
             )
+            # Historial para el seguimiento de calidad y seguridad del panel del proyecto.
+            # (solo los issues analizados en esta ejecución, no los de ejecuciones previas de la sesión)
+            if diseno_id in disenos_validos:
+                guardar_historial(
+                    p["issue_iid"], p["indice_calidad"], p["indice_seguridad"],
+                    p["estado_orientativo"], None, p.get("conclusion_calidad") or "", stage="diseno",
+                )
             try:
                 publicar_comentario_diseno(
                     adapter.project_id, p["issue_iid"], resultados[diseno_id]["design_summary"],
@@ -651,6 +680,19 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
             "Los resultados constituyen apoyo al control y seguimiento del diseño. "
             "La aceptación final requiere revisión humana."
         ),
+        filas_matriz=[
+            fila_matriz_resultados(
+                identificador, p["titulo"], p["estado_orientativo"],
+                calidad=extraer_porcentaje(p["indice_calidad"]),
+                seguridad=extraer_porcentaje(p["indice_seguridad"]),
+                correcciones=len(p["correcciones_necesarias"]),
+                precisiones=len(p["precisiones_necesarias"]),
+                mejoras=len(p["oportunidades_mejora"]),
+                metricas=filas_metricas_presentacion(p["metricas"]),
+            )
+            for identificador, p in presentaciones.items()
+        ],
+        etiqueta_detalle="Detalle por diseño",
     )
 
     # ---- Resultado por Issue de Diseño ----

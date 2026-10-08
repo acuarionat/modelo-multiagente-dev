@@ -85859,3 +85859,35 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-10-06 09:34:10,108 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
 2026-10-06 09:34:11,831 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
 2026-10-06 09:34:13,356 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-10-07 00:26:00,597 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-10-07 00:27:18,229 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/v2.0/.well-known/openid-configuration "HTTP/1.1 200 OK"
+2026-10-07 00:27:18,944 - [INFO] - HTTP Request: POST https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/oauth2/v2.0/token "HTTP/1.1 200 OK"
+2026-10-07 00:27:20,159 - [INFO] - HTTP Request: GET https://login.microsoftonline.com/1a91ced2-aa09-4285-9b5f-7d461e1857df/discovery/v2.0/keys "HTTP/1.1 200 OK"
+2026-10-07 00:36:35,604 - [INFO] - default_branch=main
+2026-10-07 00:36:36,654 - [INFO] - REPOSITORY_TREE_OK project_id=87183223 ref=main items=53
+2026-10-07 00:36:36,654 - [INFO] - default_branch=main
+2026-10-07 00:36:37,757 - [INFO] - REPOSITORY_TREE_OK project_id=87183223 ref=main items=53
+2026-10-07 00:39:18,857 - [INFO] - default_branch=main
+2026-10-07 00:39:19,783 - [INFO] - REPOSITORY_TREE_OK project_id=87183223 ref=main items=53
+2026-10-07 00:39:19,783 - [INFO] - default_branch=main
+2026-10-07 00:39:20,857 - [INFO] - REPOSITORY_TREE_OK project_id=87183223 ref=main items=53
+2026-10-07 02:05:22,869 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2026-10-07 02:07:14,511 - [ERROR] - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto

@@ -166,13 +166,38 @@ def construir_filas_matriz_diseno(estructura_interna: list, evaluacion_por_disen
     return filas
 
 
+# Evidencia más fuerte entre las filas de un mismo requisito (varios Diseños pueden referirlo).
+_PRIORIDAD_ESTADO_TRAZABILIDAD = {
+    ETIQUETAS_ESTADO["CUBIERTO"]: 4,
+    ETIQUETAS_ESTADO["REQUIERE_REVISION"]: 3,
+    ETIQUETAS_ESTADO["PENDIENTE_RELACION"]: 2,
+    ETIQUETAS_ESTADO["NO_EVALUADO"]: 1,
+}
+
+
 def resumir_trazabilidad_diseno(filas: list) -> dict:
-    """Resumen determinístico de la matriz visible; no repite los índices de Calidad/Seguridad (pertenecen al DIS, no al RF)."""
-    requisitos_totales = len({fila["Código requisito"] for fila in filas})
-    cubiertos = sum(1 for fila in filas if fila["Estado de trazabilidad"] == ETIQUETAS_ESTADO["CUBIERTO"])
-    pendientes_relacion = sum(1 for fila in filas if fila["Estado de trazabilidad"] == ETIQUETAS_ESTADO["PENDIENTE_RELACION"])
-    requieren_revision = sum(1 for fila in filas if fila["Estado de trazabilidad"] == ETIQUETAS_ESTADO["REQUIERE_REVISION"])
-    no_evaluados = sum(1 for fila in filas if fila["Estado de trazabilidad"] == ETIQUETAS_ESTADO["NO_EVALUADO"])
+    """Resumen determinístico de la matriz visible; no repite los índices de Calidad/Seguridad (pertenecen al DIS, no al RF).
+
+    Cuenta por requisito único, no por fila: la matriz repite un requisito en varias filas
+    cuando más de un Diseño (o más de una relación) lo referencia. Sin esta deduplicación,
+    "cubiertos" (conteo de filas) no era comparable con "requisitos_totales" (conteo de
+    requisitos únicos) y los porcentajes no coincidían. Cuando un mismo requisito aparece con
+    más de un estado se queda con la evidencia más fuerte: Cubierto > Requiere revisión >
+    Pendiente de relación > No evaluado."""
+    estado_por_requisito = {}
+    for fila in filas:
+        codigo = fila["Código requisito"]
+        estado_fila = fila["Estado de trazabilidad"]
+        actual = estado_por_requisito.get(codigo)
+        if actual is None or _PRIORIDAD_ESTADO_TRAZABILIDAD.get(estado_fila, 0) > _PRIORIDAD_ESTADO_TRAZABILIDAD.get(actual, 0):
+            estado_por_requisito[codigo] = estado_fila
+
+    requisitos_totales = len(estado_por_requisito)
+    estados = list(estado_por_requisito.values())
+    cubiertos = estados.count(ETIQUETAS_ESTADO["CUBIERTO"])
+    pendientes_relacion = estados.count(ETIQUETAS_ESTADO["PENDIENTE_RELACION"])
+    requieren_revision = estados.count(ETIQUETAS_ESTADO["REQUIERE_REVISION"])
+    no_evaluados = estados.count(ETIQUETAS_ESTADO["NO_EVALUADO"])
 
     return {
         "requisitos_totales": requisitos_totales,

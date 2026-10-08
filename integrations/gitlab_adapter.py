@@ -26,7 +26,12 @@ def _normalizar_etiqueta(label: Any) -> str:
 
 def es_issue_pendiente(issue) -> bool:
     """Permite Pendiente o Requiere modificación, salvo estados finales."""
-    labels = {_normalizar_etiqueta(label) for label in getattr(issue, "labels", [])}
+    return etiquetas_son_analizables(getattr(issue, "labels", []))
+
+
+def etiquetas_son_analizables(labels) -> bool:
+    """Un Issue se analiza solo si está Pendiente o Requiere modificación (y no Revisada)."""
+    labels = {_normalizar_etiqueta(label) for label in (labels or [])}
     completed = {
         _normalizar_etiqueta(REVIEWED_LABEL),
         *(_normalizar_etiqueta(label) for label in LEGACY_COMPLETED_LABELS),

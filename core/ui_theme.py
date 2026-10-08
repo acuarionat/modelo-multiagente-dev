@@ -975,6 +975,132 @@ def inject_global_styles() -> None:
             background: #F9FBFD;
         }
 
+        /* Issue listado solo como referencia (no se analiza) */
+        .entry-row.not-analyzed {
+            border-style: dashed;
+            background: #F3F6F9;
+            opacity: .78;
+        }
+
+        .entry-scope-note {
+            margin: .1rem 0 .6rem;
+            padding: .6rem .85rem;
+            border: 1px solid #9CC3EA;
+            border-left: 4px solid var(--emi-blue);
+            border-radius: 10px;
+            background: #F1F7FD;
+            color: var(--nexo-ink);
+            font-size: .8rem;
+            line-height: 1.5;
+        }
+
+        /* Matriz de resultados: una fila por issue evaluado; cada fila se despliega
+           (details/summary) para mostrar el detalle por métrica. */
+        .result-matrix {
+            margin: .2rem 0 .4rem;
+            overflow-x: auto;
+            border: 1px solid var(--nexo-line);
+            border-radius: 13px;
+            background: #FFFFFF;
+            box-shadow: var(--nexo-shadow-sm);
+        }
+
+        .result-matrix .rm-grid {
+            display: grid;
+            grid-template-columns: 5.4rem minmax(10rem, 2.4fr) 12.5rem repeat(5, minmax(6rem, 1fr));
+            align-items: center;
+            gap: 0 .5rem;
+            min-width: 58rem;
+            padding: .55rem .85rem;
+            font-size: .82rem;
+            color: var(--nexo-ink);
+        }
+
+        .result-matrix .rm-grid .num { text-align: center; white-space: nowrap; }
+        .result-matrix .rm-grid strong { color: var(--emi-blue-dark); white-space: nowrap; }
+        .result-matrix .rm-count { color: var(--emi-blue-dark); font-weight: 800; }
+
+        .result-matrix .rm-head {
+            border-bottom: 1px solid var(--nexo-line-strong);
+            background: #F3F7FA;
+            color: var(--emi-blue-dark);
+            font-size: .7rem;
+            font-weight: 820;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .result-matrix .rm-row { border-bottom: 1px solid var(--nexo-line); }
+        .result-matrix .rm-row:last-child { border-bottom: 0; }
+
+        .result-matrix summary.rm-summary {
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .result-matrix summary.rm-summary::-webkit-details-marker { display: none; }
+        .result-matrix summary.rm-summary:hover { background: #F6FAFD; }
+
+        /* Chevron en la primera celda: indica que la fila se despliega */
+        .result-matrix summary.rm-summary > span:first-child::before {
+            content: "▸";
+            display: inline-block;
+            width: .9rem;
+            color: var(--emi-blue);
+            transition: transform .15s ease;
+        }
+
+        .result-matrix details[open] > summary.rm-summary > span:first-child::before { transform: rotate(90deg); }
+        .result-matrix details[open] > summary.rm-summary { background: #F6FAFD; }
+        .result-matrix .rm-flat > span:first-child { padding-left: .9rem; }
+
+        .result-matrix .rm-detail {
+            min-width: 58rem;
+            padding: .2rem .85rem .85rem 2.2rem;
+            background: #F9FBFD;
+            border-top: 1px dashed var(--nexo-line);
+        }
+
+        .result-matrix .rm-detail-title {
+            margin: .55rem 0 .35rem;
+            color: var(--emi-blue);
+            font-size: .68rem;
+            font-weight: 820;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+
+        .result-matrix .rm-metrics {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .8rem;
+        }
+
+        .result-matrix .rm-metrics th {
+            padding: .35rem .6rem;
+            border-bottom: 1px solid var(--nexo-line-strong);
+            color: var(--nexo-muted);
+            font-size: .68rem;
+            font-weight: 780;
+            letter-spacing: .04em;
+            text-align: left;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .result-matrix .rm-metrics td {
+            padding: .45rem .6rem;
+            border-bottom: 1px solid var(--nexo-line);
+            color: var(--nexo-ink);
+            line-height: 1.4;
+            vertical-align: top;
+        }
+
+        .result-matrix .rm-metrics tr:last-child td { border-bottom: 0; }
+        .result-matrix .rm-metrics td:first-child { color: var(--emi-blue-dark); font-weight: 800; white-space: nowrap; }
+        .result-matrix .rm-metrics td:nth-child(3),
+        .result-matrix .rm-metrics td:nth-child(4) { white-space: nowrap; }
+
         .entry-id {
             color: var(--emi-blue-dark);
             font-size: .88rem;
@@ -1763,7 +1889,7 @@ def render_stage_context(stage_name: str, milestone: str) -> None:
                 <h2>{escape(stage_name)}</h2>
             </div>
             <div class="milestone-chip">
-                <small>Milestone asociado</small>
+                <small>Milestone / Hito asociado</small>
                 <strong>{escape(milestone)}</strong>
             </div>
         </section>

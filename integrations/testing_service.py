@@ -26,9 +26,10 @@ TRZ_004_TITULO = "TRZ-004 - Matriz de Trazabilidad - Etapa Pruebas"
 
 
 def obtener_issues_pruebas(project_id, milestone_title="Pruebas"):
-    """Obtiene los Issues PRU-xxx de GitLab y los estructura con testing_issue_mapper."""
+    """Obtiene TODOS los Issues PRU-xxx abiertos de GitLab y los estructura con testing_issue_mapper
+    (cada uno conserva sus etiquetas; solo se analizan los Pendiente o Requiere modificación)."""
     adapter = GitLabAdapter(project_id=project_id)
-    issues = adapter.listar_issues_pendientes(milestone_title=milestone_title)
+    issues = adapter.listar_issues_abiertos(milestone_title=milestone_title)
     return [mapear_issue_pruebas(issue) for issue in issues]
 
 

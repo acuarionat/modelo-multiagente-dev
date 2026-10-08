@@ -10,17 +10,18 @@
 <rect x="14" y="12" width="2212" height="68" rx="12" fill="#ffffff" stroke="#2b4a8a" stroke-width="2.2"/>
 <text x="1120.0" y="58.6" font-family="'Segoe UI', Arial, sans-serif" font-size="36" font-weight="800" fill="#1b2a49" text-anchor="middle">HERRAMIENTA TRACEDEV · PROCESO DE CONTROL, SEGUIMIENTO Y TRAZABILIDAD (BPMN GENERAL)</text>
 <rect x="12" y="96" width="2216" height="230" fill="#f1ebfb" stroke="#8d9bb5" stroke-width="1.4"/>
-<rect x="12" y="96" width="80" height="230" fill="#6b46b8"/>
-<text transform="translate(44.0,211.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="800" fill="#fff" letter-spacing="0.5">ENCARGADO DE</text>
-<text transform="translate(72.0,211.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="800" fill="#fff" letter-spacing="0.5">LA DNTIC</text>
+<rect x="12" y="96" width="80" height="230" fill="#5e3fa3"/>
+<text transform="translate(45.25,211.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24.0" font-weight="800" fill="#fff" letter-spacing="0.5">ENCARGADO DE</text>
+<text transform="translate(70.75,211.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24.0" font-weight="800" fill="#fff" letter-spacing="0.5">LA DNTIC</text>
 <rect x="12" y="326" width="2216" height="620" fill="#e8edfa" stroke="#8d9bb5" stroke-width="1.4"/>
 <rect x="12" y="326" width="80" height="620" fill="#3a4f86"/>
-<text transform="translate(44.0,636.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="800" fill="#fff" letter-spacing="0.5">HERRAMIENTA</text>
-<text transform="translate(72.0,636.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="800" fill="#fff" letter-spacing="0.5">TRACEDEV</text>
+<text transform="translate(45.25,636.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24.0" font-weight="800" fill="#fff" letter-spacing="0.5">HERRAMIENTA</text>
+<text transform="translate(70.75,636.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24.0" font-weight="800" fill="#fff" letter-spacing="0.5">TRACEDEV</text>
 <rect x="12" y="946" width="2216" height="340" fill="#fbe7e2" stroke="#8d9bb5" stroke-width="1.4"/>
 <rect x="12" y="946" width="80" height="340" fill="#b8432e"/>
-<text transform="translate(44.0,1116.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="800" fill="#fff" letter-spacing="0.5">EQUIPO DE</text>
-<text transform="translate(72.0,1116.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="800" fill="#fff" letter-spacing="0.5">DESARROLLO</text>
+<text transform="translate(33.33333333333333,1116.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="23.2" font-weight="800" fill="#fff" letter-spacing="0.5">EQUIPO DE</text>
+<text transform="translate(58.0,1116.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="23.2" font-weight="800" fill="#fff" letter-spacing="0.5">DESARROLLO</text>
+<text transform="translate(82.66666666666667,1116.0) rotate(-90)" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="23.2" font-weight="800" fill="#fff" letter-spacing="0.5">/ GITLAB</text>
 <circle cx="160" cy="211.0" r="36" fill="#e5f6ec" stroke="#2e8b57" stroke-width="5.6" filter="url(#sh)"/>
 <text x="160" y="217.48" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="800" fill="#1f6f43" text-anchor="middle">Inicio</text>
 <rect x="245.0" y="159.28" width="250" height="103.44" rx="13" fill="#ffffff" stroke="#6b46b8" stroke-width="2.6" filter="url(#sh)"/>

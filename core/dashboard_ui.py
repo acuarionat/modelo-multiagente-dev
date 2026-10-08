@@ -17,8 +17,25 @@ from integrations.gitlab_adapter import (
     LEGACY_COMPLETED_LABELS,
     _normalizar_etiqueta,
 )
+from core.dashboard_charts import (
+    NOMBRES_ETAPA,
+    UMBRAL_PCT,
+    agrupar_ejecuciones,
+    construir_porcentajes_trazabilidad,
+    describir_cambios,
+    grafico_avance_etapas,
+    grafico_tendencia,
+    grafico_trazabilidad,
+    historial_desde_resultados,
+    normalizar_historial,
+)
 from core.ui_theme import render_section_title
-from database.repository import obtener_historial, obtener_versiones_matrices
+from database.repository import (
+    cargar_estado_etapa,
+    obtener_fecha_estado_etapa,
+    obtener_historial,
+    obtener_versiones_matrices,
+)
 
 # Mismos milestones que MILESTONES_BY_STAGE en app.py. Se replican aquí para no
 # importar app.py (que es el punto de entrada de Streamlit).
@@ -165,7 +182,7 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
         st.rerun()
 
     # ---- Datos locales (instantáneos) ----
-    historial = obtener_historial()
+    historial, etapas_con_ultimo_resultado = _historial_de_todas_las_etapas()
     resumen = resumir_historial(historial)
     versiones = obtener_versiones_matrices()
 
@@ -174,8 +191,8 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Versión de contexto", project_config.get("context_version", "—"))
     c2.metric("Análisis registrados", resumen["total_analisis"])
-    c3.metric("Calidad promedio", _pct(resumen["calidad_promedio"]))
-    c4.metric("Seguridad promedio", _pct(resumen["seguridad_promedio"]))
+    c3.metric("Calidad promedio", _pct(resumen["calidad_promedio"]), help="Promedio del índice de calidad de todos los análisis registrados, de todas las etapas.")
+    c4.metric("Seguridad promedio", _pct(resumen["seguridad_promedio"]), help="Promedio del índice de seguridad de todos los análisis registrados, de todas las etapas.")
     linea_inferior = []
     if resumen["tiempo_promedio"] is not None:
         linea_inferior.append(f"Tiempo promedio por análisis: {resumen['tiempo_promedio']:.1f} s")
@@ -220,55 +237,22 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
             }
 
     if filas_grafico:
+        orden_etapas = [nombre for _sid, nombre, _m in ETAPAS if nombre in filas_grafico]
         try:
-            import pandas as pd
-            import altair as alt
-
-            # El orden del eje X sigue el flujo del proyecto (Requerimientos →
-            # Diseño → Codificación → Pruebas), no el alfabético que Streamlit
-            # aplicaría por defecto.
-            orden_etapas = [nombre for _sid, nombre, _m in ETAPAS if nombre in filas_grafico]
-            df_avance = (
-                pd.DataFrame(filas_grafico).T[list(ESTADOS_FLUJO)]
-                .reset_index()
-                .rename(columns={"index": "Etapa"})
-                .melt(id_vars="Etapa", var_name="Estado", value_name="Cantidad")
+            st.altair_chart(grafico_avance_etapas(filas_grafico, orden_etapas), width="stretch")
+            st.caption(
+                "**Cómo leerlo:** el eje horizontal son las etapas en el orden del proyecto y el vertical la cantidad de issues "
+                "abiertos de cada una. **Revisada** = evaluada y aprobada · **Requiere modificación** = evaluada con correcciones "
+                "pendientes · **Pendiente** = aún sin evaluar · **Sin estado** = sin etiqueta de flujo en GitLab."
             )
-            grafico = (
-                alt.Chart(df_avance)
-                .mark_bar()
-                .encode(
-                    x=alt.X("Etapa:N", sort=orden_etapas, title="Etapa"),
-                    y=alt.Y("Cantidad:Q", title="Issues"),
-                    color=alt.Color("Estado:N", sort=list(ESTADOS_FLUJO), title="Estado"),
-                    order=alt.Order("Estado:N"),
-                )
-            )
-            st.altair_chart(grafico, use_container_width=True)
         except Exception:
-            pass
+            st.info("No se pudo generar la gráfica de avance por etapa.")
 
     st.divider()
 
-    # ---- 3. Tendencia de calidad y seguridad (historial) ----
-    st.subheader("Tendencia de calidad y seguridad")
-    if not historial:
-        st.info("Aún no hay análisis registrados en el historial. Ejecuta al menos un análisis de Requerimientos.")
-    else:
-        try:
-            import pandas as pd
-            df_tendencia = pd.DataFrame(
-                {
-                    "Calidad": [h.get("quality_index") for h in historial],
-                    "Seguridad": [h.get("security_index") for h in historial],
-                }
-            )
-            df_tendencia.index = range(1, len(df_tendencia) + 1)
-            df_tendencia.index.name = "Análisis"
-            st.line_chart(df_tendencia)
-            st.caption("Índices por análisis registrado (0 a 1). Los valores no evaluables se omiten.")
-        except Exception:
-            st.info("No se pudo generar la gráfica de tendencia.")
+    # ---- 3. Seguimiento de calidad y seguridad (historial) ----
+    st.subheader("Seguimiento de calidad y seguridad")
+    _render_seguimiento(historial, etapas_con_ultimo_resultado)
 
     st.divider()
 
@@ -286,6 +270,25 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
             st.session_state["dashboard_trazabilidad"] = recolectar_trazabilidad(adapter.project_id)
     trazabilidad = st.session_state["dashboard_trazabilidad"]
 
+    porcentajes_trazabilidad = construir_porcentajes_trazabilidad(trazabilidad)
+    if porcentajes_trazabilidad:
+        st.altair_chart(grafico_trazabilidad(porcentajes_trazabilidad), width="stretch")
+        st.caption(
+            "**Cómo leerlo:** cada barra es una etapa y mide qué parte de lo que entregó la etapa anterior ya quedó cubierto "
+            "(la barra completa es el 100 %): cuánto del **diseño** cubre los **requisitos**, cuánto de la **codificación** "
+            "implementa el **diseño** y cuántas **pruebas** verifican la **codificación**. Pase el cursor sobre la parte verde "
+            "para ver cuántos elementos faltan por revisar o evaluar; el detalle está en las tarjetas «Detalle por matriz»."
+        )
+        faltantes = [
+            nombre for etapa, nombre in (("diseno", "Diseño"), ("codificacion", "Codificación"), ("pruebas", "Pruebas"))
+            if etapa not in {f["etapa"] for f in porcentajes_trazabilidad}
+        ]
+        if faltantes:
+            st.caption(f"Sin datos de trazabilidad todavía (matriz no publicada o vacía): {', '.join(faltantes)}.")
+    else:
+        st.info("Aún no hay matrices de trazabilidad publicadas para calcular el cumplimiento por etapa.")
+
+    st.markdown("**Detalle por matriz**")
     tz_col1, tz_col2, tz_col3 = st.columns(3)
     _render_trazabilidad_diseno(tz_col1, trazabilidad.get("diseno"))
     _render_trazabilidad_codificacion(tz_col2, trazabilidad.get("codificacion"))
@@ -314,6 +317,100 @@ def render_dashboard(project_name: str, project_config: dict, adapter) -> None:
                 for v in versiones
             ]
         )
+
+
+def _historial_de_todas_las_etapas():
+    """Historial de análisis de todas las etapas, ordenado por fecha.
+
+    Las etapas sin filas en el historial (analizadas antes de que éste registrara la etapa)
+    aportan su último resultado guardado. Devuelve (historial, etapas completadas así)."""
+    historial = obtener_historial()
+    con_historial = {h.get("stage") or "requerimientos" for h in historial}
+    respaldadas = []
+    for etapa in ("diseno", "codificacion", "pruebas"):
+        if etapa in con_historial:
+            continue
+        try:
+            filas = historial_desde_resultados(etapa, cargar_estado_etapa(etapa), obtener_fecha_estado_etapa(etapa))
+        except Exception:
+            filas = []
+        if filas:
+            historial = historial + filas
+            respaldadas.append(etapa)
+    historial = sorted(historial, key=lambda h: str(h.get("analysis_date") or ""))
+    return historial, respaldadas
+
+
+def _render_seguimiento(historial: list, etapas_con_ultimo_resultado: list = ()) -> None:
+    """Tendencia de calidad y seguridad por ejecución de análisis, de todas las etapas."""
+    if not historial:
+        st.info("Aún no hay análisis registrados en el historial. Ejecuta al menos un análisis en cualquier etapa.")
+        return
+
+    if etapas_con_ultimo_resultado:
+        nombres = ", ".join(NOMBRES_ETAPA[e] for e in etapas_con_ultimo_resultado)
+        st.info(
+            f"**{nombres}:** aún no tienen historial de análisis, así que se muestra su último resultado guardado "
+            "(un punto por issue). Cada nuevo análisis en esas etapas agregará puntos y permitirá ver sus subidas y bajadas."
+        )
+
+    filas = normalizar_historial(historial)
+    etapas_con_datos = [e for e in NOMBRES_ETAPA if any(f["etapa"] == e for f in filas)]
+    opciones = ["Todas las etapas"] + [NOMBRES_ETAPA[e] for e in etapas_con_datos]
+    elegida = st.radio("Etapa a observar", opciones, horizontal=True, key="dashboard_etapa_seguimiento")
+    if elegida != "Todas las etapas":
+        filas = [f for f in filas if f["etapa_nombre"] == elegida]
+
+    with st.expander("Cómo leer estos gráficos", expanded=True):
+        st.markdown(
+            "- **Dos gráficos:** uno para la **calidad** y otro para la **seguridad**; en cada uno, una línea de color por etapa.\n"
+            "- **Eje horizontal:** la fecha en que se hizo cada ejecución del análisis (un clic en «Iniciar análisis» de una etapa).\n"
+            "- **Eje vertical:** el índice promedio de los issues evaluados en esa ejecución, de 0 a 100 %.\n"
+            f"- **Línea roja punteada:** el umbral de aprobación ({UMBRAL_PCT:g} %). Un issue se aprueba solo si "
+            f"su índice **supera** el umbral; con {UMBRAL_PCT:g} % o menos queda «Requiere modificación». "
+            "Las zonas aprobada y a corregir se rotulan a la derecha.\n"
+            "- **Subidas y bajadas:** la línea de una etapa sube cuando la ejecución siguiente mejoró el índice y baja cuando "
+            "empeoró. Pase el cursor sobre un punto para ver el valor, la variación en puntos, la etapa y la fecha.\n"
+            "- **Vacíos y ✕ rojas:** la línea se corta y aparece una ✕ cuando una ejecución no tuvo índice evaluable "
+            "(por ejemplo, información insuficiente o una métrica no aplicable); no se cuenta como 0."
+        )
+
+    ejecuciones = agrupar_ejecuciones(filas)
+    if not ejecuciones:
+        st.info("No hay análisis registrados para esta etapa.")
+    else:
+        for indicador in ("calidad", "seguridad"):
+            grafico = grafico_tendencia(ejecuciones, indicador)
+            if grafico is not None:
+                st.altair_chart(grafico, width="stretch")
+        ultima = ejecuciones[-1]
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Ejecuciones", len(ejecuciones), help="Ejecuciones de análisis registradas en la selección actual.")
+        k2.metric("Issues analizados", sum(e["issues"] for e in ejecuciones), help="Suma de los issues evaluados en todas las ejecuciones.")
+        k3.metric("Calidad última ejecución", _pct_valor(ultima["calidad"]), delta=_sobre_umbral(ultima["calidad"]), delta_color="off")
+        k4.metric("Seguridad última ejecución", _pct_valor(ultima["seguridad"]), delta=_sobre_umbral(ultima["seguridad"]), delta_color="off")
+
+        st.markdown("**Lectura de la serie**")
+        cambios = describir_cambios(ejecuciones)
+        if cambios:
+            for frase in cambios:
+                st.markdown(f"- {frase}")
+        else:
+            st.caption(
+                "Aún no hay dos ejecuciones comparables de una misma etapa: la serie empezará a mostrar "
+                "subidas y bajadas con el siguiente análisis."
+            )
+
+
+def _pct_valor(valor) -> str:
+    """Porcentaje ya calculado (0..100) como texto; '—' si no hay dato."""
+    return "—" if valor is None else f"{valor:g} %"
+
+
+def _sobre_umbral(valor):
+    if valor is None:
+        return None
+    return "Sobre el umbral" if valor > UMBRAL_PCT else f"Bajo el umbral (≤ {UMBRAL_PCT:g} %)"
 
 
 def _cobertura(cubiertos, total) -> str:

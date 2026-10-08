@@ -29,8 +29,11 @@ from core.ui_components import (
     create_stage_step_panels,
     crear_subsecciones_entrada,
     entrada_fila_html,
+    fila_matriz_resultados,
+    filas_metricas_presentacion,
     kpi_strip_html,
     promedio_indices,
+    render_alcance_entradas,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
@@ -46,7 +49,8 @@ from core.utils import (
     generar_documento_formal_pruebas_docx,
     generar_reporte_pruebas_pdf,
 )
-from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
+from database.repository import cargar_estado_etapa, guardar_estado_etapa, guardar_historial, leer_version_matriz
+from integrations.gitlab_adapter import etiquetas_son_analizables
 from integrations.issue_service import (
     actualizar_etiqueta_resultado_tecnico,
     obtener_issue_matriz_trazabilidad_codificacion,
@@ -271,26 +275,35 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         return
 
     validaciones = preparar_prevalidacion_pruebas(issues_pruebas, matriz_codificacion)
+    # Se listan todos los issues del milestone; solo se analizan los Pendiente o
+    # Requiere modificación.
+    analizable_por_prueba_id = {
+        (issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"): etiquetas_son_analizables(issue.get("labels"))
+        for issue in issues_pruebas
+    }
     pruebas_validas = [
         issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"
         for issue in issues_pruebas
         if validaciones[issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"]["entrada_valida"]
+        and analizable_por_prueba_id[issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"]
     ]
     bloqueadas = [
-        pid for pid, v in validaciones.items() if not v["entrada_valida"]
+        pid for pid, v in validaciones.items() if not v["entrada_valida"] and analizable_por_prueba_id[pid]
     ]
 
     sub.resumen_issues.markdown(
         tarjeta_estado_entrada_html("Issues de Pruebas", [
             chip_html(contar(len(issues_pruebas), "detectado", "detectados"), "info"),
+            chip_html(contar(sum(analizable_por_prueba_id.values()), "a analizar", "a analizar"), "info"),
             chip_html(contar(len(pruebas_validas), "válido", "válidos"), "ok"),
             chip_html(contar(len(bloqueadas), "bloqueado", "bloqueados"), "bad" if bloqueadas else "muted"),
         ]),
         unsafe_allow_html=True,
     )
 
-    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
-    # Requiere modificación) junto a la validez de su entrada.
+    # Cada entrada se muestra con su estado de revisión en GitLab y si se analiza o
+    # queda solo como referencia, junto a la validez de su entrada.
+    render_alcance_entradas(sub.tab_issues, [issue.get("labels") for issue in issues_pruebas])
     for issue in issues_pruebas:
         prueba_id = issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"
         validacion = validaciones[prueba_id]
@@ -353,7 +366,7 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
         for issue in issues_pruebas:
             prueba_id = issue.get("prueba_id") or f"issue-{issue.get('issue_iid')}"
             referencias_invalidas = validaciones[prueba_id]["referencias_invalidas"]
-            if not referencias_invalidas or prueba_id in avisos_publicados:
+            if not referencias_invalidas or prueba_id in avisos_publicados or not analizable_por_prueba_id[prueba_id]:
                 continue
             try:
                 publicar_aviso_referencias_invalidas_pruebas(
@@ -426,6 +439,13 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             actualizar_etiqueta_resultado_tecnico(
                 adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
             )
+            # Historial para el seguimiento de calidad y seguridad del panel del proyecto.
+            # (solo los issues analizados en esta ejecución, no los de ejecuciones previas de la sesión)
+            if prueba_id in pruebas_validas:
+                guardar_historial(
+                    p["issue_iid"], _indicador_general_pruebas(p, ("MC-07", "MC-08")), _indicador_general_pruebas(p, ("MS-08", "MS-09")),
+                    p["estado_orientativo"], None, p.get("conclusion_calidad") or "", stage="pruebas",
+                )
             try:
                 publicar_comentario_pruebas(
                     adapter.project_id, p["issue_iid"], resultados[prueba_id]["testing_summary"],
@@ -463,6 +483,19 @@ def render_testing_stage(project_name: str, project_config: dict, adapter) -> No
             "Los resultados constituyen apoyo al control y seguimiento de las pruebas. "
             "La aceptación final requiere revisión humana."
         ),
+        filas_matriz=[
+            fila_matriz_resultados(
+                identificador, p["titulo"], p["estado_orientativo"],
+                calidad=extraer_porcentaje(_indicador_general_pruebas(p, ("MC-07", "MC-08"))),
+                seguridad=extraer_porcentaje(_indicador_general_pruebas(p, ("MS-08", "MS-09"))),
+                correcciones=len(p["correcciones_necesarias"]),
+                precisiones=len(p["precisiones_necesarias"]),
+                mejoras=len(p["oportunidades_mejora"]),
+                metricas=filas_metricas_presentacion(p["metricas"]),
+            )
+            for identificador, p in presentaciones.items()
+        ],
+        etiqueta_detalle="Detalle por prueba",
     )
 
     elegido = selector_resultados(

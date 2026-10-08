@@ -9,7 +9,7 @@ load_dotenv()
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from integrations.gitlab_adapter import GitLabAdapter
+from integrations.gitlab_adapter import GitLabAdapter, es_issue_pendiente
 from integrations.issue_service import procesar_flujo_lote
 from database.repository import (
     cargar_estado_etapa,
@@ -28,11 +28,14 @@ from core.ui_components import (
     create_stage_step_panels,
     entrada_fila_html,
     kpi_strip_html,
+    fila_matriz_resultados,
+    fila_metrica,
+    render_alcance_entradas,
     render_findings_section,
     render_gitlab_feedback,
+    render_matriz_resultados,
     render_next_phase_button,
     render_state_badge,
-    resumen_estados_entradas_html,
     selector_resultados,
     titulo_item,
 )
@@ -945,7 +948,7 @@ if saved_config is None or editing_config:
             st.markdown("### Estado del proyecto")
             c1, c2 = st.columns(2)
             c1.metric("GitLab", "Conectado" if verified else "Pendiente")
-            c2.metric("Milestones", "Verificados" if verified else "Pendientes")
+            c2.metric("Milestones / Hitos", "Verificados" if verified else "Pendientes")
 
         if save_and_start:
             missing = [key for key, value in values.items() if not str(value).strip()]
@@ -1019,7 +1022,7 @@ paso_entrada, paso_analisis, paso_resultados, _req_step_key = create_stage_step_
     bool(st.session_state.get("last_batch_result", {}).get("issues")),
 )
 
-ISSUE_FILTER_VERSION = "pending-or-rework-v1"
+ISSUE_FILTER_VERSION = "all-open-issues-v1"
 if st.session_state.get("issue_filter_version") != ISSUE_FILTER_VERSION:
     st.session_state.pop("issues_by_stage", None)
     st.session_state["issue_filter_version"] = ISSUE_FILTER_VERSION
@@ -1029,16 +1032,15 @@ if "issues_by_stage" not in st.session_state:
 refresh_issues = paso_entrada.button("Actualizar desde GitLab", icon=":material/refresh:", width="stretch")
 if refresh_issues or stage_id not in st.session_state.issues_by_stage:
     with paso_entrada.spinner("Consultando issues del milestone..."):
-        st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_pendientes(milestone_title=milestone_val)
-issues = st.session_state.issues_by_stage[stage_id]
-if issues:
-    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
-    # Requiere modificación), en vez de ocultarlas en un desplegable. El total y
-    # los estados van en una sola línea.
-    paso_entrada.markdown(
-        resumen_estados_entradas_html([i.labels for i in issues], con_total=True), unsafe_allow_html=True,
-    )
-    for issue in issues:
+        st.session_state.issues_by_stage[stage_id] = adapter.listar_issues_abiertos(milestone_title=milestone_val)
+issues_entrada = st.session_state.issues_by_stage[stage_id]
+# Se listan todos los issues de entrada; solo se analizan los Pendiente o Requiere modificación.
+issues = [i for i in issues_entrada if es_issue_pendiente(i)]
+if issues_entrada:
+    # Cada entrada se muestra con su estado de revisión en GitLab y si se analiza o
+    # queda solo como referencia. El total y los estados van en una sola línea.
+    render_alcance_entradas(paso_entrada, [i.labels for i in issues_entrada])
+    for issue in issues_entrada:
         paso_entrada.markdown(entrada_fila_html(f"#{issue.iid}", issue.title, issue.labels), unsafe_allow_html=True)
 else:
     paso_entrada.info("No se encontraron issues abiertos en este milestone.")
@@ -1048,6 +1050,8 @@ render_next_phase_button(paso_entrada, _req_step_key, 1)
 start_analysis = paso_analisis.button(
     "Iniciar análisis", icon=":material/play_arrow:", type="primary", width="stretch", disabled=not issues,
 )
+if issues_entrada and not issues:
+    paso_analisis.info("Ningún issue está Pendiente ni Requiere modificación, por lo que no hay nada que analizar.")
 if start_analysis:
     for stale_key in ("last_batch_result", "batch_pdf", "batch_docx"):
         st.session_state.pop(stale_key, None)
@@ -1375,6 +1379,80 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
         f"{summary['informacion_insuficiente']} · "
         f"Historias bajo meta: {summary['historias_bajo_meta']}"
     )
+
+    # Matriz con el resultado de todas las historias del lote (incluidas las que no
+    # pudieron evaluarse), antes del detalle de cada una.
+    def _metricas_matriz_req(result):
+        """Detalle por métrica (MC-01, MC-02, MS-01, MS-02) de una historia, tal como la calculó el análisis."""
+        calidad_metricas = (result.get("quality") or {}).get("metricas")
+        seguridad_metricas = (result.get("security") or {}).get("metricas")
+        calidad_metricas = calidad_metricas if isinstance(calidad_metricas, dict) else {}
+        seguridad_metricas = seguridad_metricas if isinstance(seguridad_metricas, dict) else {}
+        mc01 = calidad_metricas.get("cobertura_funcional") or {}
+        mc02 = calidad_metricas.get("adecuacion_funcional") or {}
+        ms01 = seguridad_metricas.get("cobertura_seguridad") or {}
+        ms02 = seguridad_metricas.get("clasificacion_datos") or {}
+
+        def _base(favorables, restantes):
+            return f"{favorables} de {favorables + restantes}"
+
+        return [
+            fila_metrica(
+                "MC-01", "Cobertura Funcional", _porcentaje_metrica_ui(mc01),
+                _base(len(_funciones_documentadas_mc01(mc01)), len(_gaps_mc01(mc01))),
+                "Funciones necesarias documentadas sobre el total de funciones necesarias.",
+            ),
+            fila_metrica(
+                "MC-02", "Adecuación Funcional", _porcentaje_metrica_ui(mc02),
+                _base(len(lista_ui(mc02.get("funciones_alineadas"))), len(lista_ui(mc02.get("funciones_no_alineadas")))),
+                "Funciones alineadas con el objetivo de la historia sobre las funciones evaluadas.",
+            ),
+            fila_metrica(
+                "MS-01", "Cobertura de Seguridad", _porcentaje_metrica_ui(ms01),
+                _base(
+                    len(lista_ui(ms01.get("aspectos_documentados"))),
+                    len(lista_ui(ms01.get("aspectos_aplicables"))) - len(lista_ui(ms01.get("aspectos_documentados"))),
+                ),
+                "Aspectos de seguridad aplicables que la historia documenta.",
+            ),
+            fila_metrica(
+                "MS-02", "Clasificación de Datos", _porcentaje_metrica_ui(ms02),
+                _base(
+                    len(lista_ui(ms02.get("datos_clasificados"))),
+                    len(lista_ui(ms02.get("datos_identificados"))) - len(lista_ui(ms02.get("datos_clasificados"))),
+                ),
+                "Datos identificados que cuentan con una clasificación.",
+            ),
+        ]
+
+    filas_matriz_resultados = []
+    for result in results:
+        central = result.get("central") or {}
+        iid = result.get("issue_iid", "???")
+        historia_id = central.get("historia_id") or (f"HU-{iid:03d}" if isinstance(iid, int) else f"HU-{iid}")
+        titulo_historia = central.get("titulo") or (result.get("issue_data") or {}).get("titulo") or "Sin título"
+        if result.get("estado_procesamiento") == "informacion_insuficiente":
+            filas_matriz_resultados.append(
+                fila_matriz_resultados(historia_id, titulo_historia, "INFORMACIÓN INSUFICIENTE")
+            )
+            continue
+        if result["status"] != "ok":
+            filas_matriz_resultados.append(fila_matriz_resultados(historia_id, titulo_historia, "ERROR"))
+            continue
+        filas_matriz_resultados.append(
+            fila_matriz_resultados(
+                historia_id,
+                titulo_historia,
+                result.get("estado_orientativo") or result.get("estado_evaluacion") or "REVISIÓN HUMANA",
+                calidad=_porcentaje_ui((result.get("quality") or {}).get("indice")),
+                seguridad=_porcentaje_ui((result.get("security") or {}).get("indice")),
+                correcciones=len(lista_ui(result.get("correcciones_necesarias"))),
+                precisiones=len(lista_ui(result.get("precisiones_necesarias"))),
+                mejoras=len(lista_ui(result.get("mejoras_sugeridas") or result.get("oportunidades_adicionales"))),
+                metricas=_metricas_matriz_req(result),
+            )
+        )
+    render_matriz_resultados(resumen_general, filas_matriz_resultados, "Detalle por historia")
 
     # Un resultado a la vez: el selector evita una lista larga de historias en vertical.
     historia_elegida = selector_resultados(

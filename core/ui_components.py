@@ -15,6 +15,7 @@ import streamlit as st
 
 from core.dashboard_ui import clasificar_estado_flujo
 from core.ui_theme import render_section_title
+from integrations.gitlab_adapter import etiquetas_son_analizables
 
 
 # ---------------------------------------------------------
@@ -200,13 +201,32 @@ def chip_estado_flujo_html(labels) -> str:
 
 
 def entrada_fila_html(identificador: str, texto: str = "", labels=None) -> str:
-    """Fila de una entrada: identificador, descripción y estado de revisión."""
+    """Fila de una entrada: identificador, descripción, estado de revisión y si se analiza.
+
+    Se listan todos los issues de la etapa; solo los Pendiente o Requiere modificación
+    se analizan, y los demás se atenúan y se rotulan «Solo referencia».
+    """
     texto_html = f'<span class="entry-text">{escape(str(texto))}</span>' if texto else ""
+    analizable = etiquetas_son_analizables(labels)
+    alcance = chip_html("Se analiza", "ok") if analizable else chip_html("Solo referencia", "muted")
     return (
-        '<div class="entry-row">'
+        f'<div class="entry-row{"" if analizable else " not-analyzed"}">'
         f'<span class="entry-id">{escape(str(identificador))}</span>'
         f"{texto_html}"
         f"{chip_estado_flujo_html(labels)}"
+        f"{alcance}"
+        "</div>"
+    )
+
+
+def aviso_alcance_entradas_html() -> str:
+    """Aclara que se listan todos los issues de entrada pero solo se analizan los de ciertas etiquetas."""
+    return (
+        '<div class="entry-scope-note">'
+        "Se muestran <strong>todos los issues de entrada</strong> de esta etapa, con su etiqueta en GitLab. "
+        "<strong>Solo se analizan</strong> los que tienen la etiqueta <strong>Pendiente</strong> o "
+        "<strong>Requiere modificación</strong>; los demás (por ejemplo, <strong>Revisada</strong>) "
+        "se muestran como referencia y no se envían al análisis."
         "</div>"
     )
 
@@ -326,30 +346,51 @@ def titulo_item(identificador, titulo, estado=None) -> str:
     se mostraba dos veces («DIS-001 — DIS-001 - Módulo…»).
     """
     ident = str(identificador or "").strip()
-    texto = str(titulo or "").strip()
-    resto = re.sub(rf"^{re.escape(ident)}\s*[-–—:]*\s*", "", texto, flags=re.IGNORECASE) if ident else texto
+    resto = _titulo_sin_identificador(ident, titulo)
     base = f"{ident} — {resto}" if ident and resto else (ident or resto)
     return f"{base} · {estado}" if estado else base
 
 
-def resumen_estados_entradas_html(lista_de_labels, con_total: bool = False) -> str:
+def _titulo_sin_identificador(identificador: str, titulo) -> str:
+    """El título del Issue sin el identificador con el que suele empezar («DIS-001 - Módulo» → «Módulo»)."""
+    texto = str(titulo or "").strip()
+    return re.sub(rf"^{re.escape(identificador)}\s*[-–—:]*\s*", "", texto, flags=re.IGNORECASE) if identificador else texto
+
+
+def resumen_estados_entradas_html(lista_de_labels, con_total: bool = False, con_alcance: bool = False) -> str:
     """Conteo de entradas por estado de revisión, en el orden Pendiente · Requiere modificación · …
 
     Con `con_total` antepone el total («4 issues encontrados»), de modo que el total y
-    los estados se lean en una sola línea.
+    los estados se lean en una sola línea. Con `con_alcance` agrega al final cuántos se
+    analizan y cuántos quedan solo como referencia.
     """
     conteo = {}
     total = 0
+    analizables = 0
     for labels in lista_de_labels:
         estado = clasificar_estado_flujo(labels)
         conteo[estado] = conteo.get(estado, 0) + 1
         total += 1
+        analizables += bool(etiquetas_son_analizables(labels))
     chips = (chip_html(contar(total, "issue encontrado", "issues encontrados"), "info") if con_total else "") + "".join(
         f'<span class="wf-chip {_CLASES_ESTADO_FLUJO[estado]}">{conteo[estado]} · {escape(estado)}</span>'
         for estado in ("Pendiente", "Requiere modificación", "Revisada", "Sin estado")
         if conteo.get(estado)
     )
+    if con_alcance and total:
+        chips += chip_html(f"{analizables} se analizan", "ok" if analizables else "muted")
+        if total - analizables:
+            chips += chip_html(f"{total - analizables} solo referencia", "muted")
     return f'<div class="entry-summary">{chips}</div>' if chips else ""
+
+
+def render_alcance_entradas(container, lista_de_labels) -> None:
+    """Aviso de alcance + conteo por etiqueta de TODOS los issues de entrada de la etapa."""
+    container.markdown(aviso_alcance_entradas_html(), unsafe_allow_html=True)
+    container.markdown(
+        resumen_estados_entradas_html(lista_de_labels, con_total=True, con_alcance=True),
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------
@@ -369,6 +410,141 @@ def render_state_badge(estado: str) -> None:
     st.markdown(
         f'<span class="state-badge {cls}">{estado}</span>',
         unsafe_allow_html=True,
+    )
+
+
+# ---------------------------------------------------------
+# Matriz de resultados (una fila por issue, antes del detalle)
+# ---------------------------------------------------------
+
+_COLUMNAS_MATRIZ_RESULTADOS = (
+    ("Issue", ""),
+    ("Título", ""),
+    ("Estado", ""),
+    ("Calidad", "num"),
+    ("Seguridad", "num"),
+    ("Correcciones", "num"),
+    ("Precisiones", "num"),
+    ("Mejoras", "num"),
+)
+_COLUMNAS_DETALLE_METRICAS = ("Código", "Métrica", "Resultado", "Base", "Interpretación")
+
+
+def fila_metrica(codigo, nombre, resultado="—", base="—", interpretacion="") -> dict:
+    """Una métrica del detalle desplegable de una fila de la matriz (todo ya formateado)."""
+    return {
+        "Código": codigo, "Métrica": nombre, "Resultado": resultado,
+        "Base": base, "Interpretación": interpretacion,
+    }
+
+
+def filas_metricas_presentacion(metricas: dict) -> list:
+    """Proyecta, sin recalcular, las métricas de una presentación (Diseño, Codificación, Pruebas)
+    al detalle por métrica de la matriz."""
+    from core.utils import extraer_porcentaje
+
+    filas = []
+    for metrica in (metricas or {}).values():
+        if "numero_criticas" in metrica:  # MS-05: se mide en cantidad de críticas, no en porcentaje.
+            criticas = metrica.get("numero_criticas")
+            resultado = f"{criticas} críticas" if criticas is not None else "No evaluable"
+        else:
+            resultado = extraer_porcentaje(metrica.get("valor"))
+        numerador, denominador = metrica.get("numerador"), metrica.get("denominador")
+        filas.append(fila_metrica(
+            metrica.get("codigo", ""),
+            metrica.get("nombre", ""),
+            resultado,
+            f"{numerador} de {denominador}" if numerador is not None and denominador is not None else "—",
+            metrica.get("resultado") or metrica.get("interpretacion") or metrica.get("conclusion") or "",
+        ))
+    return filas
+
+
+def fila_matriz_resultados(
+    identificador, titulo, estado, calidad="—", seguridad="—",
+    correcciones=None, precisiones=None, mejoras=None, metricas=None,
+) -> dict:
+    """Fila de la matriz de resultados. Calidad y seguridad llegan ya formateadas; los
+    hallazgos, como cantidades (None = no aplica, p. ej. un issue que no llegó a evaluarse);
+    `metricas` (lista de `fila_metrica`) es el detalle que se despliega al abrir la fila."""
+    ident = str(identificador or "").strip()
+    return {
+        "Issue": ident,
+        "Título": _titulo_sin_identificador(ident, titulo),
+        "Estado": estado,
+        "Calidad": calidad,
+        "Seguridad": seguridad,
+        "Correcciones": correcciones,
+        "Precisiones": precisiones,
+        "Mejoras": mejoras,
+        "Métricas": metricas or [],
+    }
+
+
+def _celda_matriz_html(nombre: str, valor) -> str:
+    if nombre == "Estado":
+        cls = _BADGE_CLASSES.get(valor, "state-revision")
+        return f'<span class="state-badge {cls}">{escape(str(valor))}</span>'
+    if nombre == "Issue":
+        return f"<strong>{escape(str(valor))}</strong>"
+    if nombre in ("Correcciones", "Precisiones", "Mejoras"):
+        celda = "—" if valor is None else escape(str(valor))
+        return f'<span class="rm-count">{celda}</span>' if valor else celda
+    return escape(str(valor if valor not in (None, "") else "—"))
+
+
+def _detalle_metricas_html(metricas: list) -> str:
+    cabecera = "".join(f"<th>{escape(nombre)}</th>" for nombre in _COLUMNAS_DETALLE_METRICAS)
+    cuerpo = "".join(
+        "<tr>" + "".join(
+            f"<td>{escape(str(metrica.get(nombre) or '—'))}</td>" for nombre in _COLUMNAS_DETALLE_METRICAS
+        ) + "</tr>"
+        for metrica in metricas
+    )
+    return (
+        '<div class="rm-detail"><div class="rm-detail-title">Detalle por métrica</div>'
+        f'<table class="rm-metrics"><thead><tr>{cabecera}</tr></thead><tbody>{cuerpo}</tbody></table></div>'
+    )
+
+
+def matriz_resultados_html(filas: list) -> str:
+    """Matriz con el resultado de cada issue (estado, índices, cantidad de hallazgos). Cada fila con
+    métricas se despliega para ver el detalle por métrica."""
+    cabecera = "".join(
+        f'<span class="{clase}">{escape(nombre)}</span>' if clase else f"<span>{escape(nombre)}</span>"
+        for nombre, clase in _COLUMNAS_MATRIZ_RESULTADOS
+    )
+    cuerpo = ""
+    for fila in filas:
+        celdas = "".join(
+            f'<span class="{clase}">{_celda_matriz_html(nombre, fila.get(nombre))}</span>' if clase
+            else f"<span>{_celda_matriz_html(nombre, fila.get(nombre))}</span>"
+            for nombre, clase in _COLUMNAS_MATRIZ_RESULTADOS
+        )
+        if fila.get("Métricas"):
+            cuerpo += (
+                f'<details class="rm-row"><summary class="rm-grid rm-summary">{celdas}</summary>'
+                f'{_detalle_metricas_html(fila["Métricas"])}</details>'
+            )
+        else:
+            cuerpo += f'<div class="rm-row"><div class="rm-grid rm-summary rm-flat">{celdas}</div></div>'
+    return (
+        '<div class="result-matrix">'
+        f'<div class="rm-grid rm-head">{cabecera}</div>{cuerpo}</div>'
+    )
+
+
+def render_matriz_resultados(container, filas: list, etiqueta_detalle: str) -> None:
+    """Matriz con TODOS los issues evaluados, para leer el resultado global antes del detalle."""
+    if not filas:
+        return
+    container.markdown(rotulo_bloque_html("Matriz de resultados por issue"), unsafe_allow_html=True)
+    container.markdown(matriz_resultados_html(filas), unsafe_allow_html=True)
+    container.caption(
+        "Una fila por issue evaluado: haz clic en una fila para desplegar el detalle por métrica. "
+        "Correcciones, precisiones y mejoras indican la cantidad de hallazgos; su contenido y el "
+        f"análisis completo están en la pestaña «{etiqueta_detalle}»."
     )
 
 
@@ -400,12 +576,14 @@ def render_stage_summary(
     seguridad_promedio,
     aviso: str,
     subtitulo: str = "",
+    filas_matriz: list = None,
+    etiqueta_detalle: str = "",
 ) -> None:
     """Resumen general homogéneo para todas las etapas.
 
     Una sola fila de tarjetas (ítems evaluados · requieren corrección · con error ·
-    calidad y seguridad promedio) y el aviso de decisión humana. Solo presentación:
-    no recalcula.
+    calidad y seguridad promedio), la matriz de resultados de todos los issues (si se
+    entregan `filas_matriz`) y el aviso de decisión humana. Solo presentación: no recalcula.
     """
     container.subheader("Resumen general de resultados")
     if subtitulo:
@@ -421,6 +599,8 @@ def render_stage_summary(
         ]),
         unsafe_allow_html=True,
     )
+
+    render_matriz_resultados(container, filas_matriz or [], etiqueta_detalle)
 
     with container:
         render_human_decision_notice(aviso)

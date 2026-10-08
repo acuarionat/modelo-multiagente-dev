@@ -38,8 +38,11 @@ from core.ui_components import (
     create_coding_step_panels,
     crear_subsecciones_entrada,
     entrada_fila_html,
+    fila_matriz_resultados,
+    filas_metricas_presentacion,
     kpi_strip_html,
     promedio_indices,
+    render_alcance_entradas,
     render_evaluation_header,
     render_findings_section,
     render_gitlab_feedback,
@@ -55,8 +58,9 @@ from core.utils import (
     generar_documento_formal_codificacion_docx,
     generar_reporte_codificacion_pdf,
 )
-from database.repository import cargar_estado_etapa, guardar_estado_etapa, leer_version_matriz
+from database.repository import cargar_estado_etapa, guardar_estado_etapa, guardar_historial, leer_version_matriz
 from integrations.code_repository_service import obtener_codigo_codificacion
+from integrations.gitlab_adapter import etiquetas_son_analizables
 from integrations.issue_service import (
     actualizar_etiqueta_resultado_tecnico,
     crear_o_actualizar_issue_matriz_trazabilidad_codificacion,
@@ -538,8 +542,17 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     issues_codificacion = session["coding_issues_detectados"]
 
     estado_entrada = preparar_estado_entrada_codificacion(issues_codificacion, elementos_diseno_validos)
+    # Se listan todos los issues del milestone; solo se analizan (y se validan para el
+    # análisis) los Pendiente o Requiere modificación.
+    analizable_por_cod_id = {
+        (issue.get("codificacion_id") or f"issue-{issue.get('issue_iid')}"): etiquetas_son_analizables(issue.get("labels"))
+        for issue in issues_codificacion
+    }
     prevalidacion = preparar_prevalidacion_codificacion(
-        matriz_entrada, {fila["codificacion_id"]: estado_entrada["validaciones"][fila["codificacion_id"]] for fila in estado_entrada["filas"]},
+        matriz_entrada, {
+            fila["codificacion_id"]: estado_entrada["validaciones"][fila["codificacion_id"]]
+            for fila in estado_entrada["filas"] if analizable_por_cod_id.get(fila["codificacion_id"])
+        },
     )
 
     # Los issues válidos y bloqueados ya se ven en el resumen de arriba: aquí solo
@@ -552,6 +565,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     sub.resumen_issues.markdown(
         tarjeta_estado_entrada_html("Issues de Codificación", [
             chip_html(contar(len(estado_entrada["filas"]), "detectado", "detectados"), "info"),
+            chip_html(contar(sum(analizable_por_cod_id.values()), "a analizar", "a analizar"), "info"),
             chip_html(contar(len(prevalidacion["issues_validos"]), "válido", "válidos"), "ok"),
             chip_html(
                 contar(len(prevalidacion["issues_bloqueados"]), "bloqueado", "bloqueados"),
@@ -571,9 +585,10 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         sub.tab_issues.info("No se encontraron Issues de Codificación en el milestone.")
         return
 
-    # Cada entrada se muestra con su estado de revisión en GitLab (Pendiente o
-    # Requiere modificación) junto a la validez de su entrada.
+    # Cada entrada se muestra con su estado de revisión en GitLab y si se analiza o
+    # queda solo como referencia, junto a la validez de su entrada.
     labels_por_iid = {issue.get("issue_iid"): issue.get("labels") for issue in issues_codificacion}
+    render_alcance_entradas(sub.tab_issues, list(labels_por_iid.values()))
     for fila in estado_entrada["filas"]:
         icono = "🟢" if fila["entrada_valida"] else "🔴"
         sub.tab_issues.markdown(
@@ -587,7 +602,10 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         if fila["referencias_invalidas"]:
             sub.tab_issues.caption(f"Elementos de Diseño inexistentes en la matriz heredada: {', '.join(fila['referencias_invalidas'])}")
 
-    codificaciones_validas = [fila["codificacion_id"] for fila in estado_entrada["filas"] if fila["entrada_valida"]]
+    codificaciones_validas = [
+        fila["codificacion_id"] for fila in estado_entrada["filas"]
+        if fila["entrada_valida"] and analizable_por_cod_id.get(fila["codificacion_id"])
+    ]
 
     render_next_phase_button(paso_entrada, step_key, 1)
 
@@ -672,7 +690,10 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         # se deja constancia en GitLab (comentario + etiqueta 'Requiere modificación').
         avisos_publicados = session.setdefault("coding_avisos_referencias_publicados", set())
         for fila in estado_entrada["filas"]:
-            if not fila["referencias_invalidas"] or fila["codificacion_id"] in avisos_publicados:
+            if (
+                not fila["referencias_invalidas"] or fila["codificacion_id"] in avisos_publicados
+                or not analizable_por_cod_id.get(fila["codificacion_id"])
+            ):
                 continue
             try:
                 publicar_aviso_referencias_invalidas_codificacion(
@@ -750,6 +771,13 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             actualizar_etiqueta_resultado_tecnico(
                 adapter.project_id, p["issue_iid"], p["estado_orientativo"], adapter=adapter,
             )
+            # Historial para el seguimiento de calidad y seguridad del panel del proyecto.
+            # (solo los issues analizados en esta ejecución, no los de ejecuciones previas de la sesión)
+            if codificacion_id in codificaciones_validas:
+                guardar_historial(
+                    p["issue_iid"], p["indice_calidad"], p["indice_seguridad"],
+                    p["estado_orientativo"], None, p.get("conclusion_calidad") or "", stage="codificacion",
+                )
             try:
                 publicar_comentario_codificacion(
                     adapter.project_id, p["issue_iid"], resultados[codificacion_id]["coding_summary"],
@@ -779,6 +807,19 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             "Los resultados constituyen apoyo al control y seguimiento de la codificación. "
             "La aceptación final requiere revisión humana."
         ),
+        filas_matriz=[
+            fila_matriz_resultados(
+                identificador, p["titulo"], p["estado_orientativo"],
+                calidad=extraer_porcentaje(p["indice_calidad"]),
+                seguridad=extraer_porcentaje(p["indice_seguridad"]),
+                correcciones=len(p["correcciones_necesarias"]),
+                precisiones=len(p["precisiones_necesarias"]),
+                mejoras=len(p["oportunidades_mejora"]),
+                metricas=filas_metricas_presentacion(p["metricas"]),
+            )
+            for identificador, p in presentaciones.items()
+        ],
+        etiqueta_detalle="Detalle por codificación",
     )
 
     elegido = selector_resultados(
