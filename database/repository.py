@@ -1,8 +1,9 @@
-import sqlite3
 import os
 import json
 import hashlib
 from datetime import datetime
+
+from database.connection import columnas_de_tabla, conectar
 
 DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database")
 DB_PATH = os.path.join(DB_DIR, "database.db")
@@ -11,7 +12,7 @@ def inicializar_bd():
     if not os.path.exists(DB_DIR):
         os.makedirs(DB_DIR)
         
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -40,7 +41,7 @@ def inicializar_bd():
     ''')
 
     # Bases creadas antes de registrar la etapa: todo lo guardado entonces es de Requerimientos.
-    columnas_historial = {fila[1] for fila in cursor.execute('PRAGMA table_info(history)')}
+    columnas_historial = columnas_de_tabla(conn, 'history')
     if 'stage' not in columnas_historial:
         cursor.execute("ALTER TABLE history ADD COLUMN stage TEXT DEFAULT 'requerimientos'")
     
@@ -79,7 +80,7 @@ def inicializar_bd():
 
 def limpiar_datos_seguimiento():
     """Limpia las tablas para reiniciar el proyecto sin borrar la BD."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM issues')
     cursor.execute('DELETE FROM history')
@@ -91,18 +92,19 @@ def limpiar_datos_seguimiento():
 
 def guardar_estado_etapa(stage: str, payload: dict):
     """Persiste el último resultado de análisis de una etapa (Requerimientos, Diseño, Codificación, Pruebas)."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT OR REPLACE INTO stage_snapshots (stage, payload, updated_at)
+        INSERT INTO stage_snapshots (stage, payload, updated_at)
         VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(stage) DO UPDATE SET payload=excluded.payload, updated_at=CURRENT_TIMESTAMP
     ''', (stage, json.dumps(payload, ensure_ascii=False, default=str)))
     conn.commit()
     conn.close()
 
 def cargar_estado_etapa(stage: str):
     """Recupera el último resultado de análisis persistido de una etapa, o None si no existe."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT payload FROM stage_snapshots WHERE stage = ?', (stage,))
     row = cursor.fetchone()
@@ -113,7 +115,7 @@ def cargar_estado_etapa(stage: str):
 
 def obtener_fecha_estado_etapa(stage: str):
     """Fecha ('AAAA-MM-DD HH:MM:SS', UTC) en que se persistió el último resultado de una etapa, o None."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT updated_at FROM stage_snapshots WHERE stage = ?', (stage,))
     row = cursor.fetchone()
@@ -122,7 +124,7 @@ def obtener_fecha_estado_etapa(stage: str):
 
 def limpiar_estado_etapas():
     """Borra los resultados de análisis persistidos de todas las etapas."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM stage_snapshots')
     conn.commit()
@@ -145,7 +147,7 @@ def calcular_hash_issue(issue_data: dict) -> str:
     return hashlib.sha256(content_to_hash.encode('utf-8')).hexdigest()
 
 def obtener_estado_issue(gitlab_iid: int):
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT status, content_hash FROM issues WHERE gitlab_iid = ?', (gitlab_iid,))
     row = cursor.fetchone()
@@ -155,7 +157,7 @@ def obtener_estado_issue(gitlab_iid: int):
     return None
 
 def insertar_o_actualizar_issue(gitlab_iid: int, content_hash: str, status: str):
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM issues WHERE gitlab_iid = ?', (gitlab_iid,))
     if cursor.fetchone():
@@ -173,7 +175,7 @@ def insertar_o_actualizar_issue(gitlab_iid: int, content_hash: str, status: str)
     conn.close()
 
 def guardar_historial(gitlab_iid: int, quality_index: float, security_index: float, verdict: str, execution_time: float, observations: str, stage: str = "requerimientos"):
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO history (gitlab_iid, quality_index, security_index, verdict, execution_time, observations, stage)
@@ -186,7 +188,7 @@ def obtener_historial(limite: int | None = None) -> list:
     """Lectura de solo lectura del historial de análisis (calidad, seguridad,
     veredicto, tiempo de ejecución) por Issue y por corrida, ordenado del más
     antiguo al más reciente. Pensado para el panel/dashboard del proyecto."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     query = (
         'SELECT gitlab_iid, analysis_date, quality_index, security_index, '
@@ -217,7 +219,7 @@ def obtener_historial(limite: int | None = None) -> list:
 def obtener_versiones_matrices() -> list:
     """Lectura de solo lectura de la versión actual de cada matriz de trazabilidad
     (etapa, vMAJOR.MINOR y última modificación), ordenada por etapa."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT stage, major, minor, updated_at FROM matrix_versions ORDER BY major ASC')
     filas = cursor.fetchall()
@@ -233,17 +235,20 @@ def obtener_versiones_matrices() -> list:
 
 
 def guardar_cache(content_hash: str, schema_version: str, central_json: dict, quality_json: dict, security_json: dict, eval_json: dict):
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT OR REPLACE INTO cache_results (content_hash, schema_version, central_json, quality_json, security_json, eval_json)
+        INSERT INTO cache_results (content_hash, schema_version, central_json, quality_json, security_json, eval_json)
         VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(content_hash) DO UPDATE SET schema_version=excluded.schema_version,
+            central_json=excluded.central_json, quality_json=excluded.quality_json,
+            security_json=excluded.security_json, eval_json=excluded.eval_json
     ''', (content_hash, schema_version, json.dumps(central_json), json.dumps(quality_json), json.dumps(security_json), json.dumps(eval_json)))
     conn.commit()
     conn.close()
 
 def obtener_cache(content_hash: str, schema_version: str):
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         SELECT central_json, quality_json, security_json, eval_json 
@@ -286,7 +291,7 @@ def obtener_version_matriz(stage: str, filas: list, major: int) -> str:
     idéntico, la versión se mantiene. El MAJOR identifica la etapa
     (1=Requerimientos, 2=Diseño, 3=Codificación, 4=Pruebas)."""
     content_hash = _hash_filas_matriz(filas)
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT content_hash, major, minor FROM matrix_versions WHERE stage = ?', (stage,))
     row = cursor.fetchone()
@@ -316,7 +321,7 @@ def leer_version_matriz(stage: str) -> str | None:
     trazabilidad de una etapa, SIN modificarla. Retorna None si esa matriz aún no
     se ha publicado. Pensada para mostrar la versión en documentos/reportes sin
     provocar ningún incremento."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT major, minor FROM matrix_versions WHERE stage = ?', (stage,))
     row = cursor.fetchone()

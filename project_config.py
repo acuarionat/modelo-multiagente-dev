@@ -1,14 +1,15 @@
 """Persistencia y versionado de la configuración general del proyecto."""
 import json
 import os
-import sqlite3
+
+from database.connection import conectar
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database", "database.db")
 FIELDS = ("name", "gitlab_url", "gitlab_project", "gitlab_token")
 
 
 def _connect():
-    connection = sqlite3.connect(DB_PATH)
+    connection = conectar(DB_PATH)
     connection.execute("""
         CREATE TABLE IF NOT EXISTS project_configuration (
             id INTEGER PRIMARY KEY CHECK (id = 1),

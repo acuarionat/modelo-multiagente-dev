@@ -231,12 +231,12 @@ def _todos_los_resultados_cache() -> list:
     Requerimientos, que ya no depende de cache_results: ver
     integrations/issue_service.py::procesar_flujo_lote).
     """
-    import sqlite3
     import json
 
+    from database.connection import conectar
     from database.repository import DB_PATH
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar(DB_PATH)
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT central_json FROM cache_results")
