@@ -1324,6 +1324,7 @@ if not st.session_state.get("last_batch_result", {}).get("issues"):
 
 if st.session_state.get("last_batch_result", {}).get("issues"):
     paso_resultados.divider()
+    from core.document_style import FORMAL, REPORTE, nombre_archivo
     from core.utils import (
         construir_filas_trazabilidad, generar_documento_formal_lote_docx,
         generar_reporte_lote_pdf,
@@ -2034,7 +2035,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             st.download_button(
                 "Descargar Reporte PDF",
                 st.session_state.batch_pdf,
-                "Reporte_Ejecutivo_Lote.pdf",
+                nombre_archivo(REPORTE, "Requerimientos", "pdf"),
                 "application/pdf",
                 width="stretch",
             )
@@ -2062,7 +2063,7 @@ if st.session_state.get("last_batch_result", {}).get("issues"):
             st.download_button(
                 "Descargar Documento DOCX",
                 st.session_state.batch_docx,
-                "Requerimientos_Consolidados.docx",
+                nombre_archivo(FORMAL, "Requerimientos", "docx"),
                 (
                     "application/vnd.openxmlformats-"
                     "officedocument.wordprocessingml.document"

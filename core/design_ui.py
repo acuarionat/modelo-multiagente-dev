@@ -47,6 +47,7 @@ from core.ui_components import (
     tarjeta_estado_entrada_html,
     titulo_item,
 )
+from core.document_style import FORMAL, REPORTE, nombre_archivo
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
 from database.repository import cargar_estado_etapa, guardar_estado_etapa, guardar_historial, leer_version_matriz
 from integrations.gitlab_adapter import etiquetas_son_analizables
@@ -924,7 +925,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         )
         st.download_button(
             "Descargar Reporte Ejecutivo", pdf_bytes.getvalue(),
-            file_name="reporte_diseno.pdf", mime="application/pdf",
+            file_name=nombre_archivo(REPORTE, "Diseno", "pdf"), mime="application/pdf",
             width="stretch",
         )
 
@@ -936,7 +937,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         )
         st.download_button(
             "Descargar Documento Formal", docx_bytes.getvalue(),
-            file_name="documento_formal_diseno.docx",
+            file_name=nombre_archivo(FORMAL, "Diseno", "docx"),
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             width="stretch",
         )

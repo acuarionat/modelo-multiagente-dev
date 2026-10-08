@@ -53,6 +53,7 @@ from core.ui_components import (
     tarjeta_estado_entrada_html,
     titulo_item,
 )
+from core.document_style import FORMAL, REPORTE, nombre_archivo
 from core.utils import (
     extraer_porcentaje,
     generar_documento_formal_codificacion_docx,
@@ -1029,7 +1030,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         )
         st.download_button(
             "Descargar Reporte Ejecutivo", pdf_bytes.getvalue(),
-            file_name="reporte_codificacion.pdf", mime="application/pdf",
+            file_name=nombre_archivo(REPORTE, "Codificacion", "pdf"), mime="application/pdf",
             width="stretch",
         )
 
@@ -1042,7 +1043,7 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         )
         st.download_button(
             "Descargar Documento Formal", docx_bytes.getvalue(),
-            file_name="documento_formal_codificacion.docx",
+            file_name=nombre_archivo(FORMAL, "Codificacion", "docx"),
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             width="stretch",
         )

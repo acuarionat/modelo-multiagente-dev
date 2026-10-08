@@ -16,6 +16,10 @@ from core.batch_contract import (
 )
 from core.traceability_export import exportar_csv_excel
 from core.umbral_aprobacion import porcentaje, supera_umbral
+from core.document_style import (
+    aplicar_estilo_docx, finalizar_docx, preparar_pdf,
+    seccion_horizontal, seccion_vertical,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -749,8 +753,6 @@ def construir_resultado_lote(project_name: str, milestone: str, issues: list) ->
 
 
 def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
-    from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
     if not batch_result.get("_document_model_prepared"):
         batch_result = preparar_modelo_documental(batch_result)
     project_name = batch_result["project"]["name"]
@@ -759,20 +761,13 @@ def generar_reporte_lote_pdf(batch_result: dict) -> io.BytesIO:
     valid = [x for x in batch_results if x.get("status") == "ok"]
     if not valid:
         raise ValueError("No existen historias completas para generar el PDF.")
-    
+
     summary = calcular_resumen_lote(batch_results)
-    pdf = FPDF()
-    pdf.set_margins(20, 20, 20)
-    pdf.add_page()
-    kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
-    def encabezado(text, size=14):
-        pdf.set_font("Helvetica", style="B", size=size)
-        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
-    def linea(text):
-        pdf.set_font("Helvetica", size=10)
-        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
+    pdf, encabezado, linea, _bullet, nota = preparar_pdf(
+        "Reporte de Ejecución — Requerimientos", project_name, limpiar_texto_para_pdf,
+    )
     encabezado("Reporte Ejecutivo Consolidado", 16)
-    linea(DECISION_SUPPORT_NOTICE)
+    nota(DECISION_SUPPORT_NOTICE)
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
     linea(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
@@ -1472,6 +1467,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
     )
     batch_result["traceability_rows"] = rows
     doc = Document()
+    aplicar_estilo_docx(doc, "Documento Formal — Requerimientos", project_name)
     doc.add_heading("Documento Formal Consolidado de Requerimientos", 0)
     doc.add_paragraph(DECISION_SUPPORT_NOTICE)
     doc.add_heading("Información general", 1)
@@ -1666,6 +1662,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
 
         agregar_seguridad_docx(doc, result)
 
+    seccion_horizontal(doc)
     doc.add_heading(
         "6. Matriz de trazabilidad",
         1,
@@ -1679,6 +1676,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
         for cell, key in zip(table.add_row().cells, matrix_keys):
             cell.text = str(row.get(key, ""))
             
+    seccion_vertical(doc)
     doc.add_heading(
         "7. Control de revisión",
         1,
@@ -1706,6 +1704,7 @@ def generar_documento_formal_lote_docx(batch_result: dict) -> io.BytesIO:
             "responsable del proyecto."
         )
     )
+    finalizar_docx(doc, notas=(DECISION_SUPPORT_NOTICE,))
     output = io.BytesIO()
     doc.save(output)
     output.seek(0)
@@ -2074,8 +2073,6 @@ def generar_reporte_diseno_pdf(project_name: str, milestone: str, presentaciones
     Reporte Ejecutivo Consolidado de Diseño. Consume objetos de
     construir_presentacion_resultado_diseno(). No recalcula nada.
     """
-    from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
     if not presentaciones:
         raise ValueError("No existen Diseños completos para generar el PDF.")
 
@@ -2083,24 +2080,12 @@ def generar_reporte_diseno_pdf(project_name: str, milestone: str, presentaciones
     indices_seguridad = [p["indice_seguridad"] for p in presentaciones if p.get("indice_seguridad") is not None]
     con_error = sum(1 for p in presentaciones if p.get("estado_orientativo") == "ERROR")
 
-    pdf = FPDF()
-    pdf.set_margins(20, 20, 20)
-    pdf.add_page()
-    kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
-
-    def encabezado(text, size=14):
-        pdf.set_font("Helvetica", style="B", size=size)
-        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
-
-    def linea(text):
-        pdf.set_font("Helvetica", size=10)
-        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
-
-    def bullet(text):
-        linea(f"- {text}")
+    pdf, encabezado, linea, bullet, nota = preparar_pdf(
+        "Reporte de Ejecución — Diseño", project_name, limpiar_texto_para_pdf,
+    )
 
     encabezado("Reporte Ejecutivo Consolidado — Diseño", 16)
-    linea(DECISION_SUPPORT_NOTICE)
+    nota(DECISION_SUPPORT_NOTICE)
     pdf.ln(2)
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
@@ -2249,6 +2234,7 @@ def generar_documento_formal_diseno_docx(project_name: str, milestone: str, pres
         raise ValueError("No existen Diseños completos para generar el DOCX.")
 
     doc = Document()
+    aplicar_estilo_docx(doc, "Documento Formal — Diseño", project_name)
     doc.add_heading("Documento Formal Consolidado de Diseño", 0)
     doc.add_paragraph(DECISION_SUPPORT_NOTICE)
     doc.add_paragraph(f"Proyecto: {project_name}")
@@ -2399,7 +2385,7 @@ def generar_documento_formal_diseno_docx(project_name: str, milestone: str, pres
             doc.add_paragraph("Sin aspectos pendientes de seguridad identificados.")
 
     # 8. Matriz de Trazabilidad de Diseño
-    doc.add_page_break()
+    seccion_horizontal(doc)
     doc.add_heading("8. Matriz de Trazabilidad de Diseño", 1)
     columnas_trz = [
         "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
@@ -2420,6 +2406,7 @@ def generar_documento_formal_diseno_docx(project_name: str, milestone: str, pres
         doc.add_paragraph("No se generaron filas de trazabilidad.")
 
     # 9. Control del documento
+    seccion_vertical(doc)
     doc.add_heading("9. Control del documento", 1)
     table = doc.add_table(rows=1, cols=3)
     table.style = "Table Grid"
@@ -2432,6 +2419,7 @@ def generar_documento_formal_diseno_docx(project_name: str, milestone: str, pres
     row[1].text = datetime.now().strftime("%Y-%m-%d")
     row[2].text = "Pendiente de revisión"
 
+    finalizar_docx(doc, notas=(DECISION_SUPPORT_NOTICE,))
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
@@ -2443,8 +2431,6 @@ def generar_reporte_codificacion_pdf(project_name: str, milestone: str, presenta
     Reporte Ejecutivo Consolidado de Codificación. Consume objetos de
     construir_presentacion_resultado_codificacion(). No recalcula nada.
     """
-    from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
     if not presentaciones:
         raise ValueError("No existen Codificaciones completas para generar el PDF.")
 
@@ -2452,24 +2438,12 @@ def generar_reporte_codificacion_pdf(project_name: str, milestone: str, presenta
     indices_seguridad = [p["indice_seguridad"] for p in presentaciones if p.get("indice_seguridad") is not None]
     con_error = sum(1 for p in presentaciones if p.get("estado_orientativo") == "ERROR")
 
-    pdf = FPDF()
-    pdf.set_margins(20, 20, 20)
-    pdf.add_page()
-    kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
-
-    def encabezado(text, size=14):
-        pdf.set_font("Helvetica", style="B", size=size)
-        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
-
-    def linea(text):
-        pdf.set_font("Helvetica", size=10)
-        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
-
-    def bullet(text):
-        linea(f"- {text}")
+    pdf, encabezado, linea, bullet, nota = preparar_pdf(
+        "Reporte de Ejecución — Codificación", project_name, limpiar_texto_para_pdf,
+    )
 
     encabezado("Reporte Ejecutivo Consolidado — Codificación", 16)
-    linea(DECISION_SUPPORT_NOTICE)
+    nota(DECISION_SUPPORT_NOTICE)
     pdf.ln(2)
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
@@ -2622,6 +2596,7 @@ def generar_documento_formal_codificacion_docx(project_name: str, milestone: str
         raise ValueError("No existen Codificaciones completas para generar el DOCX.")
 
     doc = Document()
+    aplicar_estilo_docx(doc, "Documento Formal — Codificación", project_name)
     doc.add_heading("Documento Formal Consolidado de Codificación", 0)
     doc.add_paragraph(DECISION_SUPPORT_NOTICE)
     doc.add_paragraph(f"Proyecto: {project_name}")
@@ -2781,7 +2756,7 @@ def generar_documento_formal_codificacion_docx(project_name: str, milestone: str
             doc.add_paragraph("Sin aspectos pendientes identificados.")
 
     # 10. Matriz de Trazabilidad evolucionada
-    doc.add_page_break()
+    seccion_horizontal(doc)
     doc.add_heading("10. Matriz de Trazabilidad evolucionada", 1)
     columnas_trz = [
         "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
@@ -2804,6 +2779,7 @@ def generar_documento_formal_codificacion_docx(project_name: str, milestone: str
         doc.add_paragraph("No se generaron filas de trazabilidad.")
 
     # 11. Control del documento
+    seccion_vertical(doc)
     doc.add_heading("11. Control del documento", 1)
     table = doc.add_table(rows=1, cols=3)
     table.style = "Table Grid"
@@ -2816,6 +2792,7 @@ def generar_documento_formal_codificacion_docx(project_name: str, milestone: str
     row[1].text = datetime.now().strftime("%Y-%m-%d")
     row[2].text = "Pendiente de revisión"
 
+    finalizar_docx(doc, notas=(DECISION_SUPPORT_NOTICE,))
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
@@ -2827,8 +2804,6 @@ def generar_reporte_pruebas_pdf(project_name: str, milestone: str, presentacione
     Reporte Ejecutivo Consolidado de Pruebas. Consume objetos de
     construir_presentacion_resultado_pruebas(). No recalcula nada.
     """
-    from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
     if not presentaciones:
         raise ValueError("No existen Pruebas completas para generar el PDF.")
 
@@ -2844,24 +2819,12 @@ def generar_reporte_pruebas_pdf(project_name: str, milestone: str, presentacione
     valores_ms09 = _valores_evaluados("MS-09")
     con_error = sum(1 for p in presentaciones if p.get("estado_orientativo") == "ERROR")
 
-    pdf = FPDF()
-    pdf.set_margins(20, 20, 20)
-    pdf.add_page()
-    kwargs = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
-
-    def encabezado(text, size=14):
-        pdf.set_font("Helvetica", style="B", size=size)
-        pdf.multi_cell(0, 7, limpiar_texto_para_pdf(text), **kwargs)
-
-    def linea(text):
-        pdf.set_font("Helvetica", size=10)
-        pdf.multi_cell(0, 6, limpiar_texto_para_pdf(text), **kwargs)
-
-    def bullet(text):
-        linea(f"- {text}")
+    pdf, encabezado, linea, bullet, nota = preparar_pdf(
+        "Reporte de Ejecución — Pruebas", project_name, limpiar_texto_para_pdf,
+    )
 
     encabezado("Reporte Ejecutivo Consolidado — Pruebas", 16)
-    linea(DECISION_SUPPORT_NOTICE)
+    nota(DECISION_SUPPORT_NOTICE)
     pdf.ln(2)
     linea(f"Proyecto: {project_name}")
     linea(f"Milestone: {milestone}")
@@ -3009,6 +2972,7 @@ def generar_documento_formal_pruebas_docx(project_name: str, milestone: str, pre
         raise ValueError("No existen Pruebas completas para generar el DOCX.")
 
     doc = Document()
+    aplicar_estilo_docx(doc, "Documento Formal — Pruebas", project_name)
     doc.add_heading("Documento Formal Consolidado de Pruebas", 0)
     doc.add_paragraph(DECISION_SUPPORT_NOTICE)
     doc.add_paragraph(f"Proyecto: {project_name}")
@@ -3183,7 +3147,7 @@ def generar_documento_formal_pruebas_docx(project_name: str, milestone: str, pre
             doc.add_paragraph("Ninguna.")
 
     # 12. Trazabilidad final
-    doc.add_page_break()
+    seccion_horizontal(doc)
     doc.add_heading("12. Trazabilidad final", 1)
     columnas_trz = [
         "HU origen", "Código requisito", "Tipo", "Nombre del requisito",
@@ -3204,6 +3168,7 @@ def generar_documento_formal_pruebas_docx(project_name: str, milestone: str, pre
         doc.add_paragraph("No se generaron filas de trazabilidad.")
 
     # 13. Control del documento
+    seccion_vertical(doc)
     doc.add_heading("13. Control del documento", 1)
     table = doc.add_table(rows=1, cols=3)
     table.style = "Table Grid"
@@ -3216,6 +3181,7 @@ def generar_documento_formal_pruebas_docx(project_name: str, milestone: str, pre
     row[1].text = datetime.now().strftime("%Y-%m-%d")
     row[2].text = "Pendiente de revisión"
 
+    finalizar_docx(doc, notas=(DECISION_SUPPORT_NOTICE,))
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
