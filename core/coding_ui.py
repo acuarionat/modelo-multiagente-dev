@@ -59,7 +59,10 @@ from core.utils import (
     generar_documento_formal_codificacion_docx,
     generar_reporte_codificacion_pdf,
 )
-from database.repository import cargar_estado_etapa, guardar_estado_etapa, guardar_historial, leer_version_matriz
+from database.repository import (
+    cargar_estado_etapa, cargar_matriz_base, guardar_estado_etapa, guardar_historial,
+    guardar_matriz_base, leer_version_matriz,
+)
 from integrations.code_repository_service import obtener_codigo_codificacion
 from integrations.gitlab_adapter import etiquetas_son_analizables
 from integrations.issue_service import (
@@ -422,9 +425,9 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
         if matriz_trz002 is not None:
             session["coding_matriz_carga"] = matriz_trz002
             session["coding_issue_trz002"] = issue_trz002
-            if "coding_matriz_original" not in session:
-                matriz_final_diseno = session.get("diseno_filas_matriz_final") or matriz_trz002
-                session["coding_matriz_original"] = copy.deepcopy(matriz_final_diseno)
+            # La comparación es contra la matriz de la carga anterior, no contra la original.
+            session["coding_matriz_original"] = copy.deepcopy(cargar_matriz_base("codificacion") or matriz_trz002)
+            guardar_matriz_base("codificacion", matriz_trz002)
             session["coding_matriz_fuente"] = "GitLab — TRZ-002"
             session["coding_matriz_confirmada"] = False
 
@@ -451,7 +454,8 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
             else importar_matriz_csv(archivo_matriz)
         )
         session["coding_matriz_carga"] = matriz_cargada
-        session["coding_matriz_original"] = copy.deepcopy(matriz_cargada)
+        session["coding_matriz_original"] = copy.deepcopy(cargar_matriz_base("codificacion") or matriz_cargada)
+        guardar_matriz_base("codificacion", matriz_cargada)
         session["coding_matriz_fuente"] = "EXCEL"
         st.rerun()
 
@@ -486,13 +490,13 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
     elif preparacion_matriz["coding_matrix_changes"]["hay_cambios"]:
         cambios = preparacion_matriz["coding_matrix_changes"]
         sub.avisos.caption(
-            f"Cambios respecto a la carga inicial: "
+            f"Cambios respecto a la versión anterior: "
             f"+{len(cambios['agregados'])} agregados · "
             f"~{len(cambios['modificados'])} modificados · "
             f"-{len(cambios['retirados'])} retirados"
         )
     else:
-        sub.avisos.caption("Estado: Original. No se detectaron modificaciones respecto a la carga inicial de esta sesión.")
+        sub.avisos.caption("Estado: Original. No se detectaron modificaciones respecto a la versión anterior de la matriz.")
 
     sub.tabla.dataframe(matriz_entrada, width="stretch")
 
@@ -522,7 +526,9 @@ def render_coding_stage(project_name: str, project_config: dict, adapter) -> Non
                 importar_matriz_xlsx(archivo_modificado) if archivo_modificado.name.lower().endswith(".xlsx")
                 else importar_matriz_csv(archivo_modificado)
             )
+            session["coding_matriz_original"] = copy.deepcopy(session["coding_matriz_carga"])
             session["coding_matriz_carga"] = matriz_excel
+            guardar_matriz_base("codificacion", matriz_excel)
             session["coding_matriz_fuente"] = "EXCEL"
             session["coding_matriz_upload_nombre"] = archivo_modificado.name
             session["coding_matriz_confirmada"] = False

@@ -49,7 +49,10 @@ from core.ui_components import (
 )
 from core.document_style import FORMAL, REPORTE, nombre_archivo
 from core.utils import extraer_porcentaje, generar_documento_formal_diseno_docx, generar_reporte_diseno_pdf
-from database.repository import cargar_estado_etapa, guardar_estado_etapa, guardar_historial, leer_version_matriz
+from database.repository import (
+    cargar_estado_etapa, cargar_matriz_base, guardar_estado_etapa, guardar_historial,
+    guardar_matriz_base, leer_version_matriz,
+)
 from integrations.gitlab_adapter import etiquetas_son_analizables
 from integrations.issue_service import (
     actualizar_etiqueta_resultado_tecnico,
@@ -261,7 +264,10 @@ def _cargar_entrada_desde_gitlab(adapter) -> dict:
     matriz_original = construir_matriz_requerimientos_original(_todos_los_resultados_cache())
     issue_trz001, matriz_trz001 = obtener_issue_matriz_trazabilidad(adapter.project_id)
     matriz_entrada = matriz_trz001 if issue_trz001 is not None else matriz_original
-    resultado = preparar_matriz_entrada_diseno(matriz_original, matriz_entrada, "GitLab")
+    # Los cambios se listan contra la matriz de la carga anterior, no contra la original.
+    matriz_anterior = cargar_matriz_base("diseno") or matriz_entrada
+    resultado = preparar_matriz_entrada_diseno(matriz_anterior, matriz_entrada, "GitLab")
+    guardar_matriz_base("diseno", matriz_entrada)
     resultado["matriz_requerimientos_original"] = matriz_original
     resultado["issue_trz001"] = issue_trz001
     resultado["archivo_excel_nombre"] = None
@@ -316,7 +322,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
         "Actualizar desde GitLab", icon=":material/refresh:", key="diseno_actualizar_matriz", width="stretch",
     )
     if "matriz_carga" not in session or actualizar_gitlab:
-        with sub.avisos.spinner("Consultando TRZ-001 en GitLab y comparando con la matriz original..."):
+        with sub.avisos.spinner("Consultando TRZ-001 en GitLab y comparando con la versión anterior..."):
             session["matriz_carga"] = _cargar_entrada_desde_gitlab(adapter)
         session["matriz_confirmada"] = False
 
@@ -345,15 +351,15 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
     if carga["matriz_estado"] == "EDITADA":
         cambios = carga["matriz_cambios_pre_diseno"]
         sub.avisos.caption(
-            f"Cambios respecto a Requerimientos: "
+            f"Cambios respecto a la versión anterior: "
             f"+{len(cambios['agregados'])} agregados · "
             f"~{len(cambios['modificados'])} modificados · "
             f"-{len(cambios['retirados'])} retirados"
         )
     elif carga["matriz_estado"] == "ORIGINAL":
         sub.avisos.caption(
-            "Estado: Original. No se detectaron modificaciones respecto a la matriz "
-            "generada al finalizar Recepción de Requerimientos."
+            "Estado: Original. No se detectaron modificaciones respecto a la versión "
+            "anterior de la matriz."
         )
 
     if carga["matriz_estado"] == ESTADO_MATRIZ_INVALIDA:
@@ -366,7 +372,7 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
 
     # ---- Cambios detectados (sección 10) ----
     if carga["matriz_estado"] == "EDITADA":
-        with sub.tabla.expander("Cambios detectados respecto a Requerimientos"):
+        with sub.tabla.expander("Cambios detectados respecto a la versión anterior"):
             tablas_cambios = preparar_tabla_cambios_pre_diseno(carga["matriz_cambios_pre_diseno"])
             st.table(tablas_cambios["resumen"])
     # ---- Botones de edición ----
@@ -400,8 +406,9 @@ def render_design_stage(project_name: str, project_config: dict, adapter) -> Non
             else:
                 matriz_excel = importar_matriz_csv(archivo_modificado)
             nueva_carga = preparar_matriz_entrada_diseno(
-                carga["matriz_requerimientos_original"], matriz_excel, "EXCEL",
+                carga["matriz_entrada_diseno"], matriz_excel, "EXCEL",
             )
+            guardar_matriz_base("diseno", matriz_excel)
             nueva_carga["matriz_requerimientos_original"] = carga["matriz_requerimientos_original"]
             nueva_carga["issue_trz001"] = carga["issue_trz001"]
             nueva_carga["archivo_excel_nombre"] = archivo_modificado.name

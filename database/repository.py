@@ -113,6 +113,16 @@ def cargar_estado_etapa(stage: str):
         return json.loads(row[0])
     return None
 
+def cargar_matriz_base(etapa: str):
+    """Filas de la matriz de entrada tal como estaban en la última carga de esa etapa
+    (la 'versión anterior' contra la que se listan los cambios), o None si no hay."""
+    persistido = cargar_estado_etapa(f"matriz_base_{etapa}")
+    return persistido.get("filas") if persistido else None
+
+def guardar_matriz_base(etapa: str, filas: list):
+    """Registra la matriz de entrada recién cargada como nueva 'versión anterior'."""
+    guardar_estado_etapa(f"matriz_base_{etapa}", {"filas": filas})
+
 def obtener_fecha_estado_etapa(stage: str):
     """Fecha ('AAAA-MM-DD HH:MM:SS', UTC) en que se persistió el último resultado de una etapa, o None."""
     conn = conectar(DB_PATH)
