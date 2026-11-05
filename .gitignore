@@ -1,4 +1,23 @@
+# Secretos y configuración local (nunca subir)
 .env
-.venv/
-node_modules/
 .streamlit/secrets.toml
+
+# Entornos y dependencias instaladas
+.venv/
+venv/
+node_modules/
+
+# Cachés de Python
+__pycache__/
+*.pyc
+
+# Datos generados en tiempo de ejecución
+# (la base SQLite guarda el token de GitLab ingresado en la interfaz)
+database/database.db
+logs/
+output/**
+!output/xlsx/
+!output/xlsx/.gitkeep
+
+# Configuración local de herramientas de desarrollo
+.claude/
